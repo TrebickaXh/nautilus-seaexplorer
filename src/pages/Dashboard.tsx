@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUserRole } from "@/hooks/useUserRole";
 import { 
   LayoutDashboard, 
   ListTodo, 
@@ -13,24 +14,32 @@ import {
   TrendingUp,
   AlertCircle,
   CheckCircle2,
-  Clock
+  Clock,
+  FileText
 } from "lucide-react";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const { primaryRole, loading: roleLoading } = useUserRole();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     onTimeRate: 0,
-    overdueCount: 0,
+    overdueTasks: 0,
     completedToday: 0,
     pendingTasks: 0
   });
-  const navigate = useNavigate();
 
   useEffect(() => {
     checkUser();
-    loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (user && profile) {
+      loadDashboardData();
+    }
+  }, [user, profile]);
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -51,14 +60,57 @@ export default function Dashboard() {
   };
 
   const loadDashboardData = async () => {
-    // TODO: Load real stats from task_instances
-    // For now, mock data
-    setStats({
-      onTimeRate: 87,
-      overdueCount: 5,
-      completedToday: 23,
-      pendingTasks: 12
-    });
+    try {
+      if (!profile?.org_id) return;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const { data: tasks } = await supabase
+        .from('task_instances')
+        .select('status, completed_at, due_at')
+        .gte('created_at', today.toISOString())
+        .lt('created_at', tomorrow.toISOString());
+
+      const completed = tasks?.filter(t => t.status === 'done') || [];
+      const pending = tasks?.filter(t => t.status === 'pending') || [];
+      const overdue = pending.filter(t => new Date(t.due_at) < new Date());
+      const onTime = completed.filter(t => 
+        new Date(t.completed_at!) <= new Date(t.due_at)
+      );
+
+      const onTimeRate = completed.length > 0 
+        ? Math.round((onTime.length / completed.length) * 100)
+        : 0;
+
+      setStats({
+        onTimeRate,
+        overdueTasks: overdue.length,
+        completedToday: completed.length,
+        pendingTasks: pending.length,
+      });
+
+      const channel = supabase
+        .channel('task-updates')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'task_instances'
+        }, () => {
+          loadDashboardData();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -66,8 +118,8 @@ export default function Dashboard() {
     navigate("/auth");
   };
 
-  if (!user || !profile) {
-    return null;
+  if (roleLoading || loading || !user || !profile) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
   return (
@@ -85,19 +137,25 @@ export default function Dashboard() {
           </div>
 
           <nav className="flex items-center gap-2">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/task-templates")}>
+              <FileText className="w-4 h-4 mr-2" />
+              Templates
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/tasks")}>
               <ListTodo className="w-4 h-4 mr-2" />
               Tasks
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/schedules")}>
               <Calendar className="w-4 h-4 mr-2" />
               Schedules
             </Button>
-            <Button variant="ghost" size="sm">
-              <Users className="w-4 h-4 mr-2" />
-              Team
-            </Button>
-            <Button variant="ghost" size="sm">
+            {(primaryRole === 'org_admin' || primaryRole === 'location_manager') && (
+              <Button variant="ghost" size="sm" onClick={() => navigate("/team")}>
+                <Users className="w-4 h-4 mr-2" />
+                Team
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => navigate("/settings")}>
               <Settings className="w-4 h-4 mr-2" />
               Settings
             </Button>
@@ -133,7 +191,7 @@ export default function Dashboard() {
                 <AlertCircle className="w-4 h-4 text-destructive" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-destructive">{stats.overdueCount}</div>
+                <div className="text-3xl font-bold text-destructive">{stats.overdueTasks}</div>
                 <p className="text-xs text-muted-foreground mt-1">Requires attention</p>
               </CardContent>
             </Card>
@@ -187,18 +245,24 @@ export default function Dashboard() {
                 <CardDescription>Common tasks and shortcuts</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/task-templates")}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Manage Templates
+                </Button>
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/tasks")}>
                   <ListTodo className="w-4 h-4 mr-2" />
                   View All Tasks
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/schedules")}>
                   <Calendar className="w-4 h-4 mr-2" />
                   Manage Schedules
                 </Button>
-                <Button className="w-full justify-start" variant="outline">
-                  <Users className="w-4 h-4 mr-2" />
-                  Team Members
-                </Button>
+                {(primaryRole === 'org_admin' || primaryRole === 'location_manager') && (
+                  <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/team")}>
+                    <Users className="w-4 h-4 mr-2" />
+                    Team Members
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -175,14 +175,19 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
 
   if (orgError) throw orgError;
 
-  // Update user profile with org_id and role
+  // Update user profile with org_id
   await supabase
     .from("profiles")
-    .update({ 
-      org_id: org.id,
-      role: "org_admin"
-    })
+    .update({ org_id: org.id })
     .eq("id", session.user_id);
+
+  // Assign org_admin role
+  await supabase
+    .from("user_roles")
+    .insert({ 
+      user_id: session.user_id, 
+      role: "org_admin" 
+    });
 
   // Create locations and areas
   for (const loc of config.locations || []) {

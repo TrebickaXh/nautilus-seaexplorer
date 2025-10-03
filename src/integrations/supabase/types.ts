@@ -234,7 +234,6 @@ export type Database = {
           nfc_uid: string | null
           org_id: string
           pin_hash: string | null
-          role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
           active?: boolean
@@ -244,7 +243,6 @@ export type Database = {
           nfc_uid?: string | null
           org_id: string
           pin_hash?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
         }
         Update: {
           active?: boolean
@@ -254,7 +252,6 @@ export type Database = {
           nfc_uid?: string | null
           org_id?: string
           pin_hash?: string | null
-          role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: [
           {
@@ -495,12 +492,57 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_urgency_score: {
+        Args: {
+          _criticality: number
+          _due_at: string
+          _now?: string
+          _window_end: string
+          _window_start: string
+        }
+        Returns: number
+      }
+      get_user_primary_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      update_task_urgency: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "org_admin" | "location_manager" | "crew"
