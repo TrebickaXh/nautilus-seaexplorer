@@ -31,7 +31,7 @@ interface UserProfile {
   active: boolean;
   email?: string;
   phone?: string;
-  department?: string;
+  department_name?: string;
   employee_id?: string;
   shift_type?: string;
   last_login?: string;
@@ -85,7 +85,6 @@ export default function Users() {
           active,
           email,
           phone,
-          department,
           employee_id,
           shift_type,
           last_login,
@@ -98,7 +97,24 @@ export default function Users() {
 
       if (error) throw error;
 
-      setUsers(data as any);
+      // Fetch department names for each user
+      const usersWithDepartments = await Promise.all(
+        (data || []).map(async (user) => {
+          const { data: deptData } = await supabase
+            .from('user_departments')
+            .select('departments(name)')
+            .eq('user_id', user.id)
+            .eq('is_primary', true)
+            .single();
+
+          return {
+            ...user,
+            department_name: (deptData?.departments as any)?.name || null,
+          };
+        })
+      );
+
+      setUsers(usersWithDepartments as any);
     } catch (error: any) {
       console.error('Error loading users:', error);
       toast({
@@ -255,7 +271,7 @@ export default function Users() {
                     <TableCell className="font-medium">{user.display_name}</TableCell>
                     <TableCell className="text-muted-foreground">{user.email || 'N/A'}</TableCell>
                     <TableCell className="text-muted-foreground">{user.employee_id || 'N/A'}</TableCell>
-                    <TableCell className="text-muted-foreground">{user.department || 'N/A'}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.department_name || 'N/A'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {user.user_roles?.[0] ? (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -35,7 +35,7 @@ const inviteSchema = z.object({
   display_name: z.string().min(1, 'Name is required').max(100),
   role: z.enum(['org_admin', 'location_manager', 'crew']),
   phone: z.string().optional(),
-  department: z.string().optional(),
+  department_id: z.string().min(1, 'Department is required'),
   employee_id: z.string().optional(),
   shift_type: z.string().optional(),
 });
@@ -51,6 +51,7 @@ interface InviteUserDialogProps {
 
 export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUserDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
   const { toast } = useToast();
 
   const form = useForm<InviteFormData>({
@@ -60,11 +61,29 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
       display_name: '',
       role: 'crew',
       phone: '',
-      department: '',
+      department_id: '',
       employee_id: '',
       shift_type: '',
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      loadDepartments();
+    }
+  }, [open]);
+
+  const loadDepartments = async () => {
+    const { data } = await supabase
+      .from('departments')
+      .select('id, name')
+      .is('archived_at', null)
+      .order('name');
+    
+    if (data) {
+      setDepartments(data);
+    }
+  };
 
   const onSubmit = async (data: InviteFormData) => {
     setLoading(true);
@@ -78,7 +97,7 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
             org_id: orgId,
             role: data.role,
             phone: data.phone,
-            department: data.department,
+            department_id: data.department_id,
             employee_id: data.employee_id,
             shift_type: data.shift_type,
           },
@@ -222,17 +241,28 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
 
             <FormField
               control={form.control}
-              name="department"
+              name="department_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Department (Optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Housekeeping, Maintenance, etc."
-                      {...field}
-                      disabled={loading}
-                    />
-                  </FormControl>
+                  <FormLabel>Department</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={loading}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a department" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
