@@ -13,6 +13,7 @@ import Schedules from "./pages/Schedules";
 import TaskInstances from "./pages/TaskInstances";
 import Locations from "./pages/Locations";
 import Users from "./pages/Users";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/task-instances" element={<AppLayout><TaskInstances /></AppLayout>} />
           <Route path="/locations" element={<AppLayout><Locations /></AppLayout>} />
           <Route path="/users" element={<AppLayout><Users /></AppLayout>} />
+          <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
