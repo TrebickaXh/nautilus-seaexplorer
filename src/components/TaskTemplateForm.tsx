@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ const templateSchema = z.object({
   description: z.string().max(1000, "Description must be less than 1000 characters").optional(),
   est_minutes: z.number().min(1, "Estimated time must be at least 1 minute").max(480, "Estimated time must be less than 8 hours"),
   steps: z.array(z.string().max(500, "Step must be less than 500 characters")).max(20, "Maximum 20 steps allowed"),
+  department_id: z.string().min(1, "Department is required"),
 });
 
 interface TaskTemplateFormProps {
@@ -26,6 +27,7 @@ interface TaskTemplateFormProps {
 export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplateFormProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     title: template?.title || '',
     description: template?.description || '',
@@ -33,8 +35,22 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
     criticality: template?.criticality || 3,
     required_proof: template?.required_proof || 'none',
     steps: template?.steps || [],
+    department_id: template?.department_id || '',
   });
   const [newStep, setNewStep] = useState('');
+
+  useEffect(() => {
+    loadDepartments();
+  }, []);
+
+  const loadDepartments = async () => {
+    const { data } = await supabase
+      .from('departments')
+      .select('id, name')
+      .is('archived_at', null)
+      .order('name');
+    if (data) setDepartments(data);
+  };
 
   const handleAddStep = () => {
     const trimmed = newStep.trim();
@@ -140,6 +156,25 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           required
         />
+      </div>
+
+      <div>
+        <Label htmlFor="department_id">Department *</Label>
+        <Select
+          value={formData.department_id}
+          onValueChange={(value) => setFormData({ ...formData, department_id: value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select department" />
+          </SelectTrigger>
+          <SelectContent>
+            {departments.map(dept => (
+              <SelectItem key={dept.id} value={dept.id}>
+                {dept.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>

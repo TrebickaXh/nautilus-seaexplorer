@@ -602,7 +602,7 @@ export type Database = {
           archived_at: string | null
           created_at: string
           criticality: number
-          department_id: string | null
+          department_id: string
           description: string | null
           est_minutes: number
           id: string
@@ -615,7 +615,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           criticality?: number
-          department_id?: string | null
+          department_id: string
           description?: string | null
           est_minutes?: number
           id?: string
@@ -628,7 +628,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           criticality?: number
-          department_id?: string | null
+          department_id?: string
           description?: string | null
           est_minutes?: number
           id?: string

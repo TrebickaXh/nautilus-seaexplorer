@@ -15,6 +15,8 @@ const formSchema = z.object({
   template_id: z.string().min(1, 'Template is required'),
   location_id: z.string().min(1, 'Location is required'),
   area_id: z.string().optional(),
+  department_id: z.string().optional(),
+  shift_id: z.string().optional(),
   due_date: z.string().min(1, 'Due date is required'),
   due_time: z.string().min(1, 'Due time is required'),
   assigned_role: z.enum(['crew', 'location_manager', 'org_admin']).optional(),
@@ -32,6 +34,8 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
   const [templates, setTemplates] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const form = useForm<FormValues>({
@@ -43,11 +47,13 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
   });
 
   const selectedLocationId = form.watch('location_id');
+  const selectedDepartmentId = form.watch('department_id');
 
   useEffect(() => {
     if (open) {
       loadTemplates();
       loadLocations();
+      loadDepartments();
     }
   }, [open]);
 
@@ -59,6 +65,15 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
       form.setValue('area_id', '');
     }
   }, [selectedLocationId]);
+
+  useEffect(() => {
+    if (selectedDepartmentId) {
+      loadShifts(selectedDepartmentId);
+    } else {
+      setShifts([]);
+      form.setValue('shift_id', '');
+    }
+  }, [selectedDepartmentId]);
 
   const loadTemplates = async () => {
     const { data } = await supabase
@@ -87,6 +102,25 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
     if (data) setAreas(data);
   };
 
+  const loadDepartments = async () => {
+    const { data } = await supabase
+      .from('departments')
+      .select('id, name')
+      .is('archived_at', null)
+      .order('name');
+    if (data) setDepartments(data);
+  };
+
+  const loadShifts = async (departmentId: string) => {
+    const { data } = await supabase
+      .from('shifts')
+      .select('id, name, start_time, end_time')
+      .eq('department_id', departmentId)
+      .is('archived_at', null)
+      .order('start_time');
+    if (data) setShifts(data);
+  };
+
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
     try {
@@ -101,6 +135,14 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
 
       if (values.area_id) {
         payload.area_id = values.area_id;
+      }
+
+      if (values.department_id) {
+        payload.department_id = values.department_id;
+      }
+
+      if (values.shift_id) {
+        payload.shift_id = values.shift_id;
       }
 
       if (values.assigned_role) {
@@ -195,6 +237,56 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
                       <SelectContent>
                         {areas.map(a => (
                           <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <FormField
+              control={form.control}
+              name="department_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Department (Optional)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="None - Select department if needed" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {departments.map(d => (
+                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {shifts.length > 0 && (
+              <FormField
+                control={form.control}
+                name="shift_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Shift (Optional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="None - Select shift if needed" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {shifts.map(s => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} ({s.start_time} - {s.end_time})
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

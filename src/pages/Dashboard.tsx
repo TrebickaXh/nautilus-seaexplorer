@@ -263,6 +263,15 @@ export default function Dashboard() {
         throw new Error("No organization found");
       }
 
+      // Create a default "General" department
+      const { data: department, error: deptError } = await supabase
+        .from('departments')
+        .insert({ name: 'General', description: 'Default department', org_id: profile.org_id })
+        .select()
+        .single();
+
+      if (deptError) throw deptError;
+
       // Create a test location
       const { data: location, error: locationError } = await supabase
         .from('locations')
@@ -281,6 +290,7 @@ export default function Dashboard() {
           criticality: 5,
           required_proof: 'photo' as const,
           org_id: profile.org_id,
+          department_id: department.id,
         },
         {
           title: 'Check Fire Extinguishers',
@@ -289,6 +299,7 @@ export default function Dashboard() {
           criticality: 4,
           required_proof: 'note' as const,
           org_id: profile.org_id,
+          department_id: department.id,
         },
         {
           title: 'Restock Supplies',
@@ -297,6 +308,7 @@ export default function Dashboard() {
           criticality: 2,
           required_proof: 'none' as const,
           org_id: profile.org_id,
+          department_id: department.id,
         },
       ];
 
