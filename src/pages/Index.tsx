@@ -41,8 +41,8 @@ const Index = () => {
           <div className="space-y-4">
             <h1 className="text-5xl lg:text-6xl font-bold tracking-tight">
               Navigate Your Tasks with
-              <span className="block gradient-ocean bg-clip-text text-transparent">
-                Project Nautilus
+              <span className="block bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
+                Nautilus
               </span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
