@@ -21,10 +21,10 @@ export default function TaskInstances() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [skipDialogOpen, setSkipDialogOpen] = useState(false);
   const [skipTask, setSkipTask] = useState<any>(null);
-  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [skipDialogOpen, setSkipDialogOpen] = useState(false);
   const [completeTask, setCompleteTask] = useState<any>(null);
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin()) {
