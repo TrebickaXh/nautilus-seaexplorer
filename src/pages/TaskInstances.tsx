@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TaskInstanceCard } from '@/components/TaskInstanceCard';
 import { TaskInstanceDetails } from '@/components/TaskInstanceDetails';
 import { SkipTaskDialog } from '@/components/SkipTaskDialog';
+import { CompleteTaskDialog } from '@/components/CompleteTaskDialog';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { addDays, format } from 'date-fns';
 import { toast } from 'sonner';
@@ -22,6 +23,8 @@ export default function TaskInstances() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [skipDialogOpen, setSkipDialogOpen] = useState(false);
   const [skipTaskId, setSkipTaskId] = useState<string | null>(null);
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [completeTask, setCompleteTask] = useState<any>(null);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin()) {
@@ -86,6 +89,11 @@ export default function TaskInstances() {
   const handleSkip = (taskId: string) => {
     setSkipTaskId(taskId);
     setSkipDialogOpen(true);
+  };
+
+  const handleComplete = (task: any) => {
+    setCompleteTask(task);
+    setCompleteDialogOpen(true);
   };
 
   const handleDelete = async (taskId: string) => {
@@ -155,6 +163,7 @@ export default function TaskInstances() {
                     task={task}
                     onViewDetails={() => handleViewDetails(task)}
                     onSkip={() => handleSkip(task.id)}
+                    onComplete={() => handleComplete(task)}
                     onDelete={isAdmin() ? () => handleDelete(task.id) : undefined}
                     isAdmin={isAdmin()}
                   />
@@ -174,6 +183,17 @@ export default function TaskInstances() {
           taskId={skipTaskId}
           open={skipDialogOpen}
           onClose={() => setSkipDialogOpen(false)}
+          onSuccess={loadTasks}
+        />
+
+        <CompleteTaskDialog
+          taskId={completeTask?.id}
+          taskTemplate={completeTask?.task_templates}
+          open={completeDialogOpen}
+          onClose={() => {
+            setCompleteDialogOpen(false);
+            setCompleteTask(null);
+          }}
           onSuccess={loadTasks}
         />
       </div>

@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UrgencyBadge } from './UrgencyBadge';
-import { MoreVertical, Eye, SkipForward, Trash2 } from 'lucide-react';
+import { MoreVertical, Eye, SkipForward, Trash2, CheckCircle2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -10,11 +10,12 @@ interface TaskInstanceCardProps {
   task: any;
   onViewDetails: () => void;
   onSkip: () => void;
+  onComplete: () => void;
   onDelete?: () => void;
   isAdmin: boolean;
 }
 
-export function TaskInstanceCard({ task, onViewDetails, onSkip, onDelete, isAdmin }: TaskInstanceCardProps) {
+export function TaskInstanceCard({ task, onViewDetails, onSkip, onComplete, onDelete, isAdmin }: TaskInstanceCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'done': return 'default';
@@ -47,10 +48,16 @@ export function TaskInstanceCard({ task, onViewDetails, onSkip, onDelete, isAdmi
                 View Details
               </DropdownMenuItem>
               {task.status === 'pending' && (
-                <DropdownMenuItem onClick={onSkip}>
-                  <SkipForward className="h-4 w-4 mr-2" />
-                  Skip Task
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem onClick={onComplete}>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Complete Task
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onSkip}>
+                    <SkipForward className="h-4 w-4 mr-2" />
+                    Skip Task
+                  </DropdownMenuItem>
+                </>
               )}
               {isAdmin && onDelete && (
                 <DropdownMenuItem onClick={onDelete} className="text-destructive">
