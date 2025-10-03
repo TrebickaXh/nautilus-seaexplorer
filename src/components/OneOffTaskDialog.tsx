@@ -189,11 +189,10 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select area" />
+                          <SelectValue placeholder="None - Select area if needed" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
                         {areas.map(a => (
                           <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                         ))}
@@ -244,11 +243,10 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
+                        <SelectValue placeholder="None - Select role if needed" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
                       <SelectItem value="crew">Crew</SelectItem>
                       <SelectItem value="location_manager">Location Manager</SelectItem>
                       <SelectItem value="org_admin">Organization Admin</SelectItem>
