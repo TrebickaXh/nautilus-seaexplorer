@@ -50,12 +50,15 @@ export default function Users() {
   const [orgId, setOrgId] = useState<string>('');
 
   useEffect(() => {
-    if (!roleLoading && !isAdmin()) {
-      navigate('/dashboard');
-      return;
+    if (!roleLoading) {
+      if (!isAdmin()) {
+        navigate('/dashboard');
+        return;
+      }
+      loadUsers();
     }
-    loadUsers();
-  }, [roleLoading, isAdmin, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roleLoading]);
 
   const loadUsers = async () => {
     setLoading(true);
