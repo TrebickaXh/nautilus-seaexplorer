@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AppLayout } from "./components/AppLayout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
@@ -26,12 +27,12 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/task-templates" element={<TaskTemplates />} />
-          <Route path="/schedules" element={<Schedules />} />
-          <Route path="/task-instances" element={<TaskInstances />} />
-          <Route path="/locations" element={<Locations />} />
-          <Route path="/users" element={<Users />} />
+          <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+          <Route path="/task-templates" element={<AppLayout><TaskTemplates /></AppLayout>} />
+          <Route path="/schedules" element={<AppLayout><Schedules /></AppLayout>} />
+          <Route path="/task-instances" element={<AppLayout><TaskInstances /></AppLayout>} />
+          <Route path="/locations" element={<AppLayout><Locations /></AppLayout>} />
+          <Route path="/users" element={<AppLayout><Users /></AppLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

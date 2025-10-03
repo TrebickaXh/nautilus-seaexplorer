@@ -282,54 +282,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl gradient-ocean flex items-center justify-center">
-              <LayoutDashboard className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Project Nautilus</h1>
-              <p className="text-sm text-muted-foreground">Welcome back, {profile.display_name}</p>
-            </div>
-          </div>
-
-          <nav className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/task-templates")}>
-              <FileText className="w-4 h-4 mr-2" />
-              Templates
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/task-instances")}>
-              <ListTodo className="w-4 h-4 mr-2" />
-              Tasks
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/schedules")}>
-              <Calendar className="w-4 h-4 mr-2" />
-              Schedules
-            </Button>
-            {(primaryRole === 'org_admin' || primaryRole === 'location_manager') && (
-              <>
-                <Button variant="ghost" size="sm" onClick={() => navigate("/locations")}>
-                  <MapPin className="w-4 h-4 mr-2" />
-                  Locations
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => navigate("/users")}>
-                  <Users className="w-4 h-4 mr-2" />
-                  Team
-                </Button>
-              </>
-            )}
-            <Button variant="ghost" size="sm" onClick={() => navigate("/settings")}>
-              <Settings className="w-4 h-4 mr-2" />
-              Settings
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </nav>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 py-8">
         <div className="grid gap-6">
           {/* Stats Overview */}
