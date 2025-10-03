@@ -15,6 +15,7 @@ import Locations from "./pages/Locations";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Kiosk from "./pages/Kiosk";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/locations" element={<AppLayout><Locations /></AppLayout>} />
           <Route path="/users" element={<AppLayout><Users /></AppLayout>} />
           <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
+          <Route path="/reports" element={<AppLayout><Reports /></AppLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
