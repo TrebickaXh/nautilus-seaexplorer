@@ -1,8 +1,12 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { UrgencyBadge } from './UrgencyBadge';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Clock, MapPin, User, FileCheck } from 'lucide-react';
+import { Clock, MapPin, User, FileCheck, CheckCircle2, Image as ImageIcon } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TaskInstanceDetailsProps {
   task: any;
@@ -11,6 +15,39 @@ interface TaskInstanceDetailsProps {
 }
 
 export function TaskInstanceDetails({ task, open, onClose }: TaskInstanceDetailsProps) {
+  const [completions, setCompletions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (task?.id && open) {
+      loadCompletions();
+    }
+  }, [task?.id, open]);
+
+  const loadCompletions = async () => {
+    if (!task?.id) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('completions')
+        .select(`
+          *,
+          profiles:user_id (display_name),
+          cosigner:cosigner_user_id (display_name)
+        `)
+        .eq('task_instance_id', task.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCompletions(data || []);
+    } catch (error) {
+      console.error('Error loading completions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!task) return null;
 
   const template = task.task_templates;
@@ -126,26 +163,62 @@ export function TaskInstanceDetails({ task, open, onClose }: TaskInstanceDetails
             </div>
           )}
 
-          {task.completions && task.completions.length > 0 && (
+          {completions.length > 0 && (
             <div>
-              <h3 className="font-semibold mb-2">Completion History</h3>
-              {task.completions.map((completion: any) => (
-                <div key={completion.id} className="border rounded-lg p-3 space-y-2">
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Completed by:</span>{' '}
-                    {completion.profiles?.display_name || 'Unknown'}
-                  </p>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Time:</span>{' '}
-                    {format(new Date(completion.created_at), 'PPp')}
-                  </p>
-                  {completion.note && (
-                    <p className="text-sm">
-                      <span className="text-muted-foreground">Note:</span> {completion.note}
-                    </p>
-                  )}
-                </div>
-              ))}
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                Completion History
+              </h3>
+              <div className="space-y-4">
+                {completions.map((completion: any) => (
+                  <Card key={completion.id} className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-medium">
+                            {completion.profiles?.display_name || 'Unknown User'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(completion.created_at), 'PPp')}
+                          </p>
+                        </div>
+                        {completion.cosigner && (
+                          <Badge variant="secondary">
+                            Co-signed by {completion.cosigner.display_name}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {completion.note && (
+                        <div className="bg-muted/50 rounded-lg p-3">
+                          <p className="text-sm font-medium mb-1">Note:</p>
+                          <p className="text-sm text-muted-foreground">{completion.note}</p>
+                        </div>
+                      )}
+
+                      {completion.photo_url && (
+                        <div>
+                          <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                            <ImageIcon className="h-4 w-4" />
+                            Photo Evidence
+                          </p>
+                          <img
+                            src={completion.photo_url}
+                            alt="Completion proof"
+                            className="w-full max-w-md rounded-lg border"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {loading && (
+            <div className="text-center py-4 text-sm text-muted-foreground">
+              Loading completion history...
             </div>
           )}
         </div>
