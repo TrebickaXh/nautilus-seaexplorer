@@ -23,6 +23,7 @@ import {
   Settings,
   LogOut,
   Waves,
+  Tablet,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -30,6 +31,7 @@ import { Separator } from './ui/separator';
 const mainItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, roles: ['crew', 'location_manager', 'org_admin'] },
   { title: 'Tasks', url: '/task-instances', icon: ListTodo, roles: ['crew', 'location_manager', 'org_admin'] },
+  { title: 'Kiosk', url: '/kiosk', icon: Tablet, roles: ['crew', 'location_manager', 'org_admin'] },
 ];
 
 const managementItems = [

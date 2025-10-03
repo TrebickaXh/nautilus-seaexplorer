@@ -14,6 +14,7 @@ import TaskInstances from "./pages/TaskInstances";
 import Locations from "./pages/Locations";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import Kiosk from "./pages/Kiosk";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
+          <Route path="/kiosk" element={<Kiosk />} />
           <Route path="/task-templates" element={<AppLayout><TaskTemplates /></AppLayout>} />
           <Route path="/schedules" element={<AppLayout><Schedules /></AppLayout>} />
           <Route path="/task-instances" element={<AppLayout><TaskInstances /></AppLayout>} />
