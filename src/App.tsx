@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import TaskTemplates from "./pages/TaskTemplates";
 import Schedules from "./pages/Schedules";
 import TaskInstances from "./pages/TaskInstances";
+import Locations from "./pages/Locations";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/task-templates" element={<TaskTemplates />} />
           <Route path="/schedules" element={<Schedules />} />
           <Route path="/task-instances" element={<TaskInstances />} />
+          <Route path="/locations" element={<Locations />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -19,7 +19,8 @@ import {
   FileText,
   RefreshCw,
   Zap,
-  Database
+  Database,
+  MapPin
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -307,10 +308,16 @@ export default function Dashboard() {
               Schedules
             </Button>
             {(primaryRole === 'org_admin' || primaryRole === 'location_manager') && (
-              <Button variant="ghost" size="sm" onClick={() => navigate("/team")}>
-                <Users className="w-4 h-4 mr-2" />
-                Team
-              </Button>
+              <>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/locations")}>
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Locations
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/team")}>
+                  <Users className="w-4 h-4 mr-2" />
+                  Team
+                </Button>
+              </>
             )}
             <Button variant="ghost" size="sm" onClick={() => navigate("/settings")}>
               <Settings className="w-4 h-4 mr-2" />
@@ -415,10 +422,16 @@ export default function Dashboard() {
                   Manage Schedules
                 </Button>
                 {(primaryRole === 'org_admin' || primaryRole === 'location_manager') && (
-                  <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/team")}>
-                    <Users className="w-4 h-4 mr-2" />
-                    Team Members
-                  </Button>
+                  <>
+                    <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/locations")}>
+                      <MapPin className="w-4 h-4 mr-2" />
+                      Locations & Areas
+                    </Button>
+                    <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/team")}>
+                      <Users className="w-4 h-4 mr-2" />
+                      Team Members
+                    </Button>
+                  </>
                 )}
               </CardContent>
             </Card>
