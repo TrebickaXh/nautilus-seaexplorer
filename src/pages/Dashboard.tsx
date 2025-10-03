@@ -141,7 +141,7 @@ export default function Dashboard() {
               <FileText className="w-4 h-4 mr-2" />
               Templates
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/tasks")}>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/task-instances")}>
               <ListTodo className="w-4 h-4 mr-2" />
               Tasks
             </Button>

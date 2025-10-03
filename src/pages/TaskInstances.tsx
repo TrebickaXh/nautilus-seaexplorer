@@ -64,7 +64,7 @@ export default function TaskInstances() {
       .order('urgency_score', { ascending: false });
 
     if (statusFilter !== 'all') {
-      query = query.eq('status', statusFilter);
+      query = query.eq('status', statusFilter as 'pending' | 'done' | 'skipped');
     }
 
     const { data, error } = await query;
