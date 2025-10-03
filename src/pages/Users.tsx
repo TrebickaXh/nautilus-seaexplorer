@@ -28,7 +28,7 @@ interface UserProfile {
   id: string;
   display_name: string;
   active: boolean;
-  roles: { role: string }[];
+  user_roles?: { role: string }[];
 }
 
 export default function Users() {
@@ -234,11 +234,13 @@ export default function Users() {
                     <TableCell className="font-medium">{user.display_name}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {user.roles[0] && (
-                          <Badge variant={getRoleBadgeVariant(user.roles[0].role)}>
-                            {getRoleIcon(user.roles[0].role)}
-                            <span className="ml-1">{formatRoleName(user.roles[0].role)}</span>
+                        {user.user_roles?.[0] ? (
+                          <Badge variant={getRoleBadgeVariant(user.user_roles[0].role)}>
+                            {getRoleIcon(user.user_roles[0].role)}
+                            <span className="ml-1">{formatRoleName(user.user_roles[0].role)}</span>
                           </Badge>
+                        ) : (
+                          <Badge variant="outline">No Role</Badge>
                         )}
                       </div>
                     </TableCell>
@@ -250,7 +252,7 @@ export default function Users() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Select
-                          value={user.roles[0]?.role}
+                          value={user.user_roles?.[0]?.role || 'crew'}
                           onValueChange={(value) => updateUserRole(user.id, value as 'org_admin' | 'location_manager' | 'crew')}
                         >
                           <SelectTrigger className="w-[180px]">
