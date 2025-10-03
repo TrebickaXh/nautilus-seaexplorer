@@ -229,29 +229,65 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          department: string | null
           display_name: string
+          email: string | null
+          employee_id: string | null
           id: string
+          language_preference: string | null
+          last_login: string | null
           nfc_uid: string | null
+          notes: string | null
+          notification_preferences: Json | null
           org_id: string
+          phone: string | null
           pin_hash: string | null
+          profile_photo_url: string | null
+          shift_type: string | null
+          timezone: string | null
+          updated_at: string | null
         }
         Insert: {
           active?: boolean
           created_at?: string
+          department?: string | null
           display_name: string
+          email?: string | null
+          employee_id?: string | null
           id: string
+          language_preference?: string | null
+          last_login?: string | null
           nfc_uid?: string | null
+          notes?: string | null
+          notification_preferences?: Json | null
           org_id: string
+          phone?: string | null
           pin_hash?: string | null
+          profile_photo_url?: string | null
+          shift_type?: string | null
+          timezone?: string | null
+          updated_at?: string | null
         }
         Update: {
           active?: boolean
           created_at?: string
+          department?: string | null
           display_name?: string
+          email?: string | null
+          employee_id?: string | null
           id?: string
+          language_preference?: string | null
+          last_login?: string | null
           nfc_uid?: string | null
+          notes?: string | null
+          notification_preferences?: Json | null
           org_id?: string
+          phone?: string | null
           pin_hash?: string | null
+          profile_photo_url?: string | null
+          shift_type?: string | null
+          timezone?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -553,6 +589,10 @@ export type Database = {
       }
       update_task_urgency: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      update_user_last_login: {
+        Args: { user_id: string }
         Returns: undefined
       }
     }

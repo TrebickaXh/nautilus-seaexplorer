@@ -31,9 +31,13 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 
 const inviteSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  display_name: z.string().min(1, 'Display name is required'),
+  email: z.string().email('Invalid email address').max(255),
+  display_name: z.string().min(1, 'Name is required').max(100),
   role: z.enum(['org_admin', 'location_manager', 'crew']),
+  phone: z.string().optional(),
+  department: z.string().optional(),
+  employee_id: z.string().optional(),
+  shift_type: z.string().optional(),
 });
 
 type InviteFormData = z.infer<typeof inviteSchema>;
@@ -55,6 +59,10 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
       email: '',
       display_name: '',
       role: 'crew',
+      phone: '',
+      department: '',
+      employee_id: '',
+      shift_type: '',
     },
   });
 
@@ -69,6 +77,10 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
             display_name: data.display_name,
             org_id: orgId,
             role: data.role,
+            phone: data.phone,
+            department: data.department,
+            employee_id: data.employee_id,
+            shift_type: data.shift_type,
           },
           redirectTo: `${window.location.origin}/`,
         }
@@ -167,6 +179,78 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
                       <SelectItem value="org_admin">Organization Admin</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone Number (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="+1 (555) 000-0000"
+                      {...field}
+                      disabled={loading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="employee_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Employee ID (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="EMP-001"
+                      {...field}
+                      disabled={loading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="department"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Department (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Housekeeping, Maintenance, etc."
+                      {...field}
+                      disabled={loading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="shift_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Shift Type (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Morning, Evening, Night"
+                      {...field}
+                      disabled={loading}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

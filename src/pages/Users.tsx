@@ -22,12 +22,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InviteUserDialog } from '@/components/InviteUserDialog';
-import { ArrowLeft, UserPlus, Shield, Users as UsersIcon, User } from 'lucide-react';
+import { SetPinDialog } from '@/components/SetPinDialog';
+import { ArrowLeft, UserPlus, Shield, Users as UsersIcon, User, KeyRound } from 'lucide-react';
 
 interface UserProfile {
   id: string;
   display_name: string;
   active: boolean;
+  email?: string;
+  phone?: string;
+  department?: string;
+  employee_id?: string;
+  shift_type?: string;
+  last_login?: string;
   user_roles?: { role: string }[];
 }
 
@@ -38,6 +45,8 @@ export default function Users() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
   const [orgId, setOrgId] = useState<string>('');
 
   useEffect(() => {
@@ -71,6 +80,12 @@ export default function Users() {
           id,
           display_name,
           active,
+          email,
+          phone,
+          department,
+          employee_id,
+          shift_type,
+          last_login,
           user_roles (
             role
           )
@@ -223,6 +238,9 @@ export default function Users() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Employee ID</TableHead>
+                  <TableHead>Department</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
@@ -232,6 +250,9 @@ export default function Users() {
                 {users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.display_name}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.email || 'N/A'}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.employee_id || 'N/A'}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.department || 'N/A'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {user.user_roles?.[0] ? (
@@ -271,6 +292,17 @@ export default function Users() {
                         >
                           {user.active ? 'Deactivate' : 'Activate'}
                         </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser({ id: user.id, name: user.display_name });
+                            setPinDialogOpen(true);
+                          }}
+                        >
+                          <KeyRound className="h-4 w-4 mr-1" />
+                          Set PIN
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -287,6 +319,19 @@ export default function Users() {
         onSuccess={loadUsers}
         orgId={orgId}
       />
+
+      {selectedUser && (
+        <SetPinDialog
+          open={pinDialogOpen}
+          onClose={() => {
+            setPinDialogOpen(false);
+            setSelectedUser(null);
+          }}
+          onSuccess={loadUsers}
+          userId={selectedUser.id}
+          userName={selectedUser.name}
+        />
+      )}
     </div>
   );
 }
