@@ -8,6 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, X } from 'lucide-react';
+import { z } from 'zod';
+
+const templateSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
+  description: z.string().max(1000, "Description must be less than 1000 characters").optional(),
+  est_minutes: z.number().min(1, "Estimated time must be at least 1 minute").max(480, "Estimated time must be less than 8 hours"),
+  steps: z.array(z.string().max(500, "Step must be less than 500 characters")).max(20, "Maximum 20 steps allowed"),
+});
 
 interface TaskTemplateFormProps {
   template?: any;
@@ -29,10 +37,29 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
   const [newStep, setNewStep] = useState('');
 
   const handleAddStep = () => {
-    if (newStep.trim()) {
-      setFormData({ ...formData, steps: [...formData.steps, newStep.trim()] });
-      setNewStep('');
+    const trimmed = newStep.trim();
+    if (!trimmed) return;
+    
+    if (trimmed.length > 500) {
+      toast({
+        title: 'Error',
+        description: 'Step must be less than 500 characters',
+        variant: 'destructive',
+      });
+      return;
     }
+    
+    if (formData.steps.length >= 20) {
+      toast({
+        title: 'Error',
+        description: 'Maximum 20 steps allowed',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setFormData({ ...formData, steps: [...formData.steps, trimmed] });
+    setNewStep('');
   };
 
   const handleRemoveStep = (index: number) => {
@@ -47,6 +74,19 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
     setLoading(true);
 
     try {
+      // Validate input
+      const result = templateSchema.safeParse(formData);
+      if (!result.success) {
+        const firstError = result.error.errors[0];
+        toast({
+          title: 'Validation Error',
+          description: firstError.message,
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('org_id')
@@ -56,6 +96,8 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
 
       const payload = {
         ...formData,
+        title: formData.title.trim(),
+        description: formData.description?.trim(),
         org_id: profile.org_id,
       };
 

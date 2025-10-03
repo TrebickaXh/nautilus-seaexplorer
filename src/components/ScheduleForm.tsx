@@ -18,12 +18,26 @@ const formSchema = z.object({
   days_of_week: z.array(z.number()).optional(),
   window_start: z.string().optional(),
   window_end: z.string().optional(),
-  cron_expr: z.string().optional(),
+  cron_expr: z.string()
+    .regex(/^(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\d+(ns|us|µs|ms|s|m|h))+)|((((\d+,)+\d+|(\d+(\/|-)\d+)|\d+|\*) ?){5,7})$/, 
+      'Invalid cron expression')
+    .optional(),
   oneoff_date: z.string().optional(),
   oneoff_time: z.string().optional(),
   assignee_role: z.enum(['crew', 'location_manager', 'org_admin']).optional(),
-  shift_name: z.string().optional(),
-});
+  shift_name: z.string().trim().max(100, 'Shift name must be less than 100 characters').optional(),
+}).refine(
+  (data) => {
+    if (data.type === 'window' && data.window_start && data.window_end) {
+      return data.window_end > data.window_start;
+    }
+    return true;
+  },
+  {
+    message: 'End time must be after start time',
+    path: ['window_end'],
+  }
+);
 
 type FormValues = z.infer<typeof formSchema>;
 

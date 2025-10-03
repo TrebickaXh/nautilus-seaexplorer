@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Send, Sparkles, CheckCircle2 } from "lucide-react";
+
+const MAX_MESSAGE_LENGTH = 2000;
+const MAX_MESSAGES_PER_MINUTE = 10;
 
 interface Message {
   role: "assistant" | "user";
@@ -22,6 +25,7 @@ export default function Onboarding() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const messageTimestamps = useRef<number[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -52,7 +56,40 @@ export default function Onboarding() {
   const handleSend = async () => {
     if (!input.trim() || !sessionId) return;
 
-    const userMessage: Message = { role: "user", content: input };
+    // Validate message length
+    const trimmedInput = input.trim();
+    if (trimmedInput.length > MAX_MESSAGE_LENGTH) {
+      toast.error(`Message must be less than ${MAX_MESSAGE_LENGTH} characters`);
+      return;
+    }
+
+    // Rate limiting
+    const now = Date.now();
+    messageTimestamps.current = messageTimestamps.current.filter(
+      timestamp => now - timestamp < 60000
+    );
+    
+    if (messageTimestamps.current.length >= MAX_MESSAGES_PER_MINUTE) {
+      toast.error("Too many messages. Please wait a moment.");
+      return;
+    }
+    
+    messageTimestamps.current.push(now);
+
+    // Basic prompt injection detection
+    const suspiciousPatterns = [
+      /ignore\s+previous\s+instructions/i,
+      /disregard\s+all\s+previous/i,
+      /you\s+are\s+now/i,
+      /new\s+instructions:/i,
+    ];
+    
+    if (suspiciousPatterns.some(pattern => pattern.test(trimmedInput))) {
+      toast.error("Invalid input detected");
+      return;
+    }
+
+    const userMessage: Message = { role: "user", content: trimmedInput };
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setLoading(true);
@@ -61,7 +98,7 @@ export default function Onboarding() {
       const { data, error } = await supabase.functions.invoke("onboarding-assistant", {
         body: {
           sessionId,
-          message: input,
+          message: trimmedInput,
           conversationHistory: messages
         }
       });

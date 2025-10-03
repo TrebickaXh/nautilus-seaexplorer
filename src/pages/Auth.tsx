@@ -7,6 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Anchor, Waves } from "lucide-react";
+import { z } from "zod";
+
+const authSchema = z.object({
+  email: z.string().email("Invalid email address").max(255, "Email must be less than 255 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .max(72, "Password must be less than 72 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  displayName: z.string()
+    .trim()
+    .min(1, "Display name is required")
+    .max(100, "Display name must be less than 100 characters")
+    .optional(),
+});
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -21,9 +37,22 @@ export default function Auth() {
     setLoading(true);
 
     try {
+      // Validate input
+      const validationData = isLogin 
+        ? { email, password }
+        : { email, password, displayName };
+      
+      const result = authSchema.safeParse(validationData);
+      if (!result.success) {
+        const firstError = result.error.errors[0];
+        toast.error(firstError.message);
+        setLoading(false);
+        return;
+      }
+
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
 
@@ -32,11 +61,11 @@ export default function Auth() {
         navigate("/");
       } else {
         const { error } = await supabase.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
             data: {
-              display_name: displayName,
+              display_name: displayName.trim(),
             },
           },
         });
