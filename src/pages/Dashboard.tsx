@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useToast } from "@/hooks/use-toast";
 import { 
   LayoutDashboard, 
   ListTodo, 
@@ -15,15 +16,20 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  FileText
+  FileText,
+  RefreshCw,
+  Zap,
+  Database
 } from "lucide-react";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { primaryRole, loading: roleLoading } = useUserRole();
+  const { primaryRole, loading: roleLoading, isAdmin } = useUserRole();
+  const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [testingLoading, setTestingLoading] = useState<string | null>(null);
   const [stats, setStats] = useState({
     onTimeRate: 0,
     overdueTasks: 0,
@@ -116,6 +122,157 @@ export default function Dashboard() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/auth");
+  };
+
+  const handleMaterializeTasks = async () => {
+    setTestingLoading('materialize');
+    try {
+      const { data, error } = await supabase.functions.invoke('materialize-tasks');
+      if (error) throw error;
+      
+      toast({
+        title: "Tasks Materialized",
+        description: `Created ${data?.tasksCreated || 0} task instances from ${data?.schedulesProcessed || 0} schedules.`,
+      });
+      
+      // Reload dashboard data to show new tasks
+      loadDashboardData();
+    } catch (error: any) {
+      console.error('Materialize error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to materialize tasks",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingLoading(null);
+    }
+  };
+
+  const handleUpdateUrgency = async () => {
+    setTestingLoading('urgency');
+    try {
+      const { data, error } = await supabase.functions.invoke('update-urgency');
+      if (error) throw error;
+      
+      toast({
+        title: "Urgency Updated",
+        description: "All task urgency scores have been recalculated.",
+      });
+      
+      // Reload dashboard data
+      loadDashboardData();
+    } catch (error: any) {
+      console.error('Update urgency error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update urgency scores",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingLoading(null);
+    }
+  };
+
+  const handleCreateTestData = async () => {
+    setTestingLoading('testdata');
+    try {
+      // Get current user's org_id
+      if (!profile?.org_id) {
+        throw new Error("No organization found");
+      }
+
+      // Create a test location
+      const { data: location, error: locationError } = await supabase
+        .from('locations')
+        .insert({ name: 'Test Location', org_id: profile.org_id })
+        .select()
+        .single();
+
+      if (locationError) throw locationError;
+
+      // Create test templates
+      const templates = [
+        {
+          title: 'Clean Restrooms',
+          description: 'Deep clean all restroom facilities',
+          est_minutes: 15,
+          criticality: 5,
+          required_proof: 'photo' as const,
+          org_id: profile.org_id,
+        },
+        {
+          title: 'Check Fire Extinguishers',
+          description: 'Verify all fire extinguishers are accessible and charged',
+          est_minutes: 10,
+          criticality: 4,
+          required_proof: 'note' as const,
+          org_id: profile.org_id,
+        },
+        {
+          title: 'Restock Supplies',
+          description: 'Check and restock all supply stations',
+          est_minutes: 20,
+          criticality: 2,
+          required_proof: 'none' as const,
+          org_id: profile.org_id,
+        },
+      ];
+
+      const { data: createdTemplates, error: templateError } = await supabase
+        .from('task_templates')
+        .insert(templates)
+        .select();
+
+      if (templateError) throw templateError;
+
+      // Create test schedules
+      if (createdTemplates && createdTemplates.length > 0) {
+        const schedules = [
+          {
+            template_id: createdTemplates[0].id,
+            type: 'window' as const,
+            days_of_week: [1, 2, 3, 4, 5], // Mon-Fri
+            window_start: '08:00:00',
+            window_end: '10:00:00',
+            assignee_role: 'crew' as const,
+            shift_name: 'Morning Shift',
+          },
+          {
+            template_id: createdTemplates[1].id,
+            type: 'window' as const,
+            days_of_week: [1, 2, 3, 4, 5],
+            window_start: '14:00:00',
+            window_end: '16:00:00',
+            assignee_role: 'crew' as const,
+            shift_name: 'Afternoon Shift',
+          },
+        ];
+
+        const { error: scheduleError } = await supabase
+          .from('schedules')
+          .insert(schedules);
+
+        if (scheduleError) throw scheduleError;
+      }
+
+      toast({
+        title: "Test Data Created",
+        description: `Created 1 location, ${createdTemplates?.length || 0} templates, and 2 schedules.`,
+      });
+
+      // Now materialize tasks
+      await handleMaterializeTasks();
+    } catch (error: any) {
+      console.error('Create test data error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create test data",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingLoading(null);
+    }
   };
 
   if (roleLoading || loading || !user || !profile) {
@@ -249,7 +406,7 @@ export default function Dashboard() {
                   <FileText className="w-4 h-4 mr-2" />
                   Manage Templates
                 </Button>
-                <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/tasks")}>
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/task-instances")}>
                   <ListTodo className="w-4 h-4 mr-2" />
                   View All Tasks
                 </Button>
@@ -266,6 +423,48 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Testing Tools - Admin Only */}
+          {isAdmin() && (
+            <Card className="shadow-ocean border-warning/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-warning" />
+                  Testing Tools
+                </CardTitle>
+                <CardDescription>Manual triggers for background jobs and test data creation</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={handleCreateTestData}
+                  disabled={testingLoading === 'testdata'}
+                >
+                  <Database className="w-4 h-4 mr-2" />
+                  {testingLoading === 'testdata' ? 'Creating...' : 'Create Test Data'}
+                </Button>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={handleMaterializeTasks}
+                  disabled={testingLoading === 'materialize'}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${testingLoading === 'materialize' ? 'animate-spin' : ''}`} />
+                  {testingLoading === 'materialize' ? 'Materializing...' : 'Force Materialize Tasks'}
+                </Button>
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={handleUpdateUrgency}
+                  disabled={testingLoading === 'urgency'}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${testingLoading === 'urgency' ? 'animate-spin' : ''}`} />
+                  {testingLoading === 'urgency' ? 'Updating...' : 'Force Update Urgency'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>
