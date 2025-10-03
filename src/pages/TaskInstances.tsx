@@ -22,7 +22,7 @@ export default function TaskInstances() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [skipDialogOpen, setSkipDialogOpen] = useState(false);
-  const [skipTaskId, setSkipTaskId] = useState<string | null>(null);
+  const [skipTask, setSkipTask] = useState<any>(null);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [completeTask, setCompleteTask] = useState<any>(null);
 
@@ -86,8 +86,8 @@ export default function TaskInstances() {
     setDetailsOpen(true);
   };
 
-  const handleSkip = (taskId: string) => {
-    setSkipTaskId(taskId);
+  const handleSkip = (task: any) => {
+    setSkipTask(task);
     setSkipDialogOpen(true);
   };
 
@@ -162,7 +162,7 @@ export default function TaskInstances() {
                     key={task.id}
                     task={task}
                     onViewDetails={() => handleViewDetails(task)}
-                    onSkip={() => handleSkip(task.id)}
+                    onSkip={() => handleSkip(task)}
                     onComplete={() => handleComplete(task)}
                     onDelete={isAdmin() ? () => handleDelete(task.id) : undefined}
                     isAdmin={isAdmin()}
@@ -180,9 +180,13 @@ export default function TaskInstances() {
         />
 
         <SkipTaskDialog
-          taskId={skipTaskId}
+          taskId={skipTask?.id}
+          taskTemplate={skipTask?.task_templates}
           open={skipDialogOpen}
-          onClose={() => setSkipDialogOpen(false)}
+          onClose={() => {
+            setSkipDialogOpen(false);
+            setSkipTask(null);
+          }}
           onSuccess={loadTasks}
         />
 
