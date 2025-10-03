@@ -313,7 +313,7 @@ export default function Dashboard() {
                   <MapPin className="w-4 h-4 mr-2" />
                   Locations
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => navigate("/team")}>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/users")}>
                   <Users className="w-4 h-4 mr-2" />
                   Team
                 </Button>
@@ -427,7 +427,7 @@ export default function Dashboard() {
                       <MapPin className="w-4 h-4 mr-2" />
                       Locations & Areas
                     </Button>
-                    <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/team")}>
+                    <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/users")}>
                       <Users className="w-4 h-4 mr-2" />
                       Team Members
                     </Button>
