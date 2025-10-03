@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { KioskTaskList } from '@/components/KioskTaskList';
-import { LogOut, Wifi, WifiOff } from 'lucide-react';
+import { LogOut, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function Kiosk() {
+  const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [pin, setPin] = useState('');
@@ -118,13 +120,23 @@ export default function Kiosk() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center">Kiosk Sign In</CardTitle>
-            <p className="text-sm text-muted-foreground text-center">
-              Enter your PIN to access tasks
-            </p>
-          </CardHeader>
+        <div className="w-full max-w-md space-y-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/dashboard')}
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+          
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle className="text-2xl text-center">Kiosk Sign In</CardTitle>
+              <p className="text-sm text-muted-foreground text-center">
+                Enter your PIN to access tasks
+              </p>
+            </CardHeader>
           <CardContent>
             <form onSubmit={handlePinAuth} className="space-y-6">
               <div className="relative">
@@ -182,6 +194,7 @@ export default function Kiosk() {
             </form>
           </CardContent>
         </Card>
+        </div>
       </div>
     );
   }
