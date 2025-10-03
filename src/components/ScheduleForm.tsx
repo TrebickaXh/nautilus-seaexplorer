@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,8 @@ import { format } from 'date-fns';
 const formSchema = z.object({
   template_id: z.string().min(1, 'Template is required'),
   type: z.enum(['window', 'cron', 'oneoff']),
+  department_id: z.string().optional(),
+  shift_id: z.string().optional(),
   days_of_week: z.array(z.number()).optional(),
   window_start: z.string().optional(),
   window_end: z.string().optional(),
@@ -49,6 +51,8 @@ interface ScheduleFormProps {
 
 export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormProps) {
   const [templates, setTemplates] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
 
@@ -60,6 +64,8 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
       window_start: '08:00',
       window_end: '10:00',
       assignee_role: 'crew',
+      department_id: undefined,
+      shift_id: undefined,
     },
   });
 
@@ -68,10 +74,33 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
   const loadTemplates = async () => {
     const { data } = await supabase
       .from('task_templates')
-      .select('*')
+      .select('id, title, department_id, departments(name)')
       .is('archived_at', null)
       .order('title');
     if (data) setTemplates(data);
+  };
+
+  const loadDepartments = async () => {
+    const { data } = await supabase
+      .from('departments')
+      .select('id, name')
+      .is('archived_at', null)
+      .order('name');
+    if (data) setDepartments(data);
+  };
+
+  const loadShifts = async (departmentId?: string) => {
+    if (!departmentId) {
+      setShifts([]);
+      return;
+    }
+    const { data } = await supabase
+      .from('shifts')
+      .select('id, name, start_time, end_time')
+      .eq('department_id', departmentId)
+      .is('archived_at', null)
+      .order('start_time');
+    if (data) setShifts(data);
   };
 
   const loadSchedule = async () => {
@@ -83,16 +112,32 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
       .single();
     if (data) {
       form.reset(data);
+      if (data.department_id) {
+        loadShifts(data.department_id);
+      }
     }
   };
 
   useEffect(() => {
     loadTemplates();
+    loadDepartments();
     if (scheduleId) {
       loadSchedule();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scheduleId]);
+
+  // Load shifts when department_id changes
+  useEffect(() => {
+    const deptId = form.watch('department_id');
+    if (deptId) {
+      loadShifts(deptId);
+    } else {
+      setShifts([]);
+      form.setValue('shift_id', undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.watch('department_id')]);
 
   const onSubmit = async (values: FormValues) => {
     setLoading(true);
@@ -100,8 +145,10 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
       const payload: any = {
         template_id: values.template_id,
         type: values.type,
-        assignee_role: values.assignee_role,
-        shift_name: values.shift_name,
+        department_id: values.department_id || null,
+        shift_id: values.shift_id || null,
+        assignee_role: values.assignee_role || null,
+        shift_name: values.shift_name || null,
       };
 
       if (values.type === 'window') {
@@ -152,28 +199,59 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {step === 1 && (
-          <FormField
-            control={form.control}
-            name="template_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Task Template</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select template" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {templates.map(t => (
-                      <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <>
+            <FormField
+              control={form.control}
+              name="template_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Task Template</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select template" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {templates.map(t => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.title}
+                          {t.departments?.name && ` (${t.departments.name})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="department_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Department (Optional)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="None - Select if needed" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {departments.map(d => (
+                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Link this schedule to a specific department
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
         )}
 
         {step === 2 && (
@@ -313,14 +391,46 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
           <>
             <FormField
               control={form.control}
+              name="shift_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Shift (Optional)</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value}
+                    disabled={shifts.length === 0}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={shifts.length === 0 ? "Select a department first" : "None - Select if needed"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {shifts.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} ({s.start_time} - {s.end_time})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Link this schedule to a specific shift within the department
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="assignee_role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assigned Role</FormLabel>
+                  <FormLabel>Assign To Role (Optional)</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Auto-assign by role" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -329,6 +439,9 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
                       <SelectItem value="org_admin">Organization Admin</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormDescription>
+                    Tasks will be assigned to users with this role
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -339,10 +452,13 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
               name="shift_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Shift Name (Optional)</FormLabel>
+                  <FormLabel>Legacy Shift Name (Optional)</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g. Morning Shift" {...field} />
                   </FormControl>
+                  <FormDescription>
+                    For backward compatibility only - use Shift field above instead
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

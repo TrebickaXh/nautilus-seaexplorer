@@ -133,6 +133,41 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          org_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          org_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
           archived_at: string | null
@@ -306,7 +341,9 @@ export type Database = {
           created_at: string
           cron_expr: string | null
           days_of_week: number[] | null
+          department_id: string | null
           id: string
+          shift_id: string | null
           shift_name: string | null
           template_id: string
           type: Database["public"]["Enums"]["schedule_type"]
@@ -319,7 +356,9 @@ export type Database = {
           created_at?: string
           cron_expr?: string | null
           days_of_week?: number[] | null
+          department_id?: string | null
           id?: string
+          shift_id?: string | null
           shift_name?: string | null
           template_id: string
           type: Database["public"]["Enums"]["schedule_type"]
@@ -332,7 +371,9 @@ export type Database = {
           created_at?: string
           cron_expr?: string | null
           days_of_week?: number[] | null
+          department_id?: string | null
           id?: string
+          shift_id?: string | null
           shift_name?: string | null
           template_id?: string
           type?: Database["public"]["Enums"]["schedule_type"]
@@ -341,10 +382,65 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "schedules_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "schedules_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "task_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shifts: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          days_of_week: number[]
+          department_id: string
+          end_time: string
+          id: string
+          name: string
+          start_time: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          days_of_week?: number[]
+          department_id: string
+          end_time: string
+          id?: string
+          name: string
+          start_time: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          days_of_week?: number[]
+          department_id?: string
+          end_time?: string
+          id?: string
+          name?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shifts_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
         ]
@@ -420,9 +516,11 @@ export type Database = {
           assigned_role: Database["public"]["Enums"]["app_role"] | null
           completed_at: string | null
           created_at: string
+          department_id: string | null
           due_at: string
           id: string
           location_id: string
+          shift_id: string | null
           status: Database["public"]["Enums"]["task_status"]
           template_id: string
           urgency_score: number | null
@@ -434,9 +532,11 @@ export type Database = {
           assigned_role?: Database["public"]["Enums"]["app_role"] | null
           completed_at?: string | null
           created_at?: string
+          department_id?: string | null
           due_at: string
           id?: string
           location_id: string
+          shift_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           template_id: string
           urgency_score?: number | null
@@ -448,9 +548,11 @@ export type Database = {
           assigned_role?: Database["public"]["Enums"]["app_role"] | null
           completed_at?: string | null
           created_at?: string
+          department_id?: string | null
           due_at?: string
           id?: string
           location_id?: string
+          shift_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           template_id?: string
           urgency_score?: number | null
@@ -466,10 +568,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "task_instances_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "task_instances_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_instances_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
           {
@@ -486,6 +602,7 @@ export type Database = {
           archived_at: string | null
           created_at: string
           criticality: number
+          department_id: string | null
           description: string | null
           est_minutes: number
           id: string
@@ -498,6 +615,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           criticality?: number
+          department_id?: string | null
           description?: string | null
           est_minutes?: number
           id?: string
@@ -510,6 +628,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           criticality?: number
+          department_id?: string | null
           description?: string | null
           est_minutes?: number
           id?: string
@@ -520,10 +639,56 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "task_templates_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "task_templates_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_departments: {
+        Row: {
+          created_at: string
+          department_id: string
+          id: string
+          is_primary: boolean
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          id?: string
+          is_primary?: boolean
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          id?: string
+          is_primary?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_departments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_departments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -550,6 +715,42 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_shifts: {
+        Row: {
+          created_at: string
+          id: string
+          shift_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          shift_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          shift_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_shifts_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_shifts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"

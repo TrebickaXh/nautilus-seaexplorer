@@ -35,7 +35,12 @@ export default function Schedules() {
     const [schedulesRes, templatesRes] = await Promise.all([
       supabase
         .from('schedules')
-        .select('*, task_templates(title)')
+        .select(`
+          *, 
+          task_templates(title),
+          departments(name),
+          shifts(name, start_time, end_time)
+        `)
         .is('archived_at', null)
         .order('created_at', { ascending: false }),
       supabase
@@ -107,6 +112,7 @@ export default function Schedules() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Template</TableHead>
+                  <TableHead>Department</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Schedule</TableHead>
                   <TableHead>Assigned Role</TableHead>
@@ -121,13 +127,20 @@ export default function Schedules() {
                       {schedule.task_templates?.title || 'Unknown'}
                     </TableCell>
                     <TableCell>
+                      {schedule.departments?.name || '-'}
+                    </TableCell>
+                    <TableCell>
                       <Badge variant="outline">
                         {schedule.type}
                       </Badge>
                     </TableCell>
                     <TableCell>{getScheduleDisplay(schedule)}</TableCell>
                     <TableCell>{schedule.assignee_role || 'crew'}</TableCell>
-                    <TableCell>{schedule.shift_name || '-'}</TableCell>
+                    <TableCell>
+                      {schedule.shifts ? 
+                        `${schedule.shifts.name} (${schedule.shifts.start_time}-${schedule.shifts.end_time})` 
+                        : schedule.shift_name || '-'}
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         <Button

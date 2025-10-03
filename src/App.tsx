@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import TaskTemplates from "./pages/TaskTemplates";
 import Schedules from "./pages/Schedules";
 import TaskInstances from "./pages/TaskInstances";
+import Departments from "./pages/Departments";
 import Locations from "./pages/Locations";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
           <Route path="/kiosk" element={<Kiosk />} />
           <Route path="/task-templates" element={<AppLayout><TaskTemplates /></AppLayout>} />
+          <Route path="/departments" element={<AppLayout><Departments /></AppLayout>} />
           <Route path="/schedules" element={<AppLayout><Schedules /></AppLayout>} />
           <Route path="/task-instances" element={<AppLayout><TaskInstances /></AppLayout>} />
           <Route path="/locations" element={<AppLayout><Locations /></AppLayout>} />

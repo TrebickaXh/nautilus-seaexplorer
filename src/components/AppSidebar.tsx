@@ -25,6 +25,7 @@ import {
   Waves,
   Tablet,
   BarChart3,
+  Building2,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -38,6 +39,7 @@ const mainItems = [
 
 const managementItems = [
   { title: 'Templates', url: '/task-templates', icon: FileText, roles: ['location_manager', 'org_admin'] },
+  { title: 'Departments', url: '/departments', icon: Building2, roles: ['location_manager', 'org_admin'] },
   { title: 'Schedules', url: '/schedules', icon: Calendar, roles: ['location_manager', 'org_admin'] },
   { title: 'Locations', url: '/locations', icon: MapPin, roles: ['location_manager', 'org_admin'] },
   { title: 'Team', url: '/users', icon: Users, roles: ['org_admin'] },
