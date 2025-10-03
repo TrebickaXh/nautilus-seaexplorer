@@ -33,16 +33,6 @@ All colors MUST be HSL.
     --accent: 180 75% 35%;
     --accent-foreground: 0 0% 100%;
 
-    /* Victorian Nautilus - Brass & Copper */
-    --brass: 43 74% 49%;
-    --brass-light: 43 74% 65%;
-    --brass-dark: 43 74% 35%;
-    --copper: 25 75% 47%;
-    --copper-light: 25 75% 60%;
-    --verdigris: 174 44% 41%;
-    --porthole-rim: 43 74% 45%;
-    --rivet: 0 0% 30%;
-
     /* Urgency states */
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
@@ -63,17 +53,12 @@ All colors MUST be HSL.
     --gradient-ocean: linear-gradient(135deg, hsl(215 85% 25%), hsl(215 75% 45%));
     --gradient-teal: linear-gradient(135deg, hsl(180 75% 35%), hsl(180 65% 45%));
     --gradient-urgency: linear-gradient(90deg, hsl(142 76% 36%), hsl(38 92% 50%), hsl(0 84% 60%));
-    --gradient-brass: linear-gradient(135deg, hsl(43 74% 35%), hsl(43 74% 49%), hsl(43 74% 65%));
-    --gradient-porthole: radial-gradient(circle, hsl(215 85% 25% / 0.1), hsl(215 85% 25% / 0.3));
-    --gradient-depth: linear-gradient(180deg, hsl(215 85% 15%), hsl(215 85% 25%), hsl(215 75% 35%));
     
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 hsl(215 25% 15% / 0.05);
     --shadow-md: 0 4px 6px -1px hsl(215 25% 15% / 0.1), 0 2px 4px -2px hsl(215 25% 15% / 0.1);
     --shadow-lg: 0 10px 15px -3px hsl(215 25% 15% / 0.1), 0 4px 6px -4px hsl(215 25% 15% / 0.1);
     --shadow-ocean: 0 8px 24px -4px hsl(215 85% 25% / 0.2);
-    --shadow-brass: 0 4px 16px hsl(43 74% 49% / 0.3), inset 0 1px 2px hsl(43 74% 65% / 0.5);
-    --shadow-porthole: 0 0 40px hsl(180 75% 55% / 0.4), inset 0 2px 4px hsl(0 0% 0% / 0.3);
 
     /* Transitions */
     --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -159,24 +144,8 @@ All colors MUST be HSL.
     background: var(--gradient-teal);
   }
 
-  .gradient-brass {
-    background: var(--gradient-brass);
-  }
-
-  .gradient-depth {
-    background: var(--gradient-depth);
-  }
-
   .shadow-ocean {
     box-shadow: var(--shadow-ocean);
-  }
-
-  .shadow-brass {
-    box-shadow: var(--shadow-brass);
-  }
-
-  .shadow-porthole {
-    box-shadow: var(--shadow-porthole);
   }
 
   .transition-base {
@@ -185,91 +154,5 @@ All colors MUST be HSL.
 
   .transition-smooth {
     transition: var(--transition-smooth);
-  }
-
-  /* Victorian Porthole */
-  .porthole {
-    position: relative;
-    border: 6px solid hsl(var(--brass));
-    border-radius: 50%;
-    box-shadow: var(--shadow-brass),
-                0 0 0 2px hsl(var(--brass-dark)),
-                0 0 0 3px hsl(var(--rivet)),
-                inset 0 4px 8px rgba(0, 0, 0, 0.3);
-  }
-
-  .porthole::before,
-  .porthole::after {
-    content: '';
-    position: absolute;
-    background: hsl(var(--rivet));
-    border-radius: 50%;
-    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
-  }
-
-  .porthole::before {
-    width: 8px;
-    height: 8px;
-    top: -4px;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-
-  .porthole::after {
-    width: 8px;
-    height: 8px;
-    bottom: -4px;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-
-  /* Brass text effect */
-  .text-brass {
-    color: hsl(var(--brass-light));
-    text-shadow: 0 1px 2px hsl(var(--brass-dark)),
-                 0 0 20px hsl(var(--brass) / 0.5);
-  }
-
-  /* Ornamental corners */
-  .ornamental-corner {
-    position: relative;
-  }
-
-  .ornamental-corner::before,
-  .ornamental-corner::after {
-    content: '';
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    border: 2px solid hsl(var(--brass));
-    opacity: 0.6;
-  }
-
-  .ornamental-corner::before {
-    top: 0;
-    left: 0;
-    border-right: none;
-    border-bottom: none;
-  }
-
-  .ornamental-corner::after {
-    bottom: 0;
-    right: 0;
-    border-left: none;
-    border-top: none;
-  }
-
-  /* Glow animation */
-  @keyframes glow-pulse {
-    0%, 100% {
-      box-shadow: var(--shadow-porthole);
-    }
-    50% {
-      box-shadow: 0 0 60px hsl(var(--primary-glow) / 0.6), inset 0 2px 4px hsl(0 0% 0% / 0.3);
-    }
-  }
-
-  .animate-glow {
-    animation: glow-pulse 4s ease-in-out infinite;
   }
 }
