@@ -43,9 +43,13 @@ export default function TaskTemplates() {
 
   const fetchTemplates = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('org_id')
+        .eq('id', user.id)
         .single();
 
       if (!profile?.org_id) throw new Error('No organization found');
