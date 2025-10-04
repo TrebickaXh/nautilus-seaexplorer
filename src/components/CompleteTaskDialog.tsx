@@ -21,6 +21,8 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [pin, setPin] = useState('');
 
   const requiresPhoto = taskTemplate?.required_proof === 'photo' || taskTemplate?.required_proof === 'photo_and_note';
   const requiresNote = taskTemplate?.required_proof === 'note' || taskTemplate?.required_proof === 'photo_and_note';
@@ -50,6 +52,16 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
     if (!taskId) return;
 
     // Validation
+    if (!displayName.trim()) {
+      toast.error('Please enter your name');
+      return;
+    }
+
+    if (!pin || pin.length < 4) {
+      toast.error('Please enter your PIN (at least 4 digits)');
+      return;
+    }
+
     if (requiresPhoto && !photoFile) {
       toast.error('Photo is required for this task');
       return;
@@ -63,19 +75,24 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
     setUploading(true);
 
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('You must be logged in');
+      // Verify PIN
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-pin', {
+        body: { pin },
+      });
+
+      if (verifyError || !verifyData?.success) {
+        toast.error('Invalid PIN. Please try again.');
+        setUploading(false);
         return;
       }
 
+      const userId = verifyData.user.id;
       let photoUrl = null;
 
       // Upload photo if provided
       if (photoFile) {
         const fileExt = photoFile.name.split('.').pop();
-        const fileName = `${user.id}/${taskId}_${Date.now()}.${fileExt}`;
+        const fileName = `${userId}/${taskId}_${Date.now()}.${fileExt}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('task-photos')
@@ -99,7 +116,7 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
         .from('completions')
         .insert({
           task_instance_id: taskId,
-          user_id: user.id,
+          user_id: userId,
           note: note.trim() || null,
           photo_url: photoUrl
         });
@@ -117,10 +134,12 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
 
       if (updateError) throw updateError;
 
-      toast.success('Task completed successfully!');
+      toast.success(`Task completed by ${displayName}!`);
       setNote('');
       setPhotoFile(null);
       setPhotoPreview(null);
+      setDisplayName('');
+      setPin('');
       onClose();
       onSuccess();
     } catch (error: any) {
@@ -149,6 +168,37 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
               )}
             </div>
           )}
+
+          {/* User Verification */}
+          <div className="space-y-3 p-3 border rounded-lg bg-muted/50">
+            <p className="text-sm font-medium">Complete this task as:</p>
+            <div className="space-y-2">
+              <Label htmlFor="displayName">
+                Your Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Enter your name"
+                disabled={uploading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pin">
+                PIN <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="pin"
+                type="password"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Enter your PIN"
+                maxLength={6}
+                disabled={uploading}
+              />
+            </div>
+          </div>
 
           {/* Photo Upload */}
           <div className="space-y-2">

@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserShifts } from '@/hooks/useUserShifts';
 
 interface KioskTaskListProps {
-  userId: string;
+  userId?: string;
 }
 
 export function KioskTaskList({ userId }: KioskTaskListProps) {
@@ -24,13 +24,13 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
   const [completeTask, setCompleteTask] = useState<any>(null);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const { toast } = useToast();
-  const { shifts, departments, getCurrentShift, getShiftIds, getDepartmentIds, loading: shiftsLoading } = useUserShifts(userId);
+  const { shifts, departments, getCurrentShift, getShiftIds, getDepartmentIds, loading: shiftsLoading } = useUserShifts(userId || '');
 
   useEffect(() => {
     if (!shiftsLoading) {
       loadTasks();
     }
-  }, [userId, shiftsLoading]);
+  }, [shiftsLoading]);
 
   useEffect(() => {
     // Set up real-time listener
@@ -82,40 +82,43 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
 
       if (error) throw error;
 
-      // Filter by user's shifts and departments
-      const userShiftIds = getShiftIds();
-      const userDepartmentIds = getDepartmentIds();
-
+      // If no userId, show all tasks
       let filteredTasks = data || [];
+      
+      if (userId) {
+        // Filter by user's shifts and departments
+        const userShiftIds = getShiftIds();
+        const userDepartmentIds = getDepartmentIds();
 
-      if (userShiftIds.length > 0) {
-        // Show tasks assigned to user's shifts OR unassigned tasks in their departments
-        filteredTasks = filteredTasks.filter(task => {
-          // Tasks with matching shift_id
-          if (task.shift_id && userShiftIds.includes(task.shift_id)) {
-            return true;
-          }
-          // Tasks with no shift but in user's departments
-          if (!task.shift_id && task.department_id && userDepartmentIds.includes(task.department_id)) {
-            return true;
-          }
-          // Tasks with no shift and no department (legacy)
-          if (!task.shift_id && !task.department_id) {
-            return true;
-          }
-          return false;
-        });
-      } else if (userDepartmentIds.length > 0) {
-        // User has departments but no shifts
-        filteredTasks = filteredTasks.filter(task => {
-          if (task.department_id && userDepartmentIds.includes(task.department_id)) {
-            return true;
-          }
-          if (!task.department_id) {
-            return true;
-          }
-          return false;
-        });
+        if (userShiftIds.length > 0) {
+          // Show tasks assigned to user's shifts OR unassigned tasks in their departments
+          filteredTasks = filteredTasks.filter(task => {
+            // Tasks with matching shift_id
+            if (task.shift_id && userShiftIds.includes(task.shift_id)) {
+              return true;
+            }
+            // Tasks with no shift but in user's departments
+            if (!task.shift_id && task.department_id && userDepartmentIds.includes(task.department_id)) {
+              return true;
+            }
+            // Tasks with no shift and no department (legacy)
+            if (!task.shift_id && !task.department_id) {
+              return true;
+            }
+            return false;
+          });
+        } else if (userDepartmentIds.length > 0) {
+          // User has departments but no shifts
+          filteredTasks = filteredTasks.filter(task => {
+            if (task.department_id && userDepartmentIds.includes(task.department_id)) {
+              return true;
+            }
+            if (!task.department_id) {
+              return true;
+            }
+            return false;
+          });
+        }
       }
 
       setTasks(filteredTasks);
