@@ -14,8 +14,7 @@ import { format } from 'date-fns';
 const formSchema = z.object({
   template_id: z.string().min(1, 'Template is required'),
   location_id: z.string().min(1, 'Location is required'),
-  department_id: z.string().optional(),
-  shift_id: z.string().optional(),
+  department_id: z.string().min(1, 'Department is required'),
   due_date: z.string().min(1, 'Due date is required'),
   due_time: z.string().min(1, 'Due time is required'),
   assigned_role: z.enum(['crew', 'location_manager', 'org_admin']).optional(),
@@ -44,24 +43,32 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
     },
   });
 
+  const selectedLocationId = form.watch('location_id');
   const selectedDepartmentId = form.watch('department_id');
 
   useEffect(() => {
     if (open) {
       loadTemplates();
       loadLocations();
-      loadDepartments();
     }
   }, [open]);
 
   useEffect(() => {
-    if (selectedDepartmentId) {
-      loadShifts(selectedDepartmentId);
+    if (selectedLocationId) {
+      loadDepartments(selectedLocationId);
+    } else {
+      setDepartments([]);
+      form.setValue('department_id', '');
+    }
+  }, [selectedLocationId]);
+
+  useEffect(() => {
+    if (selectedLocationId && selectedDepartmentId) {
+      loadShifts(selectedLocationId, selectedDepartmentId);
     } else {
       setShifts([]);
-      form.setValue('shift_id', '');
     }
-  }, [selectedDepartmentId]);
+  }, [selectedLocationId, selectedDepartmentId]);
 
   const loadTemplates = async () => {
     const { data } = await supabase
@@ -81,23 +88,51 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
     if (data) setLocations(data);
   };
 
-  const loadDepartments = async () => {
+  const loadDepartments = async (locationId: string) => {
     const { data } = await supabase
       .from('departments')
       .select('id, name')
+      .eq('location_id', locationId)
       .is('archived_at', null)
       .order('name');
     if (data) setDepartments(data);
   };
 
-  const loadShifts = async (departmentId: string) => {
+  const loadShifts = async (locationId: string, departmentId: string) => {
     const { data } = await supabase
       .from('shifts')
-      .select('id, name, start_time, end_time')
+      .select('id, name, start_time, end_time, days_of_week')
+      .eq('location_id', locationId)
       .eq('department_id', departmentId)
       .is('archived_at', null)
       .order('start_time');
     if (data) setShifts(data);
+  };
+
+  const determineShift = (dueTime: string): string | null => {
+    if (shifts.length === 0) return null;
+
+    // Find shift that contains the due time
+    const matchingShift = shifts.find(shift => {
+      return dueTime >= shift.start_time && dueTime <= shift.end_time;
+    });
+
+    if (matchingShift) {
+      return matchingShift.id;
+    }
+
+    // Find the most recent shift that ended before the due time
+    const priorShifts = shifts.filter(shift => shift.end_time < dueTime);
+    if (priorShifts.length > 0) {
+      // Return the shift with the latest end_time
+      const sortedPriorShifts = priorShifts.sort((a, b) => 
+        b.end_time.localeCompare(a.end_time)
+      );
+      return sortedPriorShifts[0].id;
+    }
+
+    // If no prior shift, return the last shift of the day
+    return shifts[shifts.length - 1].id;
   };
 
   const onSubmit = async (values: FormValues) => {
@@ -105,19 +140,19 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
     try {
       const dueAt = `${values.due_date}T${values.due_time}:00`;
       
+      // Automatically determine the shift based on due time
+      const shiftId = determineShift(values.due_time);
+      
       const payload: any = {
         template_id: values.template_id,
         location_id: values.location_id,
+        department_id: values.department_id,
         due_at: dueAt,
         status: 'pending',
       };
 
-      if (values.department_id) {
-        payload.department_id = values.department_id;
-      }
-
-      if (values.shift_id) {
-        payload.shift_id = values.shift_id;
+      if (shiftId) {
+        payload.shift_id = shiftId;
       }
 
       if (values.assigned_role) {
@@ -201,11 +236,15 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
               name="department_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Department (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <FormLabel>Department</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value}
+                    disabled={!selectedLocationId}
+                  >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="None - Select department if needed" />
+                        <SelectValue placeholder={selectedLocationId ? "Select department" : "Select location first"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -218,33 +257,6 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
                 </FormItem>
               )}
             />
-
-            {shifts.length > 0 && (
-              <FormField
-                control={form.control}
-                name="shift_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Shift (Optional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="None - Select shift if needed" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {shifts.map(s => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name} ({s.start_time} - {s.end_time})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
