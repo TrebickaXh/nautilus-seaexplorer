@@ -128,7 +128,19 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Parse error message if it's a JSON response
+        let errorMessage = 'Failed to create team member';
+        if (error.message) {
+          try {
+            const errorData = JSON.parse(error.message);
+            errorMessage = errorData.error || errorMessage;
+          } catch {
+            errorMessage = error.message;
+          }
+        }
+        throw new Error(errorMessage);
+      }
 
       toast.success(`Team member ${data.display_name} created successfully`);
 

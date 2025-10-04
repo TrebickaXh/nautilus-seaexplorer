@@ -61,8 +61,15 @@ serve(async (req) => {
 
     if (createError) {
       console.error("Error creating user:", createError);
+      
+      // Return user-friendly error messages
+      let errorMessage = createError.message;
+      if (createError.message.includes("already been registered")) {
+        errorMessage = "This email is already registered. Please use a different email address.";
+      }
+      
       return new Response(
-        JSON.stringify({ error: createError.message }),
+        JSON.stringify({ error: errorMessage }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -87,10 +94,22 @@ serve(async (req) => {
     );
   } catch (error: any) {
     console.error("Error in invite-user function:", error);
+    
+    // Handle specific error cases
+    let errorMessage = "Failed to create team member";
+    let statusCode = 500;
+    
+    if (error.message?.includes("already been registered")) {
+      errorMessage = "This email is already registered. Please use a different email address.";
+      statusCode = 400;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
-        status: 500,
+        status: statusCode,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
