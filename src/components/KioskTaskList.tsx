@@ -73,7 +73,6 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
             required_proof
           ),
           locations (id, name),
-          areas (id, name),
           departments (name),
           shifts (name)
         `)
@@ -247,7 +246,6 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
                           </h3>
                           <p className="text-sm text-muted-foreground">
                             {task.locations?.name}
-                            {task.areas?.name && ` • ${task.areas.name}`}
                           </p>
                           {(task.departments?.name || task.shifts?.name) && (
                             <p className="text-xs text-muted-foreground mt-1">

@@ -14,7 +14,6 @@ import { format } from 'date-fns';
 const formSchema = z.object({
   template_id: z.string().min(1, 'Template is required'),
   location_id: z.string().min(1, 'Location is required'),
-  area_id: z.string().optional(),
   department_id: z.string().optional(),
   shift_id: z.string().optional(),
   due_date: z.string().min(1, 'Due date is required'),
@@ -33,7 +32,6 @@ interface OneOffTaskDialogProps {
 export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogProps) {
   const [templates, setTemplates] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
-  const [areas, setAreas] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +44,6 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
     },
   });
 
-  const selectedLocationId = form.watch('location_id');
   const selectedDepartmentId = form.watch('department_id');
 
   useEffect(() => {
@@ -56,15 +53,6 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
       loadDepartments();
     }
   }, [open]);
-
-  useEffect(() => {
-    if (selectedLocationId) {
-      loadAreas(selectedLocationId);
-    } else {
-      setAreas([]);
-      form.setValue('area_id', '');
-    }
-  }, [selectedLocationId]);
 
   useEffect(() => {
     if (selectedDepartmentId) {
@@ -91,15 +79,6 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
       .is('archived_at', null)
       .order('name');
     if (data) setLocations(data);
-  };
-
-  const loadAreas = async (locationId: string) => {
-    const { data } = await supabase
-      .from('departments')
-      .select('*')
-      .eq('location_id', locationId)
-      .order('name');
-    if (data) setAreas(data);
   };
 
   const loadDepartments = async () => {
@@ -132,10 +111,6 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
         due_at: dueAt,
         status: 'pending',
       };
-
-      if (values.area_id) {
-        payload.area_id = values.area_id;
-      }
 
       if (values.department_id) {
         payload.department_id = values.department_id;
@@ -220,31 +195,6 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
                 </FormItem>
               )}
             />
-
-            {areas.length > 0 && (
-              <FormField
-                control={form.control}
-                name="area_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Area (Optional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="None - Select area if needed" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {areas.map(a => (
-                          <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
 
             <FormField
               control={form.control}
