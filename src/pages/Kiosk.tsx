@@ -60,15 +60,12 @@ export default function Kiosk() {
     setLoading(true);
 
     try {
-      // In production, this would verify the PIN hash
-      // For now, we'll just check if a user exists with a PIN
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*, user_roles(role)')
-        .eq('pin_hash', pin)
-        .single();
+      // Call the verify-pin edge function
+      const { data, error } = await supabase.functions.invoke('verify-pin', {
+        body: { pin },
+      });
 
-      if (error || !profiles) {
+      if (error || !data?.success) {
         toast({
           title: 'Authentication Failed',
           description: 'Invalid PIN. Please try again.',
@@ -78,13 +75,13 @@ export default function Kiosk() {
         return;
       }
 
-      setCurrentUser(profiles);
+      setCurrentUser(data.user);
       setIsAuthenticated(true);
       setPin('');
       
       toast({
         title: 'Welcome!',
-        description: `Signed in as ${profiles.display_name}`,
+        description: `Signed in as ${data.user.display_name}`,
       });
     } catch (error) {
       console.error('PIN auth error:', error);
