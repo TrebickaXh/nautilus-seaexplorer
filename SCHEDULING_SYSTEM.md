@@ -5,6 +5,7 @@
 This platform implements a comprehensive department-driven, shift-aware task management system. All tasks, schedules, and assignments are organized around **Departments** and **Shifts**, ensuring clear ownership and timing alignment.
 
 **✅ Phase 1 Complete:** Full scheduling UI with department/shift management and user assignments  
+**✅ Phase 2 Complete:** User management integration with dedicated Shifts page and department selection  
 **✅ Phase 3 Complete:** Shift-aware task filtering on Dashboard and Kiosk views
 
 ---
