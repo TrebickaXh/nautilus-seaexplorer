@@ -61,7 +61,7 @@ export default function TaskInstances() {
         locations(id, name),
         departments(name),
         shifts(name),
-        completions(id, created_at, note, profiles(display_name))
+        completions(id, created_at, note, profiles!completions_user_id_fkey(display_name))
       `);
 
     // Apply time range filter
