@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { CompleteTaskDialog } from './CompleteTaskDialog';
 import { TaskInstanceDetails } from './TaskInstanceDetails';
 import { useToast } from '@/hooks/use-toast';
+import { useUserShifts } from '@/hooks/useUserShifts';
 
 interface KioskTaskListProps {
   userId: string;
@@ -23,10 +24,15 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
   const [completeTask, setCompleteTask] = useState<any>(null);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { shifts, departments, getCurrentShift, getShiftIds, getDepartmentIds, loading: shiftsLoading } = useUserShifts(userId);
 
   useEffect(() => {
-    loadTasks();
-    
+    if (!shiftsLoading) {
+      loadTasks();
+    }
+  }, [userId, shiftsLoading]);
+
+  useEffect(() => {
     // Set up real-time listener
     const channel = supabase
       .channel('kiosk-tasks')
@@ -39,11 +45,17 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId]);
+  }, []);
 
   const loadTasks = async () => {
+    if (shiftsLoading) return;
+    
+    setLoading(true);
     try {
-      const { data, error } = await supabase
+      const now = new Date();
+      const endOfWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      let query = supabase
         .from('task_instances')
         .select(`
           *,
@@ -57,15 +69,56 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
             required_proof
           ),
           locations (id, name),
-          areas (id, name)
+          areas (id, name),
+          departments (name),
+          shifts (name)
         `)
         .eq('status', 'pending')
-        .gte('due_at', new Date().toISOString())
-        .lte('due_at', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString())
+        .gte('due_at', now.toISOString())
+        .lte('due_at', endOfWeek.toISOString())
         .order('urgency_score', { ascending: false });
 
+      const { data, error } = await query;
+
       if (error) throw error;
-      setTasks(data || []);
+
+      // Filter by user's shifts and departments
+      const userShiftIds = getShiftIds();
+      const userDepartmentIds = getDepartmentIds();
+
+      let filteredTasks = data || [];
+
+      if (userShiftIds.length > 0) {
+        // Show tasks assigned to user's shifts OR unassigned tasks in their departments
+        filteredTasks = filteredTasks.filter(task => {
+          // Tasks with matching shift_id
+          if (task.shift_id && userShiftIds.includes(task.shift_id)) {
+            return true;
+          }
+          // Tasks with no shift but in user's departments
+          if (!task.shift_id && task.department_id && userDepartmentIds.includes(task.department_id)) {
+            return true;
+          }
+          // Tasks with no shift and no department (legacy)
+          if (!task.shift_id && !task.department_id) {
+            return true;
+          }
+          return false;
+        });
+      } else if (userDepartmentIds.length > 0) {
+        // User has departments but no shifts
+        filteredTasks = filteredTasks.filter(task => {
+          if (task.department_id && userDepartmentIds.includes(task.department_id)) {
+            return true;
+          }
+          if (!task.department_id) {
+            return true;
+          }
+          return false;
+        });
+      }
+
+      setTasks(filteredTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
       toast({
@@ -102,12 +155,11 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
 
   const filteredTasks = tasks.filter(task => {
     if (filter === 'all') return true;
-    if (filter === 'mine') return task.assigned_role; // Would need to check actual assignment
-    // Add area filter logic here
+    if (filter === 'mine') return task.assigned_role;
     return true;
   });
 
-  if (loading) {
+  if (loading || shiftsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
@@ -118,8 +170,36 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
     );
   }
 
+  const currentShift = getCurrentShift();
+
   return (
     <div className="space-y-6">
+      {/* Current Shift Info */}
+      {currentShift ? (
+        <div className="flex items-center justify-between p-4 bg-primary/10 border border-primary/20 rounded-lg">
+          <div className="flex items-center gap-3">
+            <Clock className="h-5 w-5 text-primary" />
+            <div>
+              <p className="font-medium">Current Shift: {currentShift.name}</p>
+              <p className="text-sm text-muted-foreground">
+                {currentShift.start_time} - {currentShift.end_time}
+              </p>
+            </div>
+          </div>
+          <Badge variant="default">Active</Badge>
+        </div>
+      ) : shifts.length > 0 ? (
+        <div className="flex items-center gap-3 p-4 bg-muted/50 border rounded-lg">
+          <AlertCircle className="h-5 w-5 text-muted-foreground" />
+          <div>
+            <p className="font-medium">Not in active shift</p>
+            <p className="text-sm text-muted-foreground">
+              Tasks shown are from your assigned shifts
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <Tabs value={filter} onValueChange={setFilter}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="all">All Tasks</TabsTrigger>
@@ -162,6 +242,12 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
                             {task.locations?.name}
                             {task.areas?.name && ` • ${task.areas.name}`}
                           </p>
+                          {(task.departments?.name || task.shifts?.name) && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {task.departments?.name}
+                              {task.shifts?.name && ` • ${task.shifts.name}`}
+                            </p>
+                          )}
                         </div>
                         
                         <div className="flex items-center gap-2">

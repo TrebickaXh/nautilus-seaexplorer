@@ -2,7 +2,10 @@
 
 ## Overview
 
-This platform now implements a comprehensive department-driven, shift-aware task management system. All tasks, schedules, and assignments are organized around **Departments** and **Shifts**, ensuring clear ownership and timing alignment.
+This platform implements a comprehensive department-driven, shift-aware task management system. All tasks, schedules, and assignments are organized around **Departments** and **Shifts**, ensuring clear ownership and timing alignment.
+
+**✅ Phase 1 Complete:** Full scheduling UI with department/shift management and user assignments  
+**✅ Phase 3 Complete:** Shift-aware task filtering on Dashboard and Kiosk views
 
 ---
 
@@ -212,11 +215,16 @@ Concrete tasks generated from templates, assigned to departments/shifts.
 
 ## Task Assignment Logic
 
-Tasks are assigned based on:
+Tasks are assigned and **filtered** based on:
 1. **Department linkage** - ensures correct scope of work
 2. **Shift linkage** - ensures timing and responsibility alignment
 3. **Role assignment** - tasks assigned to users with specific roles
 4. **Location/Area** - defines where the work happens
+
+**Shift-Based Task Filtering (✅ Implemented):**
+- **Kiosk View:** Only shows tasks assigned to user's shifts OR tasks in their departments with no shift assignment
+- **Dashboard View:** Shows organizational metrics and shift context
+- **Task Instances View:** Displays department and shift information on task cards
 
 **Example Flow:**
 ```
@@ -225,6 +233,11 @@ Kitchen Department → Morning Shift (08:00-16:00)
    → Generates task "Clean Kitchen before 10:00 AM"
    → Visible to all users in Kitchen Department's Morning Shift
 ```
+
+**Current Shift Detection:**
+- System automatically detects if user is currently in an active shift
+- Active shift shown in Kiosk header with timing information
+- Tasks prioritized by urgency within the current shift context
 
 ---
 

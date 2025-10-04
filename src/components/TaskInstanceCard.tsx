@@ -35,6 +35,12 @@ export function TaskInstanceCard({ task, onViewDetails, onSkip, onComplete, onDe
             <p className="text-sm text-muted-foreground mt-1">
               {task.locations?.name} {task.areas?.name && `• ${task.areas.name}`}
             </p>
+            {(task.departments?.name || task.shifts?.name) && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {task.departments?.name}
+                {task.shifts?.name && ` • ${task.shifts.name}`}
+              </p>
+            )}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

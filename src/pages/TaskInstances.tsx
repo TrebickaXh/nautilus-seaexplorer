@@ -62,6 +62,8 @@ export default function TaskInstances() {
         task_templates(id, title, description, est_minutes, criticality, required_proof, steps),
         locations(id, name),
         areas(id, name),
+        departments(name),
+        shifts(name),
         completions(id, created_at, note, profiles(display_name))
       `)
       .gte('due_at', startDate.toISOString())
