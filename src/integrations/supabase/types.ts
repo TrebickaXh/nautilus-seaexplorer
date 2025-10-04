@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      areas: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          location_id: string
+          name: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          location_id: string
+          name: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          location_id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "areas_location_id_fkey1"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           actor_id: string | null
@@ -56,8 +91,11 @@ export type Database = {
         Row: {
           cosigner_user_id: string | null
           created_at: string
+          defer_settings: Json | null
           id: string
           note: string | null
+          outcome: Database["public"]["Enums"]["task_outcome"] | null
+          outcome_reason: string | null
           photo_url: string | null
           task_instance_id: string
           user_id: string
@@ -65,8 +103,11 @@ export type Database = {
         Insert: {
           cosigner_user_id?: string | null
           created_at?: string
+          defer_settings?: Json | null
           id?: string
           note?: string | null
+          outcome?: Database["public"]["Enums"]["task_outcome"] | null
+          outcome_reason?: string | null
           photo_url?: string | null
           task_instance_id: string
           user_id: string
@@ -74,8 +115,11 @@ export type Database = {
         Update: {
           cosigner_user_id?: string | null
           created_at?: string
+          defer_settings?: Json | null
           id?: string
           note?: string | null
+          outcome?: Database["public"]["Enums"]["task_outcome"] | null
+          outcome_reason?: string | null
           photo_url?: string | null
           task_instance_id?: string
           user_id?: string
@@ -314,9 +358,9 @@ export type Database = {
           days_of_week: number[] | null
           department_id: string | null
           id: string
+          routine_id: string
           shift_id: string | null
           shift_name: string | null
-          template_id: string
           type: Database["public"]["Enums"]["schedule_type"]
           window_end: string | null
           window_start: string | null
@@ -329,9 +373,9 @@ export type Database = {
           days_of_week?: number[] | null
           department_id?: string | null
           id?: string
+          routine_id: string
           shift_id?: string | null
           shift_name?: string | null
-          template_id: string
           type: Database["public"]["Enums"]["schedule_type"]
           window_end?: string | null
           window_start?: string | null
@@ -344,9 +388,9 @@ export type Database = {
           days_of_week?: number[] | null
           department_id?: string | null
           id?: string
+          routine_id?: string
           shift_id?: string | null
           shift_name?: string | null
-          template_id?: string
           type?: Database["public"]["Enums"]["schedule_type"]
           window_end?: string | null
           window_start?: string | null
@@ -368,9 +412,88 @@ export type Database = {
           },
           {
             foreignKeyName: "schedules_template_id_fkey"
-            columns: ["template_id"]
+            columns: ["routine_id"]
             isOneToOne: false
-            referencedRelation: "task_templates"
+            referencedRelation: "task_routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_reports: {
+        Row: {
+          by_area: Json | null
+          by_user: Json | null
+          completed_tasks: number | null
+          created_at: string
+          deferred_tasks: number | null
+          department_id: string
+          id: string
+          kpis: Json | null
+          location_id: string
+          overdue_tasks: number | null
+          report_date: string
+          shift_end: string
+          shift_id: string
+          shift_start: string
+          skipped_tasks: number | null
+          total_tasks: number | null
+        }
+        Insert: {
+          by_area?: Json | null
+          by_user?: Json | null
+          completed_tasks?: number | null
+          created_at?: string
+          deferred_tasks?: number | null
+          department_id: string
+          id?: string
+          kpis?: Json | null
+          location_id: string
+          overdue_tasks?: number | null
+          report_date: string
+          shift_end: string
+          shift_id: string
+          shift_start: string
+          skipped_tasks?: number | null
+          total_tasks?: number | null
+        }
+        Update: {
+          by_area?: Json | null
+          by_user?: Json | null
+          completed_tasks?: number | null
+          created_at?: string
+          deferred_tasks?: number | null
+          department_id?: string
+          id?: string
+          kpis?: Json | null
+          location_id?: string
+          overdue_tasks?: number | null
+          report_date?: string
+          shift_end?: string
+          shift_id?: string
+          shift_start?: string
+          skipped_tasks?: number | null
+          total_tasks?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_reports_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_reports_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_reports_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
         ]
@@ -486,20 +609,26 @@ export type Database = {
             foreignKeyName: "suggestions_proposed_template_id_fkey"
             columns: ["proposed_template_id"]
             isOneToOne: false
-            referencedRelation: "task_templates"
+            referencedRelation: "task_routines"
             referencedColumns: ["id"]
           },
         ]
       }
       task_instances: {
         Row: {
+          area_id: string | null
           assigned_role: Database["public"]["Enums"]["app_role"] | null
           completed_at: string | null
           created_at: string
+          created_from:
+            | Database["public"]["Enums"]["task_creation_source"]
+            | null
+          denormalized_data: Json | null
           department_id: string | null
           due_at: string
           id: string
           location_id: string
+          routine_id: string | null
           shift_id: string | null
           status: Database["public"]["Enums"]["task_status"]
           template_id: string
@@ -508,13 +637,19 @@ export type Database = {
           window_start: string | null
         }
         Insert: {
+          area_id?: string | null
           assigned_role?: Database["public"]["Enums"]["app_role"] | null
           completed_at?: string | null
           created_at?: string
+          created_from?:
+            | Database["public"]["Enums"]["task_creation_source"]
+            | null
+          denormalized_data?: Json | null
           department_id?: string | null
           due_at: string
           id?: string
           location_id: string
+          routine_id?: string | null
           shift_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           template_id: string
@@ -523,13 +658,19 @@ export type Database = {
           window_start?: string | null
         }
         Update: {
+          area_id?: string | null
           assigned_role?: Database["public"]["Enums"]["app_role"] | null
           completed_at?: string | null
           created_at?: string
+          created_from?:
+            | Database["public"]["Enums"]["task_creation_source"]
+            | null
+          denormalized_data?: Json | null
           department_id?: string | null
           due_at?: string
           id?: string
           location_id?: string
+          routine_id?: string | null
           shift_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           template_id?: string
@@ -538,6 +679,13 @@ export type Database = {
           window_start?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "task_instances_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "task_instances_department_id_fkey"
             columns: ["department_id"]
@@ -553,6 +701,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "task_instances_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "task_routines"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "task_instances_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false
@@ -563,52 +718,81 @@ export type Database = {
             foreignKeyName: "task_instances_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
-            referencedRelation: "task_templates"
+            referencedRelation: "task_routines"
             referencedColumns: ["id"]
           },
         ]
       }
-      task_templates: {
+      task_routines: {
         Row: {
+          active: boolean | null
           archived_at: string | null
+          area_ids: string[] | null
           created_at: string
           criticality: number
           department_id: string | null
           description: string | null
           est_minutes: number
           id: string
+          location_id: string | null
           org_id: string
+          recurrence: Json | null
           required_proof: Database["public"]["Enums"]["proof_type"]
+          shift_id: string | null
           steps: Json | null
           title: string
         }
         Insert: {
+          active?: boolean | null
           archived_at?: string | null
+          area_ids?: string[] | null
           created_at?: string
           criticality?: number
           department_id?: string | null
           description?: string | null
           est_minutes?: number
           id?: string
+          location_id?: string | null
           org_id: string
+          recurrence?: Json | null
           required_proof?: Database["public"]["Enums"]["proof_type"]
+          shift_id?: string | null
           steps?: Json | null
           title: string
         }
         Update: {
+          active?: boolean | null
           archived_at?: string | null
+          area_ids?: string[] | null
           created_at?: string
           criticality?: number
           department_id?: string | null
           description?: string | null
           est_minutes?: number
           id?: string
+          location_id?: string | null
           org_id?: string
+          recurrence?: Json | null
           required_proof?: Database["public"]["Enums"]["proof_type"]
+          shift_id?: string | null
           steps?: Json | null
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "task_routines_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_routines_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "task_templates_department_id_fkey"
             columns: ["department_id"]
@@ -771,8 +955,16 @@ export type Database = {
     Enums: {
       app_role: "org_admin" | "location_manager" | "crew"
       proof_type: "none" | "photo" | "note" | "dual"
+      recurrence_type: "daily" | "weekly" | "monthly" | "custom_weeks"
       schedule_type: "cron" | "window" | "oneoff"
       suggestion_status: "proposed" | "accepted" | "dismissed"
+      task_creation_source: "routine" | "oneoff"
+      task_outcome:
+        | "completed"
+        | "skipped"
+        | "deferred"
+        | "reassigned"
+        | "cancelled"
       task_status: "pending" | "done" | "missed" | "skipped"
     }
     CompositeTypes: {
@@ -903,8 +1095,17 @@ export const Constants = {
     Enums: {
       app_role: ["org_admin", "location_manager", "crew"],
       proof_type: ["none", "photo", "note", "dual"],
+      recurrence_type: ["daily", "weekly", "monthly", "custom_weeks"],
       schedule_type: ["cron", "window", "oneoff"],
       suggestion_status: ["proposed", "accepted", "dismissed"],
+      task_creation_source: ["routine", "oneoff"],
+      task_outcome: [
+        "completed",
+        "skipped",
+        "deferred",
+        "reassigned",
+        "cancelled",
+      ],
       task_status: ["pending", "done", "missed", "skipped"],
     },
   },
