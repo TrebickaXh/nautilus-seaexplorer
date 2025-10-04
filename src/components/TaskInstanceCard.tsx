@@ -24,10 +24,11 @@ export function TaskInstanceCard({ task, onViewDetails, onSkip, onComplete, onDe
     }
   };
 
+  const isOverdue = task.status === 'pending' && task.due_at && new Date(task.due_at) < new Date();
   const timeUntilDue = task.due_at ? formatDistanceToNow(new Date(task.due_at), { addSuffix: true }) : 'No due date';
 
   return (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className={`hover:shadow-lg transition-shadow ${isOverdue ? 'border-destructive border-2' : ''}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -79,7 +80,10 @@ export function TaskInstanceCard({ task, onViewDetails, onSkip, onComplete, onDe
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Due {timeUntilDue}</span>
-            <Badge variant={getStatusColor(task.status)}>{task.status}</Badge>
+            <div className="flex gap-2">
+              {isOverdue && <Badge variant="destructive">OVERDUE</Badge>}
+              <Badge variant={getStatusColor(task.status)}>{task.status}</Badge>
+            </div>
           </div>
           
           {task.window_start && task.window_end && (

@@ -20,6 +20,7 @@ export default function TaskInstances() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [timeRangeFilter, setTimeRangeFilter] = useState('next_7_days');
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [skipTask, setSkipTask] = useState<any>(null);
@@ -47,32 +48,50 @@ export default function TaskInstances() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [statusFilter]);
+  }, [statusFilter, timeRangeFilter]);
 
   const loadTasks = async () => {
     setLoading(true);
     
-    const startDate = new Date();
-    const endDate = addDays(startDate, 7);
-
     let query = supabase
       .from('task_instances')
       .select(`
         *,
         task_templates(id, title, description, est_minutes, criticality, required_proof, steps),
         locations(id, name),
-        areas(id, name),
         departments(name),
         shifts(name),
         completions(id, created_at, note, profiles(display_name))
-      `)
-      .gte('due_at', startDate.toISOString())
-      .lte('due_at', endDate.toISOString())
-      .order('urgency_score', { ascending: false });
+      `);
 
-    if (statusFilter !== 'all') {
+    // Apply time range filter
+    const now = new Date();
+    switch (timeRangeFilter) {
+      case 'overdue':
+        query = query.lt('due_at', now.toISOString()).eq('status', 'pending');
+        break;
+      case 'today':
+        const startOfToday = new Date(now.setHours(0, 0, 0, 0));
+        const endOfToday = new Date(now.setHours(23, 59, 59, 999));
+        query = query.gte('due_at', startOfToday.toISOString()).lte('due_at', endOfToday.toISOString());
+        break;
+      case 'next_7_days':
+        query = query.gte('due_at', new Date().toISOString()).lte('due_at', addDays(new Date(), 7).toISOString());
+        break;
+      case 'next_30_days':
+        query = query.gte('due_at', new Date().toISOString()).lte('due_at', addDays(new Date(), 30).toISOString());
+        break;
+      case 'all':
+        // No date filter
+        break;
+    }
+
+    // Apply status filter (unless overdue is selected, which forces pending)
+    if (statusFilter !== 'all' && timeRangeFilter !== 'overdue') {
       query = query.eq('status', statusFilter as 'pending' | 'done' | 'skipped');
     }
+
+    query = query.order('urgency_score', { ascending: false });
 
     const { data, error } = await query;
 
@@ -137,6 +156,19 @@ export default function TaskInstances() {
         </div>
 
         <div className="mb-6 flex gap-4">
+          <Select value={timeRangeFilter} onValueChange={setTimeRangeFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="next_7_days">Next 7 Days</SelectItem>
+              <SelectItem value="next_30_days">Next 30 Days</SelectItem>
+              <SelectItem value="all">All Tasks</SelectItem>
+            </SelectContent>
+          </Select>
+          
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-48">
               <SelectValue />
@@ -152,7 +184,13 @@ export default function TaskInstances() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Upcoming Tasks (Next 7 Days)</CardTitle>
+            <CardTitle>
+              {timeRangeFilter === 'overdue' && 'Overdue Tasks'}
+              {timeRangeFilter === 'today' && 'Tasks Due Today'}
+              {timeRangeFilter === 'next_7_days' && 'Upcoming Tasks (Next 7 Days)'}
+              {timeRangeFilter === 'next_30_days' && 'Upcoming Tasks (Next 30 Days)'}
+              {timeRangeFilter === 'all' && 'All Task Instances'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {tasks.length === 0 ? (
