@@ -5,15 +5,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface DepartmentFormProps {
   locationId: string;
   department?: any;
+  open: boolean;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-export function DepartmentForm({ locationId, department, onSuccess, onCancel }: DepartmentFormProps) {
+export function DepartmentForm({ locationId, department, open, onSuccess, onCancel }: DepartmentFormProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: department?.name || '',
@@ -71,38 +78,47 @@ export function DepartmentForm({ locationId, department, onSuccess, onCancel }: 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="name">Department Name</Label>
-        <Input
-          id="name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="e.g., Kitchen, Lobby, Storage Room"
-          maxLength={200}
-          required
-        />
-      </div>
+    <Dialog open={open} onOpenChange={onCancel}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {department ? 'Edit Department' : 'Create Department'}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="name">Department Name</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., Kitchen, Lobby, Storage Room"
+              maxLength={200}
+              required
+            />
+          </div>
 
-      <div>
-        <Label htmlFor="description">Description (optional)</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="Brief description of this department"
-          rows={3}
-        />
-      </div>
+          <div>
+            <Label htmlFor="description">Description (optional)</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Brief description of this department"
+              rows={3}
+            />
+          </div>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Saving...' : department ? 'Update' : 'Create'}
-        </Button>
-      </div>
-    </form>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saving...' : department ? 'Update' : 'Create'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

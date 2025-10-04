@@ -288,7 +288,11 @@ export default function Locations() {
         <DepartmentForm
           locationId={selectedLocationForArea}
           department={selectedArea}
-          onSuccess={loadLocations}
+          open={areaFormOpen}
+          onSuccess={() => {
+            loadLocations();
+            setAreaFormOpen(false);
+          }}
           onCancel={() => setAreaFormOpen(false)}
         />
       </div>
