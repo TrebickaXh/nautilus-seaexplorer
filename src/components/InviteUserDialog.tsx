@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,7 @@ const inviteSchema = z.object({
   display_name: z.string().min(1, 'Name is required').max(100),
   role: z.enum(['org_admin', 'location_manager', 'crew']),
   phone: z.string().optional(),
+  location_id: z.string().min(1, 'Location is required'),
   department_id: z.string().min(1, 'Department is required'),
   employee_id: z.string().optional(),
   shift_type: z.string().optional(),
@@ -51,8 +52,8 @@ interface InviteUserDialogProps {
 
 export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUserDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
-  const { toast } = useToast();
 
   const form = useForm<InviteFormData>({
     resolver: zodResolver(inviteSchema),
@@ -61,22 +62,47 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
       display_name: '',
       role: 'crew',
       phone: '',
+      location_id: '',
       department_id: '',
       employee_id: '',
       shift_type: '',
     },
   });
 
+  const selectedLocation = form.watch('location_id');
+
   useEffect(() => {
     if (open) {
-      loadDepartments();
+      loadLocations();
     }
   }, [open]);
 
-  const loadDepartments = async () => {
+  useEffect(() => {
+    if (selectedLocation) {
+      loadDepartments(selectedLocation);
+      form.setValue('department_id', '');
+    } else {
+      setDepartments([]);
+    }
+  }, [selectedLocation]);
+
+  const loadLocations = async () => {
+    const { data } = await supabase
+      .from('locations')
+      .select('id, name')
+      .is('archived_at', null)
+      .order('name');
+    
+    if (data) {
+      setLocations(data);
+    }
+  };
+
+  const loadDepartments = async (locationId: string) => {
     const { data } = await supabase
       .from('departments')
       .select('id, name')
+      .eq('location_id', locationId)
       .is('archived_at', null)
       .order('name');
     
@@ -88,40 +114,30 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
   const onSubmit = async (data: InviteFormData) => {
     setLoading(true);
     try {
-      // Invite user via Supabase Auth
-      const { data: inviteData, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
-        data.email,
-        {
-          data: {
-            display_name: data.display_name,
-            org_id: orgId,
-            role: data.role,
-            phone: data.phone,
-            department_id: data.department_id,
-            employee_id: data.employee_id,
-            shift_type: data.shift_type,
-          },
-          redirectTo: `${window.location.origin}/`,
-        }
-      );
-
-      if (inviteError) throw inviteError;
-
-      toast({
-        title: 'Invitation sent',
-        description: `An invitation has been sent to ${data.email}`,
+      // Create user via edge function without sending email
+      const { error } = await supabase.functions.invoke('invite-user', {
+        body: {
+          email: data.email,
+          displayName: data.display_name,
+          role: data.role,
+          phone: data.phone || '',
+          departmentId: data.department_id,
+          employeeId: data.employee_id || '',
+          shiftType: data.shift_type || '',
+          orgId,
+        },
       });
+
+      if (error) throw error;
+
+      toast.success(`Team member ${data.display_name} created successfully`);
 
       form.reset();
       onSuccess();
       onClose();
     } catch (error: any) {
-      console.error('Error inviting user:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to send invitation',
-        variant: 'destructive',
-      });
+      console.error('Error creating user:', error);
+      toast.error(error.message || 'Failed to create team member');
     } finally {
       setLoading(false);
     }
@@ -131,9 +147,9 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite Team Member</DialogTitle>
+          <DialogTitle>Add Team Member</DialogTitle>
           <DialogDescription>
-            Send an invitation email to add a new team member to your organization.
+            Create a new team member account. They can set their password on first login.
           </DialogDescription>
         </DialogHeader>
 
@@ -241,10 +257,10 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
 
             <FormField
               control={form.control}
-              name="department_id"
+              name="location_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Department</FormLabel>
+                  <FormLabel>Location</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
@@ -252,7 +268,36 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a department" />
+                        <SelectValue placeholder="Select a location" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id}>
+                          {loc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="department_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Department</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={loading || !selectedLocation}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={selectedLocation ? "Select a department" : "Select location first"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -297,7 +342,7 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
               </Button>
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Send Invitation
+                Create Team Member
               </Button>
             </div>
           </form>
