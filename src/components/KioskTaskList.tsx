@@ -19,19 +19,23 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('');
+  const [departments, setDepartments] = useState<any[]>([]);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [completeTask, setCompleteTask] = useState<any>(null);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const { toast } = useToast();
-  const { shifts, departments, getCurrentShift, getShiftIds, getDepartmentIds, loading: shiftsLoading } = useUserShifts(userId || '');
+  const { shifts, departments: userDepartments, getCurrentShift, getShiftIds, getDepartmentIds, loading: shiftsLoading } = useUserShifts(userId || '');
 
   useEffect(() => {
     // Load tasks immediately if no userId (public kiosk mode)
     if (!userId) {
       loadTasks();
+      loadDepartments();
     } else if (!shiftsLoading) {
       loadTasks();
+      loadDepartments();
     }
   }, [shiftsLoading, userId]);
 
@@ -49,6 +53,21 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  const loadDepartments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name, location_id, locations(name)')
+        .is('archived_at', null)
+        .order('name');
+
+      if (error) throw error;
+      setDepartments(data || []);
+    } catch (error) {
+      console.error('Error loading departments:', error);
+    }
+  };
 
   const loadTasks = async () => {
     // Only wait for shifts if we have a userId
@@ -161,7 +180,9 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
 
   const filteredTasks = tasks.filter(task => {
     if (filter === 'all') return true;
-    if (filter === 'mine') return task.assigned_role;
+    if (filter === 'by-department' && selectedDepartment) {
+      return task.department_id === selectedDepartment;
+    }
     return true;
   });
 
@@ -207,13 +228,12 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
       ) : null}
 
       <Tabs value={filter} onValueChange={setFilter}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="all">All Tasks</TabsTrigger>
-          <TabsTrigger value="mine">My Tasks</TabsTrigger>
-          <TabsTrigger value="area">By Area</TabsTrigger>
+          <TabsTrigger value="by-department">Tasks by Department</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={filter} className="space-y-3 mt-6">
+        <TabsContent value="all" className="space-y-3 mt-6">
           {filteredTasks.length === 0 ? (
             <Card className="p-8">
               <div className="text-center">
@@ -298,6 +318,78 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
               );
             })
           )}
+        </TabsContent>
+
+        <TabsContent value="by-department" className="space-y-4 mt-6">
+          <div className="grid gap-3">
+            {departments.map((dept) => {
+              const deptTasks = tasks.filter(t => t.department_id === dept.id);
+              if (deptTasks.length === 0) return null;
+
+              return (
+                <Card key={dept.id} className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold">{dept.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {dept.locations?.name}
+                      </p>
+                    </div>
+                    <Badge variant="secondary">{deptTasks.length} tasks</Badge>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {deptTasks.map((task) => {
+                      const urgencyScore = task.urgency_score || 0.5;
+                      const timeUntilDue = task.due_at 
+                        ? formatDistanceToNow(new Date(task.due_at), { addSuffix: true })
+                        : 'No due date';
+
+                      return (
+                        <div
+                          key={task.id}
+                          className={`${getUrgencyColor(urgencyScore)} p-4 rounded-lg border-2 cursor-pointer transition-all`}
+                          onClick={() => handleTaskClick(task)}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <h4 className="font-medium">
+                                {task.task_templates?.title || 'Untitled Task'}
+                              </h4>
+                              {task.shifts?.name && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {task.shifts.name}
+                                </p>
+                              )}
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {(urgencyScore * 100).toFixed(0)}%
+                            </Badge>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Due {timeUntilDue}
+                            </span>
+                            <Button
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartTask(task);
+                              }}
+                            >
+                              Start
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
         </TabsContent>
       </Tabs>
 
