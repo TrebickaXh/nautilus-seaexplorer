@@ -23,7 +23,10 @@ import {
 } from '@/components/ui/select';
 import { InviteUserDialog } from '@/components/InviteUserDialog';
 import { SetPinDialog } from '@/components/SetPinDialog';
-import { ArrowLeft, UserPlus, Shield, Users as UsersIcon, User, KeyRound } from 'lucide-react';
+import { UserDepartmentAssignment } from '@/components/UserDepartmentAssignment';
+import { UserShiftAssignment } from '@/components/UserShiftAssignment';
+import { ArrowLeft, UserPlus, Shield, Users as UsersIcon, User, KeyRound, Building2, Clock } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface UserProfile {
   id: string;
@@ -36,6 +39,8 @@ interface UserProfile {
   shift_type?: string;
   last_login?: string;
   user_roles?: { role: string }[];
+  department_count?: number;
+  shift_count?: number;
 }
 
 export default function Users() {
@@ -46,6 +51,8 @@ export default function Users() {
   const [loading, setLoading] = useState(true);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [deptDialogOpen, setDeptDialogOpen] = useState(false);
+  const [shiftDialogOpen, setShiftDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
   const [orgId, setOrgId] = useState<string>('');
 
@@ -97,7 +104,7 @@ export default function Users() {
 
       if (error) throw error;
 
-      // Fetch department names for each user
+      // Fetch department names and counts for each user
       const usersWithDepartments = await Promise.all(
         (data || []).map(async (user) => {
           const { data: deptData } = await supabase
@@ -107,9 +114,21 @@ export default function Users() {
             .eq('is_primary', true)
             .single();
 
+          const { count: deptCount } = await supabase
+            .from('user_departments')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
+          const { count: shiftCount } = await supabase
+            .from('user_shifts')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
           return {
             ...user,
             department_name: (deptData?.departments as any)?.name || null,
+            department_count: deptCount || 0,
+            shift_count: shiftCount || 0,
           };
         })
       );
@@ -259,7 +278,9 @@ export default function Users() {
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Employee ID</TableHead>
-                  <TableHead>Department</TableHead>
+                  <TableHead>Primary Department</TableHead>
+                  <TableHead>Departments</TableHead>
+                  <TableHead>Shifts</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
@@ -272,6 +293,18 @@ export default function Users() {
                     <TableCell className="text-muted-foreground">{user.email || 'N/A'}</TableCell>
                     <TableCell className="text-muted-foreground">{user.employee_id || 'N/A'}</TableCell>
                     <TableCell className="text-muted-foreground">{user.department_name || 'N/A'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="gap-1">
+                        <Building2 className="h-3 w-3" />
+                        {user.department_count || 0}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="gap-1">
+                        <Clock className="h-3 w-3" />
+                        {user.shift_count || 0}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {user.user_roles?.[0] ? (
@@ -290,18 +323,40 @@ export default function Users() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser({ id: user.id, name: user.display_name });
+                            setDeptDialogOpen(true);
+                          }}
+                        >
+                          <Building2 className="h-4 w-4 mr-1" />
+                          Departments
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser({ id: user.id, name: user.display_name });
+                            setShiftDialogOpen(true);
+                          }}
+                        >
+                          <Clock className="h-4 w-4 mr-1" />
+                          Shifts
+                        </Button>
                         <Select
                           value={user.user_roles?.[0]?.role || 'crew'}
                           onValueChange={(value) => updateUserRole(user.id, value as 'org_admin' | 'location_manager' | 'crew')}
                         >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Change role" />
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Role" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="crew">Crew</SelectItem>
-                            <SelectItem value="location_manager">Location Manager</SelectItem>
-                            <SelectItem value="org_admin">Organization Admin</SelectItem>
+                            <SelectItem value="location_manager">Manager</SelectItem>
+                            <SelectItem value="org_admin">Admin</SelectItem>
                           </SelectContent>
                         </Select>
                         <Button
@@ -319,8 +374,7 @@ export default function Users() {
                             setPinDialogOpen(true);
                           }}
                         >
-                          <KeyRound className="h-4 w-4 mr-1" />
-                          Set PIN
+                          <KeyRound className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -340,16 +394,60 @@ export default function Users() {
       />
 
       {selectedUser && (
-        <SetPinDialog
-          open={pinDialogOpen}
-          onClose={() => {
-            setPinDialogOpen(false);
-            setSelectedUser(null);
-          }}
-          onSuccess={loadUsers}
-          userId={selectedUser.id}
-          userName={selectedUser.name}
-        />
+        <>
+          <SetPinDialog
+            open={pinDialogOpen}
+            onClose={() => {
+              setPinDialogOpen(false);
+              setSelectedUser(null);
+            }}
+            onSuccess={loadUsers}
+            userId={selectedUser.id}
+            userName={selectedUser.name}
+          />
+
+          <Dialog open={deptDialogOpen} onOpenChange={setDeptDialogOpen}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Manage Department Assignments</DialogTitle>
+              </DialogHeader>
+              <UserDepartmentAssignment
+                userId={selectedUser.id}
+                userName={selectedUser.name}
+                onSuccess={() => {
+                  setDeptDialogOpen(false);
+                  setSelectedUser(null);
+                  loadUsers();
+                }}
+                onCancel={() => {
+                  setDeptDialogOpen(false);
+                  setSelectedUser(null);
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={shiftDialogOpen} onOpenChange={setShiftDialogOpen}>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Manage Shift Assignments</DialogTitle>
+              </DialogHeader>
+              <UserShiftAssignment
+                userId={selectedUser.id}
+                userName={selectedUser.name}
+                onSuccess={() => {
+                  setShiftDialogOpen(false);
+                  setSelectedUser(null);
+                  loadUsers();
+                }}
+                onCancel={() => {
+                  setShiftDialogOpen(false);
+                  setSelectedUser(null);
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </>
       )}
     </div>
   );
