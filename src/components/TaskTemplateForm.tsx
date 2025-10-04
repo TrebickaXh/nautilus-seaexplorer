@@ -27,6 +27,7 @@ interface TaskTemplateFormProps {
 export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplateFormProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [locations, setLocations] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     title: template?.title || '',
@@ -35,22 +36,37 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
     criticality: template?.criticality || 3,
     required_proof: template?.required_proof || 'none',
     steps: template?.steps || [],
+    location_id: template?.department?.location_id || '',
     department_id: template?.department_id || '',
   });
   const [newStep, setNewStep] = useState('');
 
   useEffect(() => {
-    loadDepartments();
+    loadLocations();
   }, []);
 
-  const loadDepartments = async () => {
+  useEffect(() => {
+    if (formData.location_id) {
+      loadDepartments(formData.location_id);
+    } else {
+      setDepartments([]);
+    }
+  }, [formData.location_id]);
+
+  const loadLocations = async () => {
+    const { data } = await supabase
+      .from('locations')
+      .select('id, name')
+      .is('archived_at', null)
+      .order('name');
+    if (data) setLocations(data);
+  };
+
+  const loadDepartments = async (locationId: string) => {
     const { data } = await supabase
       .from('departments')
-      .select(`
-        id,
-        name,
-        locations(name)
-      `)
+      .select('id, name, location_id')
+      .eq('location_id', locationId)
       .is('archived_at', null)
       .order('name');
     if (data) setDepartments(data);
@@ -107,9 +123,13 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
         return;
       }
 
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('org_id')
+        .eq('id', user.id)
         .single();
 
       if (!profile?.org_id) throw new Error('No organization found');
@@ -163,18 +183,38 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
       </div>
 
       <div>
+        <Label htmlFor="location_id">Location *</Label>
+        <Select
+          value={formData.location_id}
+          onValueChange={(value) => setFormData({ ...formData, location_id: value, department_id: '' })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select location" />
+          </SelectTrigger>
+          <SelectContent>
+            {locations.map(loc => (
+              <SelectItem key={loc.id} value={loc.id}>
+                {loc.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
         <Label htmlFor="department_id">Department *</Label>
         <Select
           value={formData.department_id}
           onValueChange={(value) => setFormData({ ...formData, department_id: value })}
+          disabled={!formData.location_id}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select department" />
+            <SelectValue placeholder={formData.location_id ? "Select department" : "Select location first"} />
           </SelectTrigger>
           <SelectContent>
             {departments.map(dept => (
               <SelectItem key={dept.id} value={dept.id}>
-                {dept.locations?.name ? `${dept.locations.name} - ${dept.name}` : dept.name}
+                {dept.name}
               </SelectItem>
             ))}
           </SelectContent>
