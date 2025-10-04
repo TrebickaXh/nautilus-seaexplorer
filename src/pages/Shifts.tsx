@@ -18,7 +18,12 @@ interface Shift {
   start_time: string;
   end_time: string;
   days_of_week: number[];
-  departments?: { name: string };
+  departments?: {
+    name: string;
+    locations?: {
+      name: string;
+    };
+  };
   user_count?: number;
 }
 
@@ -46,10 +51,12 @@ export default function Shifts() {
       .from('shifts')
       .select(`
         *,
-        departments(name)
+        departments(
+          name,
+          locations(name)
+        )
       `)
       .is('archived_at', null)
-      .order('departments(name)', { ascending: true })
       .order('start_time', { ascending: true });
 
     if (error) {
@@ -103,11 +110,13 @@ export default function Shifts() {
   };
 
   const groupedShifts = shifts.reduce((acc, shift) => {
+    const locationName = shift.departments?.locations?.name || 'Unknown Location';
     const deptName = shift.departments?.name || 'Unknown Department';
-    if (!acc[deptName]) {
-      acc[deptName] = [];
+    const key = `${locationName} → ${deptName}`;
+    if (!acc[key]) {
+      acc[key] = [];
     }
-    acc[deptName].push(shift);
+    acc[key].push(shift);
     return acc;
   }, {} as Record<string, Shift[]>);
 

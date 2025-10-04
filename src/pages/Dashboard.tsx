@@ -263,15 +263,6 @@ export default function Dashboard() {
         throw new Error("No organization found");
       }
 
-      // Create a default "General" department
-      const { data: department, error: deptError } = await supabase
-        .from('departments')
-        .insert({ name: 'General', description: 'Default department', org_id: profile.org_id })
-        .select()
-        .single();
-
-      if (deptError) throw deptError;
-
       // Create a test location
       const { data: location, error: locationError } = await supabase
         .from('locations')
@@ -280,6 +271,19 @@ export default function Dashboard() {
         .single();
 
       if (locationError) throw locationError;
+
+      // Create a department for the test location
+      const { data: testDepartment, error: testDeptError } = await supabase
+        .from('departments')
+        .insert({ 
+          name: 'Test Department', 
+          location_id: location.id,
+          description: 'Test department for location'
+        })
+        .select()
+        .single();
+
+      if (testDeptError) throw testDeptError;
 
       // Create test templates
       const templates = [
@@ -290,7 +294,7 @@ export default function Dashboard() {
           criticality: 5,
           required_proof: 'photo' as const,
           org_id: profile.org_id,
-          department_id: department.id,
+          department_id: testDepartment.id,
         },
         {
           title: 'Check Fire Extinguishers',
@@ -299,7 +303,7 @@ export default function Dashboard() {
           criticality: 4,
           required_proof: 'note' as const,
           org_id: profile.org_id,
-          department_id: department.id,
+          department_id: testDepartment.id,
         },
         {
           title: 'Restock Supplies',
@@ -308,7 +312,7 @@ export default function Dashboard() {
           criticality: 2,
           required_proof: 'none' as const,
           org_id: profile.org_id,
-          department_id: department.id,
+          department_id: testDepartment.id,
         },
       ];
 

@@ -14,35 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      areas: {
-        Row: {
-          created_at: string
-          id: string
-          location_id: string
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          location_id: string
-          name: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          location_id?: string
-          name?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "areas_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "locations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       audit_events: {
         Row: {
           actor_id: string | null
@@ -139,31 +110,31 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          location_id: string
           name: string
-          org_id: string
         }
         Insert: {
           archived_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          location_id: string
           name: string
-          org_id: string
         }
         Update: {
           archived_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          location_id?: string
           name?: string
-          org_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "departments_org_id_fkey"
-            columns: ["org_id"]
+            foreignKeyName: "areas_location_id_fkey"
+            columns: ["location_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
         ]
@@ -409,7 +380,7 @@ export type Database = {
           archived_at: string | null
           created_at: string
           days_of_week: number[]
-          department_id: string
+          department_id: string | null
           end_time: string
           id: string
           name: string
@@ -419,7 +390,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           days_of_week?: number[]
-          department_id: string
+          department_id?: string | null
           end_time: string
           id?: string
           name: string
@@ -429,7 +400,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           days_of_week?: number[]
-          department_id?: string
+          department_id?: string | null
           end_time?: string
           id?: string
           name?: string
@@ -512,7 +483,6 @@ export type Database = {
       }
       task_instances: {
         Row: {
-          area_id: string | null
           assigned_role: Database["public"]["Enums"]["app_role"] | null
           completed_at: string | null
           created_at: string
@@ -528,7 +498,6 @@ export type Database = {
           window_start: string | null
         }
         Insert: {
-          area_id?: string | null
           assigned_role?: Database["public"]["Enums"]["app_role"] | null
           completed_at?: string | null
           created_at?: string
@@ -544,7 +513,6 @@ export type Database = {
           window_start?: string | null
         }
         Update: {
-          area_id?: string | null
           assigned_role?: Database["public"]["Enums"]["app_role"] | null
           completed_at?: string | null
           created_at?: string
@@ -560,13 +528,6 @@ export type Database = {
           window_start?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "task_instances_area_id_fkey"
-            columns: ["area_id"]
-            isOneToOne: false
-            referencedRelation: "areas"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "task_instances_department_id_fkey"
             columns: ["department_id"]
@@ -602,7 +563,7 @@ export type Database = {
           archived_at: string | null
           created_at: string
           criticality: number
-          department_id: string
+          department_id: string | null
           description: string | null
           est_minutes: number
           id: string
@@ -615,7 +576,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           criticality?: number
-          department_id: string
+          department_id?: string | null
           description?: string | null
           est_minutes?: number
           id?: string
@@ -628,7 +589,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           criticality?: number
-          department_id?: string
+          department_id?: string | null
           description?: string | null
           est_minutes?: number
           id?: string

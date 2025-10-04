@@ -83,7 +83,11 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
   const loadDepartments = async () => {
     const { data } = await supabase
       .from('departments')
-      .select('id, name')
+      .select(`
+        id,
+        name,
+        locations(name)
+      `)
       .is('archived_at', null)
       .order('name');
     if (data) setDepartments(data);
@@ -240,7 +244,9 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
                     </FormControl>
                     <SelectContent>
                       {departments.map(d => (
-                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.locations?.name ? `${d.locations.name} - ${d.name}` : d.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

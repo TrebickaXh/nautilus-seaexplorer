@@ -46,7 +46,11 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
   const loadDepartments = async () => {
     const { data } = await supabase
       .from('departments')
-      .select('id, name')
+      .select(`
+        id,
+        name,
+        locations(name)
+      `)
       .is('archived_at', null)
       .order('name');
     if (data) setDepartments(data);
@@ -170,7 +174,7 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
           <SelectContent>
             {departments.map(dept => (
               <SelectItem key={dept.id} value={dept.id}>
-                {dept.name}
+                {dept.locations?.name ? `${dept.locations.name} - ${dept.name}` : dept.name}
               </SelectItem>
             ))}
           </SelectContent>

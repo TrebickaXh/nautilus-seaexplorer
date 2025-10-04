@@ -95,7 +95,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
 
   const loadAreas = async (locationId: string) => {
     const { data } = await supabase
-      .from('areas')
+      .from('departments')
       .select('*')
       .eq('location_id', locationId)
       .order('name');

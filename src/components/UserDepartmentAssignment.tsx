@@ -11,6 +11,10 @@ interface Department {
   id: string;
   name: string;
   description?: string;
+  locations?: {
+    name: string;
+    org_id: string;
+  };
 }
 
 interface UserDepartmentAssignmentProps {
@@ -47,16 +51,20 @@ export function UserDepartmentAssignment({
 
       if (!profile) return;
 
-      // Load all departments in org
+      // Load all departments across all locations in org
       const { data: depts } = await supabase
         .from('departments')
-        .select('*')
-        .eq('org_id', profile.org_id)
+        .select(`
+          *,
+          locations(name, org_id)
+        `)
         .is('archived_at', null)
         .order('name');
 
       if (depts) {
-        setDepartments(depts);
+        // Filter departments to only show those in the user's org
+        const orgDepts = depts.filter(d => d.locations?.org_id === profile.org_id);
+        setDepartments(orgDepts);
       }
 
       // Load user's current department assignments
@@ -159,7 +167,7 @@ export function UserDepartmentAssignment({
                   htmlFor={`dept-${dept.id}`}
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                 >
-                  {dept.name}
+                  {dept.locations?.name ? `${dept.locations.name} - ${dept.name}` : dept.name}
                 </label>
                 {dept.description && (
                   <p className="text-xs text-muted-foreground mt-1">{dept.description}</p>
@@ -180,7 +188,7 @@ export function UserDepartmentAssignment({
                   <div key={deptId} className="flex items-center space-x-2">
                     <RadioGroupItem value={deptId} id={`primary-${deptId}`} />
                     <Label htmlFor={`primary-${deptId}`} className="font-normal cursor-pointer">
-                      {dept.name}
+                      {dept.locations?.name ? `${dept.locations.name} - ${dept.name}` : dept.name}
                     </Label>
                   </div>
                 );

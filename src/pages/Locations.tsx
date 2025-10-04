@@ -5,7 +5,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LocationForm } from '@/components/LocationForm';
-import { AreaForm } from '@/components/AreaForm';
+import { DepartmentForm } from '@/components/DepartmentForm';
 import { ArrowLeft, Plus, MapPin, Edit, Trash2, Archive, Grid3x3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +40,7 @@ export default function Locations() {
     const channel = supabase
       .channel('locations-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' }, loadLocations)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'areas' }, loadLocations)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, loadLocations)
       .subscribe();
 
     return () => {
@@ -55,7 +55,7 @@ export default function Locations() {
       .from('locations')
       .select(`
         *,
-        areas(*)
+        departments(*)
       `)
       .is('archived_at', null)
       .order('name');
@@ -103,17 +103,17 @@ export default function Locations() {
   };
 
   const handleDeleteArea = async (areaId: string) => {
-    if (!confirm('Delete this area? This cannot be undone.')) return;
+    if (!confirm('Delete this department? This cannot be undone.')) return;
 
     const { error } = await supabase
-      .from('areas')
+      .from('departments')
       .delete()
       .eq('id', areaId);
 
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success('Area deleted');
+      toast.success('Department deleted');
       loadLocations();
     }
   };
@@ -142,7 +142,7 @@ export default function Locations() {
             <Button variant="ghost" onClick={() => navigate('/dashboard')}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-3xl font-bold">Locations & Areas</h1>
+            <h1 className="text-3xl font-bold">Locations & Departments</h1>
           </div>
           <Button onClick={() => {
             setSelectedLocation(null);
@@ -188,7 +188,7 @@ export default function Locations() {
                           <div>
                             <CardTitle>{location.name}</CardTitle>
                             <CardDescription>
-                              {location.areas?.length || 0} areas
+                              {location.departments?.length || 0} departments
                               {location.latitude && location.longitude && (
                                 <span className="ml-2">
                                   • {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
@@ -222,7 +222,7 @@ export default function Locations() {
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="font-semibold flex items-center gap-2">
                             <Grid3x3 className="h-4 w-4" />
-                            Areas within {location.name}
+                            Departments within {location.name}
                           </h4>
                           <Button
                             size="sm"
@@ -230,13 +230,13 @@ export default function Locations() {
                             onClick={() => handleAddArea(location.id)}
                           >
                             <Plus className="h-4 w-4 mr-2" />
-                            Add Area
+                            Add Department
                           </Button>
                         </div>
 
-                        {location.areas && location.areas.length > 0 ? (
+                        {location.departments && location.departments.length > 0 ? (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {location.areas.map((area: any) => (
+                            {location.departments.map((area: any) => (
                               <div
                                 key={area.id}
                                 className="flex items-center justify-between p-3 rounded-lg border bg-card"
@@ -263,7 +263,7 @@ export default function Locations() {
                           </div>
                         ) : (
                           <p className="text-sm text-muted-foreground text-center py-6">
-                            No areas yet. Add areas to organize tasks within this location.
+                            No departments yet. Add departments to organize tasks within this location.
                           </p>
                         )}
                       </CardContent>
@@ -285,15 +285,11 @@ export default function Locations() {
           onSuccess={loadLocations}
         />
 
-        <AreaForm
+        <DepartmentForm
           locationId={selectedLocationForArea}
-          area={selectedArea}
-          open={areaFormOpen}
-          onClose={() => {
-            setAreaFormOpen(false);
-            setSelectedArea(null);
-          }}
+          department={selectedArea}
           onSuccess={loadLocations}
+          onCancel={() => setAreaFormOpen(false)}
         />
       </div>
     </div>

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 interface ShiftFormProps {
   shiftId?: string;
   departmentId?: string;
+  locationId?: string;
   onSuccess: () => void;
   onCancel: () => void;
 }

@@ -25,7 +25,6 @@ import {
   Waves,
   Tablet,
   BarChart3,
-  Building2,
   Clock,
 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -40,7 +39,6 @@ const mainItems = [
 
 const managementItems = [
   { title: 'Templates', url: '/task-templates', icon: FileText, roles: ['location_manager', 'org_admin'] },
-  { title: 'Departments', url: '/departments', icon: Building2, roles: ['location_manager', 'org_admin'] },
   { title: 'Shifts', url: '/shifts', icon: Clock, roles: ['location_manager', 'org_admin'] },
   { title: 'Schedules', url: '/schedules', icon: Calendar, roles: ['location_manager', 'org_admin'] },
   { title: 'Locations', url: '/locations', icon: MapPin, roles: ['location_manager', 'org_admin'] },

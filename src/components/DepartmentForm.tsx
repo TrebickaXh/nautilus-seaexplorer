@@ -7,82 +7,56 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
 interface DepartmentFormProps {
-  departmentId?: string;
+  locationId: string;
+  department?: any;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-export function DepartmentForm({ departmentId, onSuccess, onCancel }: DepartmentFormProps) {
+export function DepartmentForm({ locationId, department, onSuccess, onCancel }: DepartmentFormProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
+    name: department?.name || '',
+    description: department?.description || '',
   });
 
   useEffect(() => {
-    if (departmentId) {
-      loadDepartment();
-    }
-  }, [departmentId]);
-
-  const loadDepartment = async () => {
-    const { data, error } = await supabase
-      .from('departments')
-      .select('*')
-      .eq('id', departmentId)
-      .single();
-
-    if (error) {
-      toast.error('Failed to load department');
-      return;
-    }
-
-    if (data) {
+    if (department) {
       setFormData({
-        name: data.name,
-        description: data.description || '',
+        name: department.name || '',
+        description: department.description || '',
       });
     }
-  };
+  }, [department]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Get user's org_id
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const payload = {
+        name: formData.name.trim(),
+        description: formData.description?.trim() || null,
+        location_id: locationId,
+      };
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('org_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile) throw new Error('Profile not found');
-
-      if (departmentId) {
-        // Update
+      if (department) {
+        // Update existing department
         const { error } = await supabase
           .from('departments')
           .update({
-            name: formData.name,
-            description: formData.description || null,
+            name: payload.name,
+            description: payload.description,
           })
-          .eq('id', departmentId);
+          .eq('id', department.id);
 
         if (error) throw error;
         toast.success('Department updated');
       } else {
-        // Create
+        // Create new department
         const { error } = await supabase
           .from('departments')
-          .insert({
-            org_id: profile.org_id,
-            name: formData.name,
-            description: formData.description || null,
-          });
+          .insert(payload);
 
         if (error) throw error;
         toast.success('Department created');
@@ -104,7 +78,8 @@ export function DepartmentForm({ departmentId, onSuccess, onCancel }: Department
           id="name"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="e.g., Kitchen, Housekeeping, Security"
+          placeholder="e.g., Kitchen, Lobby, Storage Room"
+          maxLength={200}
           required
         />
       </div>
@@ -125,7 +100,7 @@ export function DepartmentForm({ departmentId, onSuccess, onCancel }: Department
           Cancel
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? 'Saving...' : departmentId ? 'Update' : 'Create'}
+          {loading ? 'Saving...' : department ? 'Update' : 'Create'}
         </Button>
       </div>
     </form>
