@@ -145,7 +145,7 @@ export function InviteUserDialog({ open, onClose, onSuccess, orgId }: InviteUser
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Team Member</DialogTitle>
           <DialogDescription>
