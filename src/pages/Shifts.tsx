@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 interface Shift {
   id: string;
   name: string;
+  location_id: string;
   department_id: string;
   start_time: string;
   end_time: string;

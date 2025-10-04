@@ -383,6 +383,7 @@ export type Database = {
           department_id: string | null
           end_time: string
           id: string
+          location_id: string
           name: string
           start_time: string
         }
@@ -393,6 +394,7 @@ export type Database = {
           department_id?: string | null
           end_time: string
           id?: string
+          location_id: string
           name: string
           start_time: string
         }
@@ -403,6 +405,7 @@ export type Database = {
           department_id?: string | null
           end_time?: string
           id?: string
+          location_id?: string
           name?: string
           start_time?: string
         }
@@ -412,6 +415,13 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
         ]

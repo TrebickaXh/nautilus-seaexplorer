@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 interface ShiftFormProps {
@@ -14,10 +15,14 @@ interface ShiftFormProps {
   onCancel: () => void;
 }
 
-export function ShiftForm({ shiftId, departmentId, onSuccess, onCancel }: ShiftFormProps) {
+export function ShiftForm({ shiftId, departmentId, locationId, onSuccess, onCancel }: ShiftFormProps) {
   const [loading, setLoading] = useState(false);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: '',
+    location_id: locationId || '',
+    department_id: departmentId || '',
     start_time: '09:00',
     end_time: '17:00',
     days_of_week: [] as number[],
@@ -26,10 +31,50 @@ export function ShiftForm({ shiftId, departmentId, onSuccess, onCancel }: ShiftF
   const dayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   useEffect(() => {
+    loadLocations();
     if (shiftId) {
       loadShift();
     }
   }, [shiftId]);
+
+  useEffect(() => {
+    if (formData.location_id) {
+      loadDepartments(formData.location_id);
+    } else {
+      setDepartments([]);
+    }
+  }, [formData.location_id]);
+
+  const loadLocations = async () => {
+    const { data, error } = await supabase
+      .from('locations')
+      .select('id, name')
+      .is('archived_at', null)
+      .order('name');
+
+    if (error) {
+      toast.error('Failed to load locations');
+      return;
+    }
+
+    setLocations(data || []);
+  };
+
+  const loadDepartments = async (locationId: string) => {
+    const { data, error } = await supabase
+      .from('departments')
+      .select('id, name')
+      .eq('location_id', locationId)
+      .is('archived_at', null)
+      .order('name');
+
+    if (error) {
+      toast.error('Failed to load departments');
+      return;
+    }
+
+    setDepartments(data || []);
+  };
 
   const loadShift = async () => {
     const { data, error } = await supabase
@@ -46,6 +91,8 @@ export function ShiftForm({ shiftId, departmentId, onSuccess, onCancel }: ShiftF
     if (data) {
       setFormData({
         name: data.name,
+        location_id: data.location_id || '',
+        department_id: data.department_id || '',
         start_time: data.start_time,
         end_time: data.end_time,
         days_of_week: data.days_of_week || [],
@@ -67,24 +114,32 @@ export function ShiftForm({ shiftId, departmentId, onSuccess, onCancel }: ShiftF
     setLoading(true);
 
     try {
-      if (!departmentId && !shiftId) {
-        throw new Error('Department ID required');
+      if (!formData.location_id) {
+        throw new Error('Please select a location');
+      }
+
+      if (!formData.department_id) {
+        throw new Error('Please select a department');
       }
 
       if (formData.days_of_week.length === 0) {
         throw new Error('Please select at least one day');
       }
 
+      const payload = {
+        name: formData.name,
+        location_id: formData.location_id,
+        department_id: formData.department_id,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+        days_of_week: formData.days_of_week,
+      };
+
       if (shiftId) {
         // Update
         const { error } = await supabase
           .from('shifts')
-          .update({
-            name: formData.name,
-            start_time: formData.start_time,
-            end_time: formData.end_time,
-            days_of_week: formData.days_of_week,
-          })
+          .update(payload)
           .eq('id', shiftId);
 
         if (error) throw error;
@@ -93,13 +148,7 @@ export function ShiftForm({ shiftId, departmentId, onSuccess, onCancel }: ShiftF
         // Create
         const { error } = await supabase
           .from('shifts')
-          .insert({
-            department_id: departmentId!,
-            name: formData.name,
-            start_time: formData.start_time,
-            end_time: formData.end_time,
-            days_of_week: formData.days_of_week,
-          });
+          .insert(payload);
 
         if (error) throw error;
         toast.success('Shift created');
@@ -115,6 +164,45 @@ export function ShiftForm({ shiftId, departmentId, onSuccess, onCancel }: ShiftF
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="location">Location</Label>
+        <Select
+          value={formData.location_id}
+          onValueChange={(value) => setFormData({ ...formData, location_id: value, department_id: '' })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select a location" />
+          </SelectTrigger>
+          <SelectContent>
+            {locations.map(location => (
+              <SelectItem key={location.id} value={location.id}>
+                {location.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <Label htmlFor="department">Department</Label>
+        <Select
+          value={formData.department_id}
+          onValueChange={(value) => setFormData({ ...formData, department_id: value })}
+          disabled={!formData.location_id}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={formData.location_id ? "Select a department" : "Select a location first"} />
+          </SelectTrigger>
+          <SelectContent>
+            {departments.map(dept => (
+              <SelectItem key={dept.id} value={dept.id}>
+                {dept.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div>
         <Label htmlFor="name">Shift Name</Label>
         <Input
