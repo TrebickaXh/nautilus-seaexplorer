@@ -27,10 +27,13 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
   const { shifts, departments, getCurrentShift, getShiftIds, getDepartmentIds, loading: shiftsLoading } = useUserShifts(userId || '');
 
   useEffect(() => {
-    if (!shiftsLoading) {
+    // Load tasks immediately if no userId (public kiosk mode)
+    if (!userId) {
+      loadTasks();
+    } else if (!shiftsLoading) {
       loadTasks();
     }
-  }, [shiftsLoading]);
+  }, [shiftsLoading, userId]);
 
   useEffect(() => {
     // Set up real-time listener
@@ -48,7 +51,8 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
   }, []);
 
   const loadTasks = async () => {
-    if (shiftsLoading) return;
+    // Only wait for shifts if we have a userId
+    if (userId && shiftsLoading) return;
     
     setLoading(true);
     try {
@@ -162,7 +166,7 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
     return true;
   });
 
-  if (loading || shiftsLoading) {
+  if (loading || (userId && shiftsLoading)) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
@@ -215,7 +219,7 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
             <Card className="p-8">
               <div className="text-center">
                 <CheckCircle2 className="h-12 w-12 mx-auto text-green-500 mb-4" />
-                <h3 className="text-lg font-semibold">All Caught Up!</h3>
+                <h3 className="text-lg font-semibold">All Tasks Completed!</h3>
                 <p className="text-muted-foreground mt-2">
                   No pending tasks at the moment.
                 </p>
