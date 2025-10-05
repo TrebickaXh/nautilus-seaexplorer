@@ -8,17 +8,48 @@ import { useToast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { Download, TrendingUp, Clock, AlertCircle, Calendar } from "lucide-react";
 import { format, subDays } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Reports() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7');
-  const [groupBy, setGroupBy] = useState<'template' | 'location' | 'role'>('template');
+  const [groupBy, setGroupBy] = useState<'template' | 'location' | 'role' | 'department' | 'shift'>('template');
+  const [selectedShiftId, setSelectedShiftId] = useState<string>('all');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('all');
   
   const [onTimeData, setOnTimeData] = useState<any[]>([]);
   const [mtcData, setMtcData] = useState<any[]>([]);
   const [coverageData, setCoverageData] = useState<any[]>([]);
+
+  // Fetch shifts for filter
+  const { data: shifts = [] } = useQuery({
+    queryKey: ['shifts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('id, name, location_id, locations(name)')
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Fetch departments for filter
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name, location_id, locations(name)')
+        .order('name');
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   useEffect(() => {
     checkAuth();
@@ -26,7 +57,7 @@ export default function Reports() {
 
   useEffect(() => {
     loadReportData();
-  }, [dateRange, groupBy]);
+  }, [dateRange, groupBy, selectedShiftId, selectedDepartmentId]);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -41,17 +72,31 @@ export default function Reports() {
       setLoading(true);
       const startDate = subDays(new Date(), parseInt(dateRange));
 
-      // Fetch task instances with completions
-      const { data: tasks, error } = await supabase
+      // Build query with filters
+      let query = supabase
         .from('task_instances')
         .select(`
           *,
           task_routines!routine_id(title, criticality),
           locations(name),
+          departments(name),
+          shifts(name),
           completions(created_at, user_id)
         `)
         .gte('due_at', startDate.toISOString())
         .in('status', ['done', 'skipped']);
+
+      // Apply shift filter
+      if (selectedShiftId !== 'all') {
+        query = query.eq('shift_id', selectedShiftId);
+      }
+
+      // Apply department filter
+      if (selectedDepartmentId !== 'all') {
+        query = query.eq('department_id', selectedDepartmentId);
+      }
+
+      const { data: tasks, error } = await query;
 
       if (error) throw error;
 
@@ -68,6 +113,12 @@ export default function Reports() {
         } else if (groupBy === 'location') {
           key = task.location_id;
           name = task.locations?.name || 'Unknown';
+        } else if (groupBy === 'department') {
+          key = task.department_id || 'none';
+          name = task.departments?.name || 'No Department';
+        } else if (groupBy === 'shift') {
+          key = task.shift_id || 'none';
+          name = task.shifts?.name || 'No Shift';
         } else {
           key = task.assigned_role || 'unassigned';
           name = task.assigned_role || 'Unassigned';
@@ -110,6 +161,12 @@ export default function Reports() {
           } else if (groupBy === 'location') {
             key = task.location_id;
             name = task.locations?.name || 'Unknown';
+          } else if (groupBy === 'department') {
+            key = task.department_id || 'none';
+            name = task.departments?.name || 'No Department';
+          } else if (groupBy === 'shift') {
+            key = task.shift_id || 'none';
+            name = task.shifts?.name || 'No Shift';
           } else {
             key = task.assigned_role || 'unassigned';
             name = task.assigned_role || 'Unassigned';
@@ -225,8 +282,8 @@ export default function Reports() {
             <CardTitle>Report Filters</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4">
-              <div className="flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
                 <label className="text-sm font-medium mb-2 block">Date Range</label>
                 <Select value={dateRange} onValueChange={setDateRange}>
                   <SelectTrigger>
@@ -239,7 +296,42 @@ export default function Reports() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex-1">
+              
+              <div>
+                <label className="text-sm font-medium mb-2 block">Shift</label>
+                <Select value={selectedShiftId} onValueChange={setSelectedShiftId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Shifts</SelectItem>
+                    {shifts.map((shift: any) => (
+                      <SelectItem key={shift.id} value={shift.id}>
+                        {shift.name} {shift.locations?.name && `(${shift.locations.name})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Department</label>
+                <Select value={selectedDepartmentId} onValueChange={setSelectedDepartmentId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map((dept: any) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name} {dept.locations?.name && `(${dept.locations.name})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <label className="text-sm font-medium mb-2 block">Group By</label>
                 <Select value={groupBy} onValueChange={(v) => setGroupBy(v as any)}>
                   <SelectTrigger>
@@ -247,6 +339,8 @@ export default function Reports() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="template">Task Template</SelectItem>
+                    <SelectItem value="department">Department</SelectItem>
+                    <SelectItem value="shift">Shift</SelectItem>
                     <SelectItem value="location">Location</SelectItem>
                     <SelectItem value="role">Role</SelectItem>
                   </SelectContent>
