@@ -16,12 +16,7 @@ interface Message {
 }
 
 export default function Onboarding() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "Welcome to Project Nautilus! I'm here to help set up your organization's task management system. Let's start with the basics - what's your organization's name?"
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -29,8 +24,46 @@ export default function Onboarding() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    createOnboardingSession();
+    loadOrCreateSession();
   }, []);
+
+  const loadOrCreateSession = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    // Check for existing in-progress session
+    const { data: existingSessions } = await supabase
+      .from("onboarding_sessions")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "in_progress")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (existingSessions && existingSessions.length > 0) {
+      // Resume existing session
+      const session = existingSessions[0];
+      setSessionId(session.id);
+      
+      // Load conversation history safely
+      const historyData = session.conversation_history;
+      if (historyData && Array.isArray(historyData) && historyData.length > 0) {
+        setMessages(historyData as any);
+      } else {
+        // Start fresh conversation
+        setMessages([{
+          role: "assistant",
+          content: "Welcome to Project Nautilus! I'm here to help set up your organization's task management system. Let's start with the basics - what's your organization's name?"
+        }]);
+      }
+    } else {
+      // Create new session
+      await createOnboardingSession();
+    }
+  };
 
   const createOnboardingSession = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -51,6 +84,41 @@ export default function Onboarding() {
     }
 
     setSessionId(data.id);
+    
+    // Set initial welcome message
+    setMessages([{
+      role: "assistant",
+      content: "Welcome to Project Nautilus! I'm here to help set up your organization's task management system. Let's start with the basics - what's your organization's name?"
+    }]);
+  };
+
+  const handleRestart = async () => {
+    if (!sessionId) return;
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("onboarding-assistant", {
+        body: {
+          sessionId,
+          message: "",
+          conversationHistory: [],
+          restart: true
+        }
+      });
+
+      if (error) throw error;
+
+      setMessages([{
+        role: "assistant",
+        content: data.response
+      }]);
+      
+      toast.success("Onboarding restarted");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to restart onboarding");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSend = async () => {
@@ -132,8 +200,18 @@ export default function Onboarding() {
           </div>
           <h1 className="text-4xl font-bold">Let's Get You Started</h1>
           <p className="text-muted-foreground">
-            I'll ask you a few questions to understand your needs and set everything up automatically.
+            I'll guide you through 10 steps to set up your complete task management system.
           </p>
+          {messages.length > 2 && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRestart}
+              disabled={loading}
+            >
+              Restart Onboarding
+            </Button>
+          )}
         </div>
 
         <Card className="h-[500px] flex flex-col shadow-ocean">

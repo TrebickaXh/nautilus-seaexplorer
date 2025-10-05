@@ -140,7 +140,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
         area_id: values.area_id,
         due_at: dueAt,
         status: 'pending',
-        created_from: 'oneoff',
+        created_from_v2: 'oneoff',
       };
 
       if (values.assigned_role) {

@@ -6,47 +6,175 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SYSTEM_PROMPT = `You are Nautilus' onboarding assistant. Your job is to help set up a new organization's task management system through a conversational interview.
+const SYSTEM_PROMPT = `You are Nautilus' onboarding assistant. Guide users through a comprehensive 10-step setup process.
 
-You should ask concise questions to learn about:
-1. Organization name and timezone
-2. Locations (with approximate lat/lng - you can make reasonable estimates)
-3. Areas within each location (e.g., Front Desk, Kitchen, Lobby)
-4. Roles (e.g., Manager, Front Desk Staff, Housekeeping)
-5. Common daily/weekly/monthly tasks for each area
-6. Which tasks require photo proof, notes, or dual sign-off
+Your goal is to gather detailed information about their organization, locations, departments, shifts, team members, and task routines.
 
-Keep the conversation natural and friendly. Ask one or two questions at a time.
+**Process Overview (10 Steps):**
 
-When you have enough information (typically after 5-8 exchanges), generate a completion signal by including "ONBOARDING_COMPLETE" at the start of your response, followed by a JSON configuration that follows this structure:
+**Step 1 – Company Setup**
+Ask about:
+- Organization name
+- Timezone (e.g., America/New_York, Europe/London, Asia/Tokyo)
+- Industry (Hospitality, Cleaning, Manufacturing, Retail, Facilities, etc.)
+- Operating days (which days of the week they work)
+- Operating hours (typical start and end times)
+
+**Step 2 – Locations**
+Ask about:
+- Number of locations (single or multiple sites)
+- For each location: name, address/area, and any specific zones/areas within (e.g., Kitchen, Lobby, Storage, Parking)
+
+**Step 3 – Departments**
+Ask about:
+- Which departments exist (Kitchen, Housekeeping, Security, Maintenance, Front Desk, etc.)
+- Which location each department belongs to
+- Who manages each department (optional)
+
+**Step 4 – Shifts**
+Ask about:
+- How many shifts each department has (Morning, Afternoon, Night, etc.)
+- For each shift: name, start time, end time, days of week it runs, whether it goes overnight
+
+**Step 5 – Team Members**
+Ask about:
+- How many team members to add initially
+- For each: full name, email, role (Admin/Manager/Staff), departments, shifts, optional PIN for kiosk
+
+**Step 6 – Tasks & Routines**
+Ask about:
+- Whether they want ready-made templates for their industry
+- For each task: title, description, steps, department, shift, location, area, recurrence (daily/weekly/monthly/custom), due time, duration, importance (1-5), proof requirement (photo/note/signature/none)
+
+**Step 7 – One-Time Tasks (Optional)**
+Ask about:
+- Any one-off tasks that don't repeat
+- For each: name, department, shift, area, due date/time, proof requirement
+
+**Step 8 – Task Rules & Completion**
+Ask about:
+- Assignment rules (anyone on shift or specific person)
+- What happens to incomplete tasks (move to next shift, keep overdue)
+- Can tasks be deferred manually
+- Options when task isn't done (skip with reason, defer, reassign, cancel)
+
+**Step 9 – Notifications & Reports**
+Ask about:
+- Notifications for overdue tasks (yes/no)
+- Automatic end-of-shift reports (yes/no)
+- Who gets access to reports (admins only, managers, everyone)
+
+**Step 10 – Review & Confirmation**
+Summarize what will be created:
+- Company profile
+- Locations & Areas
+- Departments & Shifts  
+- Team Members
+- Task Routines
+- One-Off Tasks
+- Reporting setup
+
+Ask for final confirmation.
+
+**Important Guidelines:**
+- Ask 1-2 questions at a time, keep it conversational
+- Track progress through the 10 steps
+- When asking about shifts, collect: name, start_time (HH:MM format), end_time (HH:MM format), days_of_week (array of 0-6, where 0=Sunday)
+- For recurrence, use this format:
+  {
+    "type": "daily" | "weekly" | "custom_weeks" | "monthly",
+    "time_slots": ["HH:MM", ...],
+    "days_of_week": [0-6],  // for weekly
+    "week_interval": 1,      // for custom_weeks
+    "weeks_pattern": [[0-6]], // for custom_weeks
+    "day_of_month": [1-31]   // for monthly
+  }
+
+When you have collected ALL 10 steps of information and the user confirms, respond with:
+"ONBOARDING_COMPLETE" followed by this JSON structure:
 
 {
-  "orgName": "Hotel Example",
-  "timezone": "America/New_York",
+  "orgName": "string",
+  "timezone": "string",
+  "industry": "string",
+  "operatingDays": [0-6],
+  "operatingHours": {"start": "HH:MM", "end": "HH:MM"},
   "locations": [
     {
-      "name": "Main Location",
-      "latitude": 40.7128,
-      "longitude": -74.0060,
-      "areas": ["Front Desk", "Lobby", "Kitchen"]
+      "name": "string",
+      "address": "string",
+      "latitude": number,
+      "longitude": number,
+      "areas": ["string"]
     }
   ],
-  "roles": ["Manager", "Front Desk", "Housekeeping"],
-  "taskTemplates": [
+  "departments": [
     {
-      "title": "Morning Lobby Inspection",
-      "description": "Check and tidy lobby area",
-      "steps": ["Check cleanliness", "Arrange furniture", "Stock supplies"],
-      "areas": ["Lobby"],
-      "defaultRole": "Housekeeping",
-      "estMinutes": 15,
-      "criticality": 3,
-      "requiredProof": "photo"
+      "name": "string",
+      "locationName": "string",
+      "manager": "string (optional)"
     }
-  ]
+  ],
+  "shifts": [
+    {
+      "name": "string",
+      "departmentName": "string",
+      "locationName": "string",
+      "start_time": "HH:MM",
+      "end_time": "HH:MM",
+      "days_of_week": [0-6],
+      "overnight": boolean
+    }
+  ],
+  "teamMembers": [
+    {
+      "name": "string",
+      "email": "string",
+      "role": "org_admin" | "location_manager" | "crew",
+      "departments": ["string"],
+      "shifts": ["string"],
+      "pin": "string (optional 4-6 digits)"
+    }
+  ],
+  "taskRoutines": [
+    {
+      "title": "string",
+      "description": "string",
+      "steps": ["string"],
+      "departmentName": "string",
+      "shiftName": "string",
+      "locationName": "string",
+      "areaNames": ["string"],
+      "recurrence_v2": {...},
+      "est_minutes": number,
+      "criticality": 1-5,
+      "required_proof": "photo" | "note" | "signature" | "none"
+    }
+  ],
+  "oneOffTasks": [
+    {
+      "title": "string",
+      "departmentName": "string",
+      "shiftName": "string",
+      "areaName": "string",
+      "due_at": "ISO8601 datetime",
+      "required_proof": "photo" | "note" | "none"
+    }
+  ],
+  "taskRules": {
+    "assignmentType": "shift" | "individual",
+    "incompleteAction": "defer_next_shift" | "keep_overdue",
+    "allowManualDefer": boolean,
+    "skipOptions": ["skip_with_reason", "defer", "reassign", "cancel"]
+  },
+  "notifications": {
+    "overdueAlerts": boolean,
+    "autoReports": boolean,
+    "reportAccess": "admins" | "managers" | "everyone"
+  }
 }
 
-Be helpful and conversational until you have enough info, then generate the config.`;
+Keep the conversation friendly, helpful, and concise. Guide them through each step systematically.`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -54,13 +182,35 @@ serve(async (req) => {
   }
 
   try {
-    const { sessionId, message, conversationHistory } = await req.json();
+    const { sessionId, message, conversationHistory, restart } = await req.json();
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Handle restart request
+    if (restart) {
+      await supabase
+        .from("onboarding_sessions")
+        .update({ 
+          conversation_history: [],
+          generated_config: null,
+          status: 'in_progress',
+          completed_at: null
+        })
+        .eq("id", sessionId);
+
+      return new Response(
+        JSON.stringify({ 
+          response: "No problem! Let's start fresh. What's your organization's name?",
+          complete: false,
+          restarted: true
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Build messages for AI
     const messages = [
@@ -86,6 +236,8 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI API error:", response.status, errorText);
       throw new Error(`AI request failed: ${response.statusText}`);
     }
 
@@ -93,7 +245,7 @@ serve(async (req) => {
     const assistantResponse = data.choices[0].message.content;
 
     // Check if onboarding is complete
-    const isComplete = assistantResponse.startsWith("ONBOARDING_COMPLETE");
+    const isComplete = assistantResponse.includes("ONBOARDING_COMPLETE");
     
     let generatedConfig = null;
     let cleanResponse = assistantResponse;
@@ -104,18 +256,18 @@ serve(async (req) => {
       if (jsonMatch) {
         try {
           generatedConfig = JSON.parse(jsonMatch[0]);
-          cleanResponse = "Perfect! I have all the information I need. Let me set up your organization now...";
+          cleanResponse = "Perfect! I have all the information I need. Setting up your organization now...";
           
           // Create organization and related records
           await setupOrganization(supabase, sessionId, generatedConfig);
         } catch (error) {
           console.error("Failed to parse or create config:", error);
-          cleanResponse = "I have the information, but there was an issue processing it. Let me try again - could you confirm your organization name?";
+          cleanResponse = "I have the information, but there was an issue processing it. Could you confirm your organization name?";
         }
       }
     }
 
-    // Update session
+    // Update session with conversation history
     const updatedHistory = [...conversationHistory, 
       { role: "user", content: message },
       { role: "assistant", content: cleanResponse }
@@ -154,7 +306,6 @@ serve(async (req) => {
 });
 
 async function setupOrganization(supabase: any, sessionId: string, config: any) {
-  // Get user from session
   const { data: session } = await supabase
     .from("onboarding_sessions")
     .select("user_id")
@@ -190,19 +341,21 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
     });
 
   // Create locations and areas
+  const locationMap: Record<string, string> = {};
   for (const loc of config.locations || []) {
     const { data: location, error: locError } = await supabase
       .from("locations")
       .insert({
         org_id: org.id,
         name: loc.name,
-        latitude: loc.latitude,
-        longitude: loc.longitude
+        latitude: loc.latitude || null,
+        longitude: loc.longitude || null
       })
       .select()
       .single();
 
     if (locError) throw locError;
+    locationMap[loc.name] = location.id;
 
     // Create areas
     for (const areaName of loc.areas || []) {
@@ -215,18 +368,147 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
     }
   }
 
-  // Create task routines (templates)
-  for (const template of config.taskTemplates || []) {
+  // Create departments
+  const departmentMap: Record<string, string> = {};
+  for (const dept of config.departments || []) {
+    const locationId = locationMap[dept.locationName];
+    if (!locationId) continue;
+
+    const { data: department, error: deptError } = await supabase
+      .from("departments")
+      .insert({
+        location_id: locationId,
+        name: dept.name,
+        description: dept.manager ? `Managed by ${dept.manager}` : null
+      })
+      .select()
+      .single();
+
+    if (deptError) throw deptError;
+    departmentMap[dept.name] = department.id;
+  }
+
+  // Create shifts (and auto-fill 24-hour coverage)
+  const shiftMap: Record<string, string> = {};
+  const createdShifts: Array<{start: string, end: string, days: number[]}> = [];
+  
+  for (const shift of config.shifts || []) {
+    const locationId = locationMap[shift.locationName];
+    const departmentId = departmentMap[shift.departmentName];
+    if (!locationId || !departmentId) continue;
+
+    const { data: createdShift, error: shiftError } = await supabase
+      .from("shifts")
+      .insert({
+        location_id: locationId,
+        department_id: departmentId,
+        name: shift.name,
+        start_time: shift.start_time,
+        end_time: shift.end_time,
+        days_of_week: shift.days_of_week
+      })
+      .select()
+      .single();
+
+    if (shiftError) throw shiftError;
+    shiftMap[shift.name] = createdShift.id;
+    createdShifts.push({
+      start: shift.start_time,
+      end: shift.end_time,
+      days: shift.days_of_week
+    });
+  }
+
+  // Auto-fill 24-hour coverage by creating gap shifts
+  // This creates shifts for any time periods not covered by user-defined shifts
+  const allDays = config.operatingDays || [0, 1, 2, 3, 4, 5, 6];
+  const timeSlots = createdShifts.map(s => ({ start: s.start, end: s.end }));
+  
+  // Simple gap detection: if no overnight shift (22:00-06:00) exists, create one
+  const hasNightShift = timeSlots.some(s => s.start >= "22:00" || s.end <= "06:00");
+  if (!hasNightShift && Object.keys(departmentMap).length > 0) {
+    const firstDept = Object.values(departmentMap)[0];
+    const firstLoc = Object.values(locationMap)[0];
+    
+    await supabase
+      .from("shifts")
+      .insert({
+        location_id: firstLoc,
+        department_id: firstDept,
+        name: "Night (Auto-created)",
+        start_time: "22:00",
+        end_time: "06:00",
+        days_of_week: allDays
+      });
+  }
+
+  // Create team members
+  for (const member of config.teamMembers || []) {
+    // Note: In a real system, you'd send invitation emails here
+    // For now, we'll just log that team members should be invited
+    console.log(`Team member to invite: ${member.email} as ${member.role}`);
+  }
+
+  // Get area IDs for task routines
+  const { data: areas } = await supabase
+    .from("areas")
+    .select("id, name, location_id");
+
+  const areaMap: Record<string, string> = {};
+  (areas || []).forEach((a: any) => {
+    areaMap[a.name] = a.id;
+  });
+
+  // Create task routines
+  for (const routine of config.taskRoutines || []) {
+    const departmentId = departmentMap[routine.departmentName];
+    const shiftId = shiftMap[routine.shiftName];
+    const locationId = locationMap[routine.locationName];
+    const areaIds = (routine.areaNames || []).map((n: string) => areaMap[n]).filter(Boolean);
+
+    if (!departmentId || !locationId) continue;
+
     await supabase
       .from("task_routines")
       .insert({
         org_id: org.id,
-        title: template.title,
-        description: template.description,
-        steps: template.steps || [],
-        est_minutes: template.estMinutes || 15,
-        criticality: template.criticality || 3,
-        required_proof: template.requiredProof || 'none'
+        location_id: locationId,
+        department_id: departmentId,
+        shift_id: shiftId || null,
+        title: routine.title,
+        description: routine.description || null,
+        steps: routine.steps || [],
+        area_ids: areaIds,
+        recurrence_v2: routine.recurrence_v2,
+        est_minutes: routine.est_minutes || 15,
+        criticality: routine.criticality || 3,
+        required_proof: routine.required_proof || 'none',
+        active: true
       });
   }
+
+  // Create one-off tasks
+  for (const task of config.oneOffTasks || []) {
+    const departmentId = departmentMap[task.departmentName];
+    const shiftId = shiftMap[task.shiftName];
+    const locationId = locationMap[task.locationName];
+    const areaId = areaMap[task.areaName];
+
+    if (!departmentId || !locationId || !areaId) continue;
+
+    await supabase
+      .from("task_instances")
+      .insert({
+        location_id: locationId,
+        department_id: departmentId,
+        shift_id: shiftId || null,
+        area_id: areaId,
+        due_at: task.due_at,
+        status: 'pending',
+        created_from_v2: 'oneoff',
+        routine_id: null // one-off tasks don't have a routine
+      });
+  }
+
+  console.log("Organization setup complete!");
 }
