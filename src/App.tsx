@@ -9,7 +9,6 @@ import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import TaskRoutines from "./pages/TaskRoutines";
-import Schedules from "./pages/Schedules";
 import Shifts from "./pages/Shifts";
 import TaskInstances from "./pages/TaskInstances";
 import Locations from "./pages/Locations";
@@ -35,7 +34,6 @@ const App = () => (
           <Route path="/kiosk" element={<Kiosk />} />
           <Route path="/task-routines" element={<AppLayout><TaskRoutines /></AppLayout>} />
           <Route path="/shifts" element={<AppLayout><Shifts /></AppLayout>} />
-          <Route path="/schedules" element={<AppLayout><Schedules /></AppLayout>} />
           <Route path="/task-instances" element={<AppLayout><TaskInstances /></AppLayout>} />
           <Route path="/locations" element={<AppLayout><Locations /></AppLayout>} />
           <Route path="/users" element={<AppLayout><Users /></AppLayout>} />
