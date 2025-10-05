@@ -46,7 +46,7 @@ export default function Reports() {
         .from('task_instances')
         .select(`
           *,
-          task_templates(title, criticality),
+          task_routines(title, criticality),
           locations(name),
           completions(created_at, user_id)
         `)
@@ -64,7 +64,7 @@ export default function Reports() {
         
         if (groupBy === 'template') {
           key = task.template_id;
-          name = task.task_templates?.title || 'Unknown';
+          name = task.task_routines?.title || 'Unknown';
         } else if (groupBy === 'location') {
           key = task.location_id;
           name = task.locations?.name || 'Unknown';
@@ -106,7 +106,7 @@ export default function Reports() {
           
           if (groupBy === 'template') {
             key = task.template_id;
-            name = task.task_templates?.title || 'Unknown';
+            name = task.task_routines?.title || 'Unknown';
           } else if (groupBy === 'location') {
             key = task.location_id;
             name = task.locations?.name || 'Unknown';

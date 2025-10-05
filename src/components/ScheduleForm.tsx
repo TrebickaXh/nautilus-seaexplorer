@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 const formSchema = z.object({
-  template_id: z.string().min(1, 'Template is required'),
+  routine_id: z.string().min(1, 'Routine is required'),
   type: z.enum(['window', 'cron', 'oneoff']),
   department_id: z.string().optional(),
   shift_id: z.string().optional(),
@@ -73,7 +73,7 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
 
   const loadTemplates = async () => {
     const { data } = await supabase
-      .from('task_templates')
+      .from('task_routines')
       .select('id, title, department_id, departments(name)')
       .is('archived_at', null)
       .order('title');
@@ -147,7 +147,7 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
     setLoading(true);
     try {
       const payload: any = {
-        template_id: values.template_id,
+        routine_id: values.routine_id,
         type: values.type,
         department_id: values.department_id || null,
         shift_id: values.shift_id || null,
@@ -206,10 +206,10 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
           <>
             <FormField
               control={form.control}
-              name="template_id"
+              name="routine_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Task Template</FormLabel>
+                  <FormLabel>Task Routine</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>

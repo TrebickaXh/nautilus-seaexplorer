@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 const formSchema = z.object({
-  template_id: z.string().min(1, 'Template is required'),
+  routine_id: z.string().min(1, 'Routine is required'),
   location_id: z.string().min(1, 'Location is required'),
   department_id: z.string().min(1, 'Department is required'),
   due_date: z.string().min(1, 'Due date is required'),
@@ -72,7 +72,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
 
   const loadTemplates = async () => {
     const { data } = await supabase
-      .from('task_templates')
+      .from('task_routines')
       .select('*')
       .is('archived_at', null)
       .order('title');
@@ -144,7 +144,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
       const shiftId = determineShift(values.due_time);
       
       const payload: any = {
-        template_id: values.template_id,
+        routine_id: values.routine_id,
         location_id: values.location_id,
         department_id: values.department_id,
         due_at: dueAt,
@@ -187,10 +187,10 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
-              name="template_id"
+              name="routine_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Task Template</FormLabel>
+                  <FormLabel>Task Routine</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>

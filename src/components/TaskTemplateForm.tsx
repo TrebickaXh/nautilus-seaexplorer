@@ -143,20 +143,20 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
 
       if (template?.id) {
         const { error } = await supabase
-          .from('task_templates')
+          .from('task_routines')
           .update(payload)
           .eq('id', template.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('task_templates')
+          .from('task_routines')
           .insert(payload);
         if (error) throw error;
       }
 
       toast({
         title: 'Success',
-        description: `Template ${template ? 'updated' : 'created'} successfully`,
+        description: `Routine ${template ? 'updated' : 'created'} successfully`,
       });
       onSuccess();
     } catch (error: any) {

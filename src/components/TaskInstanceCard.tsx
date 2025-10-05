@@ -32,7 +32,7 @@ export function TaskInstanceCard({ task, onViewDetails, onSkip, onComplete, onDe
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-lg">{task.task_templates?.title || 'Untitled Task'}</CardTitle>
+            <CardTitle className="text-lg">{task.task_routines?.title || 'Untitled Task'}</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               {task.locations?.name} {task.areas?.name && `• ${task.areas.name}`}
             </p>

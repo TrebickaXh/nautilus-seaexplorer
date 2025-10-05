@@ -55,7 +55,7 @@ export default function TaskTemplates() {
       if (!profile?.org_id) throw new Error('No organization found');
 
       const { data, error } = await supabase
-        .from('task_templates')
+        .from('task_routines')
         .select('*')
         .eq('org_id', profile.org_id)
         .is('archived_at', null)
@@ -79,7 +79,7 @@ export default function TaskTemplates() {
 
     try {
       const { error } = await supabase
-        .from('task_templates')
+        .from('task_routines')
         .update({ archived_at: new Date().toISOString() })
         .eq('id', id);
 
@@ -146,12 +146,12 @@ export default function TaskTemplates() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Task Templates</CardTitle>
-                <CardDescription>Manage reusable task templates</CardDescription>
+                <CardTitle>Task Routines</CardTitle>
+                <CardDescription>Manage reusable task routines</CardDescription>
               </div>
               <Button onClick={handleCreate}>
                 <Plus className="mr-2 h-4 w-4" />
-                Create Template
+                Create Routine
               </Button>
             </div>
           </CardHeader>
@@ -204,7 +204,7 @@ export default function TaskTemplates() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingTemplate ? 'Edit Template' : 'Create Template'}
+              {editingTemplate ? 'Edit Routine' : 'Create Routine'}
             </DialogTitle>
           </DialogHeader>
           <TaskTemplateForm

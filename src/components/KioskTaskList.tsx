@@ -82,7 +82,7 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
         .from('task_instances')
         .select(`
           *,
-          task_templates (
+          task_routines (
             id,
             title,
             description,
@@ -262,7 +262,7 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h3 className="text-xl font-bold mb-1">
-                            {task.task_templates?.title || 'Untitled Task'}
+                            {task.task_routines?.title || 'Untitled Task'}
                           </h3>
                           <p className="text-sm text-muted-foreground">
                             {task.locations?.name}
@@ -285,9 +285,9 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
                         </div>
                       </div>
 
-                      {task.task_templates?.description && (
+                      {task.task_routines?.description && (
                         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                          {task.task_templates.description}
+                          {task.task_routines.description}
                         </p>
                       )}
                     </div>
@@ -299,7 +299,7 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
                           Due {timeUntilDue}
                         </span>
                         <span>
-                          ~{task.task_templates?.est_minutes || 15} min
+                          ~{task.task_routines?.est_minutes || 15} min
                         </span>
                       </div>
                       
@@ -354,7 +354,7 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                               <h4 className="font-medium">
-                                {task.task_templates?.title || 'Untitled Task'}
+                                {task.task_routines?.title || 'Untitled Task'}
                               </h4>
                               {task.shifts?.name && (
                                 <p className="text-xs text-muted-foreground mt-1">
@@ -406,7 +406,7 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
       {/* Complete Task Dialog */}
       <CompleteTaskDialog
         taskId={completeTask?.id}
-        taskTemplate={completeTask?.task_templates}
+        taskTemplate={completeTask?.task_routines}
         open={completeDialogOpen}
         onClose={() => {
           setCompleteDialogOpen(false);
