@@ -58,15 +58,13 @@ export function SetPinDialog({ open, onClose, onSuccess, userId, userName }: Set
   const onSubmit = async (data: PinFormData) => {
     setLoading(true);
     try {
-      // Hash the PIN using bcrypt
-      const bcrypt = await import('bcryptjs');
-      const pinHash = await bcrypt.hash(data.pin, 10);
-
-      // Update the profile with the hashed PIN
-      const { error } = await supabase
-        .from('profiles')
-        .update({ pin_hash: pinHash })
-        .eq('id', userId);
+      // Call the secure backend function to set PIN
+      const { error } = await supabase.functions.invoke('set-pin', {
+        body: {
+          userId,
+          pin: data.pin,
+        },
+      });
 
       if (error) throw error;
 

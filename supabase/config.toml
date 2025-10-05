@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.update-urgency]
 verify_jwt = false
+
+[functions.set-pin]
+verify_jwt = true
+
+[functions.verify-pin]
+verify_jwt = false

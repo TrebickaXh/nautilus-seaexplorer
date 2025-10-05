@@ -215,10 +215,10 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
     }
   }
 
-  // Create task templates
+  // Create task routines (templates)
   for (const template of config.taskTemplates || []) {
     await supabase
-      .from("task_templates")
+      .from("task_routines")
       .insert({
         org_id: org.id,
         title: template.title,

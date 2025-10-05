@@ -291,7 +291,9 @@ export type Database = {
           notification_preferences: Json | null
           org_id: string
           phone: string | null
+          pin_attempts: number | null
           pin_hash: string | null
+          pin_locked_until: string | null
           profile_photo_url: string | null
           shift_type: string | null
           timezone: string | null
@@ -312,7 +314,9 @@ export type Database = {
           notification_preferences?: Json | null
           org_id: string
           phone?: string | null
+          pin_attempts?: number | null
           pin_hash?: string | null
+          pin_locked_until?: string | null
           profile_photo_url?: string | null
           shift_type?: string | null
           timezone?: string | null
@@ -333,7 +337,9 @@ export type Database = {
           notification_preferences?: Json | null
           org_id?: string
           phone?: string | null
+          pin_attempts?: number | null
           pin_hash?: string | null
+          pin_locked_until?: string | null
           profile_photo_url?: string | null
           shift_type?: string | null
           timezone?: string | null
@@ -918,6 +924,10 @@ export type Database = {
         }
         Returns: number
       }
+      check_password_strength: {
+        Args: { password: string }
+        Returns: boolean
+      }
       get_user_org_id: {
         Args: { _user_id: string }
         Returns: string
@@ -940,6 +950,10 @@ export type Database = {
       update_user_last_login: {
         Args: { user_id: string }
         Returns: undefined
+      }
+      validate_pin_format: {
+        Args: { pin_text: string }
+        Returns: boolean
       }
     }
     Enums: {
