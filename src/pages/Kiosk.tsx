@@ -6,9 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Wifi, WifiOff, ArrowLeft, CheckCircle2, Clock } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Wifi, WifiOff, ArrowLeft, CheckCircle2, Clock, CalendarIcon, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface Shift {
   id: string;
@@ -27,8 +31,19 @@ interface TaskInstance {
   due_at: string;
   urgency_score: number;
   denormalized_data: any;
-  areas?: { name: string };
+  areas?: { name: string; id: string };
+  departments?: { name: string; id: string };
   task_routines?: { title: string; description: string };
+}
+
+interface Department {
+  id: string;
+  name: string;
+}
+
+interface Area {
+  id: string;
+  name: string;
 }
 
 interface TeamMember {
@@ -41,6 +56,13 @@ export default function Kiosk() {
   const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [currentShift, setCurrentShift] = useState<Shift | null>(null);
+  const [allShifts, setAllShifts] = useState<Shift[]>([]);
+  const [selectedShiftId, setSelectedShiftId] = useState<string>('current');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('all');
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [selectedAreaId, setSelectedAreaId] = useState<string>('all');
   const [tasks, setTasks] = useState<TaskInstance[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<TaskInstance | null>(null);
@@ -63,14 +85,20 @@ export default function Kiosk() {
 
   useEffect(() => {
     loadCurrentShift();
+    loadAllShifts();
+    loadDepartments();
+    loadAreas();
   }, []);
 
   useEffect(() => {
     if (currentShift) {
-      loadTasks();
       loadTeamMembers();
     }
   }, [currentShift]);
+
+  useEffect(() => {
+    loadTasks();
+  }, [selectedShiftId, selectedDate, selectedDepartmentId, selectedAreaId]);
 
   const loadCurrentShift = async () => {
     setLoading(true);
@@ -101,22 +129,92 @@ export default function Kiosk() {
     }
   };
 
-  const loadTasks = async () => {
-    if (!currentShift) return;
-
+  const loadAllShifts = async () => {
     try {
       const { data, error } = await supabase
+        .from('shifts')
+        .select('*, departments(name), locations(name)')
+        .is('archived_at', null)
+        .order('name');
+
+      if (error) throw error;
+      setAllShifts(data || []);
+    } catch (error: any) {
+      console.error('Failed to load shifts:', error);
+    }
+  };
+
+  const loadDepartments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name')
+        .is('archived_at', null)
+        .order('name');
+
+      if (error) throw error;
+      setDepartments(data || []);
+    } catch (error: any) {
+      console.error('Failed to load departments:', error);
+    }
+  };
+
+  const loadAreas = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('areas')
+        .select('id, name')
+        .is('archived_at', null)
+        .order('name');
+
+      if (error) throw error;
+      setAreas(data || []);
+    } catch (error: any) {
+      console.error('Failed to load areas:', error);
+    }
+  };
+
+  const loadTasks = async () => {
+    try {
+      // Determine which shift to filter by
+      const shiftId = selectedShiftId === 'current' ? currentShift?.id : selectedShiftId;
+      
+      // Build date range for selected date
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      let query = supabase
         .from('task_instances')
         .select(`
           *,
-          areas(name),
+          areas(id, name),
+          departments(id, name),
           task_routines(title, description)
         `)
-        .eq('shift_id', currentShift.id)
         .eq('status', 'pending')
-        .gte('due_at', new Date().toISOString())
-        .lte('due_at', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())
-        .order('urgency_score', { ascending: false });
+        .gte('due_at', startOfDay.toISOString())
+        .lte('due_at', endOfDay.toISOString());
+
+      // Apply shift filter
+      if (shiftId && shiftId !== 'all') {
+        query = query.eq('shift_id', shiftId);
+      }
+
+      // Apply department filter
+      if (selectedDepartmentId !== 'all') {
+        query = query.eq('department_id', selectedDepartmentId);
+      }
+
+      // Apply area filter
+      if (selectedAreaId !== 'all') {
+        query = query.eq('area_id', selectedAreaId);
+      }
+
+      query = query.order('urgency_score', { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setTasks(data || []);
@@ -244,30 +342,108 @@ export default function Kiosk() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Task Kiosk</h1>
-            <p className="text-sm text-muted-foreground">
-              {currentShift.name} • {currentShift.departments?.name}
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              {isOnline ? (
-                <Wifi className="h-5 w-5 text-green-500" />
-              ) : (
-                <WifiOff className="h-5 w-5 text-destructive" />
-              )}
-              <span className="text-sm text-muted-foreground">
-                {isOnline ? 'Online' : 'Offline'}
-              </span>
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-xl font-bold">Task Kiosk</h1>
+              <p className="text-sm text-muted-foreground">
+                {currentShift ? `${currentShift.name} • ${currentShift.departments?.name}` : 'No active shift'}
+              </p>
             </div>
             
-            <Button variant="outline" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                {isOnline ? (
+                  <Wifi className="h-5 w-5 text-green-500" />
+                ) : (
+                  <WifiOff className="h-5 w-5 text-destructive" />
+                )}
+                <span className="text-sm text-muted-foreground">
+                  {isOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              
+              <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            </div>
+          </div>
+
+          {/* Filter Controls */}
+          <div className="flex flex-wrap items-center gap-3">
+            <Filter className="h-5 w-5 text-muted-foreground" />
+            
+            {/* Date Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[200px] justify-start text-left font-normal",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 z-50 bg-background" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* Shift Filter */}
+            <Select value={selectedShiftId} onValueChange={setSelectedShiftId}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select shift" />
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-background">
+                <SelectItem value="current">Current Shift</SelectItem>
+                <SelectItem value="all">All Shifts</SelectItem>
+                {allShifts.map((shift) => (
+                  <SelectItem key={shift.id} value={shift.id}>
+                    {shift.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Department Filter */}
+            <Select value={selectedDepartmentId} onValueChange={setSelectedDepartmentId}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select department" />
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-background">
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Area Filter */}
+            <Select value={selectedAreaId} onValueChange={setSelectedAreaId}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select area" />
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-background">
+                <SelectItem value="all">All Areas</SelectItem>
+                {areas.map((area) => (
+                  <SelectItem key={area.id} value={area.id}>
+                    {area.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </header>
