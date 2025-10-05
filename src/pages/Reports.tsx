@@ -1,251 +1,81 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Download, TrendingUp, Clock, AlertCircle, Calendar } from "lucide-react";
-import { format, subDays } from "date-fns";
-import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { useReportData, useShifts, useDepartments } from "@/hooks/useReportData";
+import {
+  calculateOnTimeMetrics,
+  calculateMtcMetrics,
+  calculateCoverageMetrics,
+  exportMetricsToCSV,
+  type GroupByType,
+} from "@/lib/reportUtils";
 
 export default function Reports() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7');
-  const [groupBy, setGroupBy] = useState<'template' | 'location' | 'role' | 'department' | 'shift'>('template');
+  const [groupBy, setGroupBy] = useState<GroupByType>('template');
   const [selectedShiftId, setSelectedShiftId] = useState<string>('all');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('all');
-  
-  const [onTimeData, setOnTimeData] = useState<any[]>([]);
-  const [mtcData, setMtcData] = useState<any[]>([]);
-  const [coverageData, setCoverageData] = useState<any[]>([]);
 
-  // Fetch shifts for filter
-  const { data: shifts = [] } = useQuery({
-    queryKey: ['shifts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('shifts')
-        .select('id, name, location_id, locations(name)')
-        .order('name');
-      if (error) throw error;
-      return data;
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+  // Fetch data with caching
+  const { data: tasks = [], isLoading, error } = useReportData({
+    dateRange,
+    shiftId: selectedShiftId,
+    departmentId: selectedDepartmentId,
   });
 
-  // Fetch departments for filter
-  const { data: departments = [] } = useQuery({
-    queryKey: ['departments'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('departments')
-        .select('id, name, location_id, locations(name)')
-        .order('name');
-      if (error) throw error;
-      return data;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  const { data: shifts = [] } = useShifts();
+  const { data: departments = [] } = useDepartments();
 
-  useEffect(() => {
+  // Calculate metrics - memoized to avoid recalculation on every render
+  const onTimeData = useMemo(
+    () => calculateOnTimeMetrics(tasks, groupBy),
+    [tasks, groupBy]
+  );
+
+  const mtcData = useMemo(
+    () => calculateMtcMetrics(tasks, groupBy),
+    [tasks, groupBy]
+  );
+
+  const coverageData = useMemo(
+    () => calculateCoverageMetrics(tasks),
+    [tasks]
+  );
+
+  // Check authentication
+  useMemo(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/auth");
+      }
+    };
     checkAuth();
-  }, []);
+  }, [navigate]);
 
-  useEffect(() => {
-    loadReportData();
-  }, [dateRange, groupBy, selectedShiftId, selectedDepartmentId]);
-
-  const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-  };
-
-  const loadReportData = async () => {
-    try {
-      setLoading(true);
-      const startDate = subDays(new Date(), parseInt(dateRange));
-
-      // Build query with filters
-      let query = supabase
-        .from('task_instances')
-        .select(`
-          *,
-          task_routines!routine_id(title, criticality),
-          locations(name),
-          departments(name),
-          shifts(name),
-          completions(created_at, user_id)
-        `)
-        .gte('due_at', startDate.toISOString())
-        .in('status', ['done', 'skipped']);
-
-      // Apply shift filter
-      if (selectedShiftId !== 'all') {
-        query = query.eq('shift_id', selectedShiftId);
-      }
-
-      // Apply department filter
-      if (selectedDepartmentId !== 'all') {
-        query = query.eq('department_id', selectedDepartmentId);
-      }
-
-      const { data: tasks, error } = await query;
-
-      if (error) throw error;
-
-      // Calculate on-time rate by grouping
-      const groupedOnTime = new Map<string, { total: number; onTime: number; name: string }>();
-      
-      tasks?.forEach(task => {
-        let key = '';
-        let name = '';
-        
-        if (groupBy === 'template') {
-          key = task.routine_id;
-          name = task.task_routines?.title || 'Unknown';
-        } else if (groupBy === 'location') {
-          key = task.location_id;
-          name = task.locations?.name || 'Unknown';
-        } else if (groupBy === 'department') {
-          key = task.department_id || 'none';
-          name = task.departments?.name || 'No Department';
-        } else if (groupBy === 'shift') {
-          key = task.shift_id || 'none';
-          name = task.shifts?.name || 'No Shift';
-        } else {
-          key = task.assigned_role || 'unassigned';
-          name = task.assigned_role || 'Unassigned';
-        }
-
-        if (!groupedOnTime.has(key)) {
-          groupedOnTime.set(key, { total: 0, onTime: 0, name });
-        }
-
-        const group = groupedOnTime.get(key)!;
-        group.total++;
-
-        if (task.status === 'done' && task.completed_at && new Date(task.completed_at) <= new Date(task.due_at)) {
-          group.onTime++;
-        }
-      });
-
-      const onTimeChartData = Array.from(groupedOnTime.entries())
-        .map(([key, data]) => ({
-          name: data.name,
-          rate: data.total > 0 ? Math.round((data.onTime / data.total) * 100) : 0,
-          total: data.total,
-          onTime: data.onTime
-        }))
-        .sort((a, b) => b.rate - a.rate);
-
-      setOnTimeData(onTimeChartData);
-
-      // Calculate Mean Time to Complete
-      const mtcMap = new Map<string, { times: number[]; name: string }>();
-      
-      tasks?.forEach(task => {
-        if (task.status === 'done' && task.completed_at && task.completions?.[0]?.created_at) {
-          let key = '';
-          let name = '';
-          
-          if (groupBy === 'template') {
-            key = task.routine_id;
-            name = task.task_routines?.title || 'Unknown';
-          } else if (groupBy === 'location') {
-            key = task.location_id;
-            name = task.locations?.name || 'Unknown';
-          } else if (groupBy === 'department') {
-            key = task.department_id || 'none';
-            name = task.departments?.name || 'No Department';
-          } else if (groupBy === 'shift') {
-            key = task.shift_id || 'none';
-            name = task.shifts?.name || 'No Shift';
-          } else {
-            key = task.assigned_role || 'unassigned';
-            name = task.assigned_role || 'Unassigned';
-          }
-
-          if (!mtcMap.has(key)) {
-            mtcMap.set(key, { times: [], name });
-          }
-
-          const dueTime = new Date(task.due_at).getTime();
-          const completeTime = new Date(task.completions[0].created_at).getTime();
-          const minutes = (completeTime - dueTime) / (1000 * 60);
-          
-          mtcMap.get(key)!.times.push(minutes);
-        }
-      });
-
-      const mtcChartData = Array.from(mtcMap.entries())
-        .map(([key, data]) => ({
-          name: data.name,
-          avgMinutes: data.times.length > 0 
-            ? Math.round(data.times.reduce((a, b) => a + b, 0) / data.times.length)
-            : 0,
-          count: data.times.length
-        }))
-        .filter(item => item.count > 0)
-        .sort((a, b) => a.avgMinutes - b.avgMinutes);
-
-      setMtcData(mtcChartData);
-
-      // Calculate coverage by hour
-      const hourCoverage = Array.from({ length: 24 }, (_, i) => ({
-        hour: i,
-        count: 0
-      }));
-
-      tasks?.forEach(task => {
-        if (task.completed_at) {
-          const hour = new Date(task.completed_at).getHours();
-          hourCoverage[hour].count++;
-        }
-      });
-
-      setCoverageData(hourCoverage);
-
-    } catch (error: any) {
-      console.error('Error loading report data:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to load report data",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Handle errors
+  if (error) {
+    toast({
+      title: "Error",
+      description: error instanceof Error ? error.message : "Failed to load report data",
+      variant: "destructive",
+    });
+  }
 
   const exportToCSV = () => {
-    const csvData = onTimeData.map(item => ({
-      Name: item.name,
-      'On-Time Rate': `${item.rate}%`,
-      'Total Tasks': item.total,
-      'On-Time Tasks': item.onTime
-    }));
-
-    const headers = Object.keys(csvData[0]);
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => headers.map(h => row[h as keyof typeof row]).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `on-time-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-
+    exportMetricsToCSV(
+      onTimeData,
+      `on-time-report-${format(new Date(), 'yyyy-MM-dd')}.csv`
+    );
     toast({
       title: "Export Complete",
       description: "Report downloaded as CSV",
@@ -258,7 +88,7 @@ export default function Reports() {
     return 'hsl(var(--destructive))';
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading reports...</div>;
   }
 
@@ -270,7 +100,7 @@ export default function Reports() {
             <h1 className="text-3xl font-bold">Reports & Analytics</h1>
             <p className="text-muted-foreground">Task completion metrics and insights</p>
           </div>
-          <Button onClick={exportToCSV} variant="outline">
+          <Button onClick={exportToCSV} variant="outline" disabled={onTimeData.length === 0}>
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
@@ -333,7 +163,7 @@ export default function Reports() {
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Group By</label>
-                <Select value={groupBy} onValueChange={(v) => setGroupBy(v as any)}>
+                <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupByType)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
