@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Send, Sparkles, CheckCircle2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_MESSAGES_PER_MINUTE = 10;
@@ -121,7 +122,8 @@ export default function Onboarding() {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!input.trim() || !sessionId) return;
 
     // Validate message length
@@ -228,7 +230,9 @@ export default function Onboarding() {
                       : "bg-muted"
                   }`}
                 >
-                  <p className="text-sm leading-relaxed">{message.content}</p>
+                  <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-strong:font-semibold">
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                  </div>
                 </div>
               </div>
             ))}
@@ -251,16 +255,23 @@ export default function Onboarding() {
                 e.preventDefault();
                 handleSend();
               }}
-              className="flex gap-2"
+              className="flex gap-2 items-end"
             >
-              <Input
+              <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your answer..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder="Type your answer... (Shift+Enter for new line)"
                 disabled={loading}
-                className="flex-1"
+                className="flex-1 min-h-[60px] max-h-[200px] resize-none"
+                rows={2}
               />
-              <Button type="submit" disabled={loading || !input.trim()}>
+              <Button type="submit" disabled={loading || !input.trim()} className="h-[60px]">
                 <Send className="w-4 h-4" />
               </Button>
             </form>
