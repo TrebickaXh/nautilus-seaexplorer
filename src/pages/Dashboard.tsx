@@ -99,7 +99,7 @@ export default function Dashboard() {
         .select(`
           *,
           task_instances(*, task_routines!routine_id(title), locations(name)),
-          profiles(display_name)
+          profiles!user_id(display_name)
         `)
         .order('created_at', { ascending: false })
         .limit(10);
