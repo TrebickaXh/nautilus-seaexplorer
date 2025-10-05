@@ -93,10 +93,12 @@ export type Database = {
           created_at: string
           defer_settings: Json | null
           id: string
+          new_due_at: string | null
           note: string | null
           outcome: Database["public"]["Enums"]["task_outcome"] | null
           outcome_reason: string | null
           photo_url: string | null
+          reassigned_shift_id: string | null
           task_instance_id: string
           user_id: string
         }
@@ -105,10 +107,12 @@ export type Database = {
           created_at?: string
           defer_settings?: Json | null
           id?: string
+          new_due_at?: string | null
           note?: string | null
           outcome?: Database["public"]["Enums"]["task_outcome"] | null
           outcome_reason?: string | null
           photo_url?: string | null
+          reassigned_shift_id?: string | null
           task_instance_id: string
           user_id: string
         }
@@ -117,10 +121,12 @@ export type Database = {
           created_at?: string
           defer_settings?: Json | null
           id?: string
+          new_due_at?: string | null
           note?: string | null
           outcome?: Database["public"]["Enums"]["task_outcome"] | null
           outcome_reason?: string | null
           photo_url?: string | null
+          reassigned_shift_id?: string | null
           task_instance_id?: string
           user_id?: string
         }
@@ -130,6 +136,13 @@ export type Database = {
             columns: ["cosigner_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completions_reassigned_shift_id_fkey"
+            columns: ["reassigned_shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
           {
@@ -428,57 +441,81 @@ export type Database = {
       shift_reports: {
         Row: {
           by_area: Json | null
+          by_area_v2: Json | null
           by_user: Json | null
+          by_user_v2: Json | null
           completed_tasks: number | null
           created_at: string
           deferred_tasks: number | null
           department_id: string
+          generated_at: string | null
           id: string
           kpis: Json | null
+          kpis_v2: Json | null
           location_id: string
           overdue_tasks: number | null
           report_date: string
+          service_date_v2: string | null
           shift_end: string
           shift_id: string
           shift_start: string
           skipped_tasks: number | null
           total_tasks: number | null
+          totals_v2: Json | null
+          window_end_v2: string | null
+          window_start_v2: string | null
         }
         Insert: {
           by_area?: Json | null
+          by_area_v2?: Json | null
           by_user?: Json | null
+          by_user_v2?: Json | null
           completed_tasks?: number | null
           created_at?: string
           deferred_tasks?: number | null
           department_id: string
+          generated_at?: string | null
           id?: string
           kpis?: Json | null
+          kpis_v2?: Json | null
           location_id: string
           overdue_tasks?: number | null
           report_date: string
+          service_date_v2?: string | null
           shift_end: string
           shift_id: string
           shift_start: string
           skipped_tasks?: number | null
           total_tasks?: number | null
+          totals_v2?: Json | null
+          window_end_v2?: string | null
+          window_start_v2?: string | null
         }
         Update: {
           by_area?: Json | null
+          by_area_v2?: Json | null
           by_user?: Json | null
+          by_user_v2?: Json | null
           completed_tasks?: number | null
           created_at?: string
           deferred_tasks?: number | null
           department_id?: string
+          generated_at?: string | null
           id?: string
           kpis?: Json | null
+          kpis_v2?: Json | null
           location_id?: string
           overdue_tasks?: number | null
           report_date?: string
+          service_date_v2?: string | null
           shift_end?: string
           shift_id?: string
           shift_start?: string
           skipped_tasks?: number | null
           total_tasks?: number | null
+          totals_v2?: Json | null
+          window_end_v2?: string | null
+          window_start_v2?: string | null
         }
         Relationships: [
           {
@@ -629,6 +666,7 @@ export type Database = {
           created_from:
             | Database["public"]["Enums"]["task_creation_source"]
             | null
+          created_from_v2: string | null
           denormalized_data: Json | null
           department_id: string | null
           due_at: string
@@ -649,6 +687,7 @@ export type Database = {
           created_from?:
             | Database["public"]["Enums"]["task_creation_source"]
             | null
+          created_from_v2?: string | null
           denormalized_data?: Json | null
           department_id?: string | null
           due_at: string
@@ -669,6 +708,7 @@ export type Database = {
           created_from?:
             | Database["public"]["Enums"]["task_creation_source"]
             | null
+          created_from_v2?: string | null
           denormalized_data?: Json | null
           department_id?: string | null
           due_at?: string
@@ -730,9 +770,11 @@ export type Database = {
           description: string | null
           est_minutes: number
           id: string
+          is_deprecated: boolean | null
           location_id: string | null
           org_id: string
           recurrence: Json | null
+          recurrence_v2: Json | null
           required_proof: Database["public"]["Enums"]["proof_type"]
           shift_id: string | null
           steps: Json | null
@@ -748,9 +790,11 @@ export type Database = {
           description?: string | null
           est_minutes?: number
           id?: string
+          is_deprecated?: boolean | null
           location_id?: string | null
           org_id: string
           recurrence?: Json | null
+          recurrence_v2?: Json | null
           required_proof?: Database["public"]["Enums"]["proof_type"]
           shift_id?: string | null
           steps?: Json | null
@@ -766,9 +810,11 @@ export type Database = {
           description?: string | null
           est_minutes?: number
           id?: string
+          is_deprecated?: boolean | null
           location_id?: string | null
           org_id?: string
           recurrence?: Json | null
+          recurrence_v2?: Json | null
           required_proof?: Database["public"]["Enums"]["proof_type"]
           shift_id?: string | null
           steps?: Json | null

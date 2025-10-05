@@ -6,7 +6,13 @@ verify_jwt = true
 [functions.materialize-tasks]
 verify_jwt = false
 
+[functions.materialize-tasks-v2]
+verify_jwt = false
+
 [functions.update-urgency]
+verify_jwt = false
+
+[functions.defer-tasks]
 verify_jwt = false
 
 [functions.set-pin]
