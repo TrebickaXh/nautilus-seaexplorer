@@ -338,7 +338,7 @@ export default function Reports() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="template">Task Template</SelectItem>
+                    <SelectItem value="template">Routines</SelectItem>
                     <SelectItem value="department">Department</SelectItem>
                     <SelectItem value="shift">Shift</SelectItem>
                     <SelectItem value="location">Location</SelectItem>
