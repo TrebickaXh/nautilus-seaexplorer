@@ -111,10 +111,26 @@ export default function TaskRoutines() {
     setDialogOpen(true);
   };
 
-  const handleFormSuccess = () => {
+  const handleFormSuccess = async () => {
     setDialogOpen(false);
     setEditingRoutine(null);
     fetchRoutines();
+    
+    // Automatically trigger task generation
+    try {
+      await triggerTaskMaterialization();
+      toast({
+        title: 'Success',
+        description: 'Routine saved and tasks generated',
+      });
+    } catch (error: any) {
+      console.error('Failed to generate tasks:', error);
+      toast({
+        title: 'Warning',
+        description: 'Routine saved but tasks will be generated in the next scheduled run',
+        variant: 'default',
+      });
+    }
   };
 
   const handleMaterialize = async () => {
