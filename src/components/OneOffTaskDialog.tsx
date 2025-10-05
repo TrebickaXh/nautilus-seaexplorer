@@ -15,6 +15,8 @@ const formSchema = z.object({
   routine_id: z.string().min(1, 'Routine is required'),
   location_id: z.string().min(1, 'Location is required'),
   department_id: z.string().min(1, 'Department is required'),
+  shift_id: z.string().min(1, 'Shift is required'),
+  area_id: z.string().min(1, 'Area is required'),
   due_date: z.string().min(1, 'Due date is required'),
   due_time: z.string().min(1, 'Due time is required'),
   assigned_role: z.enum(['crew', 'location_manager', 'org_admin']).optional(),
@@ -33,6 +35,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
   const [locations, setLocations] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
+  const [areas, setAreas] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const form = useForm<FormValues>({
@@ -45,6 +48,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
 
   const selectedLocationId = form.watch('location_id');
   const selectedDepartmentId = form.watch('department_id');
+  const selectedShiftId = form.watch('shift_id');
 
   useEffect(() => {
     if (open) {
@@ -56,9 +60,12 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
   useEffect(() => {
     if (selectedLocationId) {
       loadDepartments(selectedLocationId);
+      loadAreas(selectedLocationId);
     } else {
       setDepartments([]);
+      setAreas([]);
       form.setValue('department_id', '');
+      form.setValue('area_id', '');
     }
   }, [selectedLocationId]);
 
@@ -67,6 +74,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
       loadShifts(selectedLocationId, selectedDepartmentId);
     } else {
       setShifts([]);
+      form.setValue('shift_id', '');
     }
   }, [selectedLocationId, selectedDepartmentId]);
 
@@ -103,36 +111,20 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
       .from('shifts')
       .select('id, name, start_time, end_time, days_of_week')
       .eq('location_id', locationId)
-      .eq('department_id', departmentId)
+      .or(`department_id.eq.${departmentId},department_id.is.null`)
       .is('archived_at', null)
       .order('start_time');
     if (data) setShifts(data);
   };
 
-  const determineShift = (dueTime: string): string | null => {
-    if (shifts.length === 0) return null;
-
-    // Find shift that contains the due time
-    const matchingShift = shifts.find(shift => {
-      return dueTime >= shift.start_time && dueTime <= shift.end_time;
-    });
-
-    if (matchingShift) {
-      return matchingShift.id;
-    }
-
-    // Find the most recent shift that ended before the due time
-    const priorShifts = shifts.filter(shift => shift.end_time < dueTime);
-    if (priorShifts.length > 0) {
-      // Return the shift with the latest end_time
-      const sortedPriorShifts = priorShifts.sort((a, b) => 
-        b.end_time.localeCompare(a.end_time)
-      );
-      return sortedPriorShifts[0].id;
-    }
-
-    // If no prior shift, return the last shift of the day
-    return shifts[shifts.length - 1].id;
+  const loadAreas = async (locationId: string) => {
+    const { data } = await supabase
+      .from('areas')
+      .select('id, name')
+      .eq('location_id', locationId)
+      .is('archived_at', null)
+      .order('name');
+    if (data) setAreas(data);
   };
 
   const onSubmit = async (values: FormValues) => {
@@ -140,21 +132,16 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
     try {
       const dueAt = `${values.due_date}T${values.due_time}:00`;
       
-      // Automatically determine the shift based on due time
-      const shiftId = determineShift(values.due_time);
-      
       const payload: any = {
         routine_id: values.routine_id,
         location_id: values.location_id,
         department_id: values.department_id,
+        shift_id: values.shift_id,
+        area_id: values.area_id,
         due_at: dueAt,
         status: 'pending',
-        created_from: 'manual',
+        created_from: 'oneoff',
       };
-
-      if (shiftId) {
-        payload.shift_id = shiftId;
-      }
 
       if (values.assigned_role) {
         payload.assigned_role = values.assigned_role;
@@ -237,7 +224,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
               name="department_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Department</FormLabel>
+                  <FormLabel>Department *</FormLabel>
                   <Select 
                     onValueChange={field.onChange} 
                     value={field.value}
@@ -251,6 +238,62 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
                     <SelectContent>
                       {departments.map(d => (
                         <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="shift_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Shift *</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value}
+                    disabled={!selectedDepartmentId}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={selectedDepartmentId ? "Select shift" : "Select department first"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {shifts.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} ({s.start_time} - {s.end_time})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="area_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Area *</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value}
+                    disabled={!selectedLocationId}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={selectedLocationId ? "Select area" : "Select location first"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {areas.map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

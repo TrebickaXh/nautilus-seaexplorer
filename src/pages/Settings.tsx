@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { ScheduleMigrationTool } from '@/components/ScheduleMigrationTool';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -114,7 +115,7 @@ export default function Settings() {
   ];
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-6 max-w-4xl space-y-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Settings</h1>
         <p className="text-muted-foreground">Manage your organization settings</p>
@@ -166,6 +167,8 @@ export default function Settings() {
           </Button>
         </CardContent>
       </Card>
+
+      <ScheduleMigrationTool />
     </div>
   );
 }
