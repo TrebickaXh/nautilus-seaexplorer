@@ -62,7 +62,8 @@ export default function TaskInstances() {
         departments(name),
         shifts(name),
         completions(id, created_at, note, profiles!user_id(display_name))
-      `);
+      `)
+      .limit(500); // Add limit to prevent loading too much data
 
     // Apply time range filter
     const now = new Date();
@@ -82,7 +83,7 @@ export default function TaskInstances() {
         query = query.gte('due_at', new Date().toISOString()).lte('due_at', addDays(new Date(), 30).toISOString());
         break;
       case 'all':
-        // No date filter
+        // No date filter, but still apply limit
         break;
     }
 

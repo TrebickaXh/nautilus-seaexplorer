@@ -80,29 +80,63 @@ export default function Dashboard() {
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      // Get tasks for last 7 days (for on-time rate)
-      const { data: recentTasks } = await supabase
-        .from('task_instances')
-        .select('*, task_routines!routine_id(title), locations(name)')
-        .gte('due_at', sevenDaysAgo.toISOString());
+      // Execute all queries in parallel for better performance
+      const [
+        recentTasksResult,
+        todayTasksResult,
+        completionsResult,
+        chronicDataResult,
+        skippedDataResult
+      ] = await Promise.all([
+        // Get tasks for last 7 days (for on-time rate)
+        supabase
+          .from('task_instances')
+          .select('*, task_routines!routine_id(title), locations(name)')
+          .gte('due_at', sevenDaysAgo.toISOString())
+          .limit(1000),
 
-      // Get today's tasks
-      const { data: todayTasks } = await supabase
-        .from('task_instances')
-        .select('status, completed_at, due_at')
-        .gte('due_at', today.toISOString())
-        .lt('due_at', tomorrow.toISOString());
+        // Get today's tasks
+        supabase
+          .from('task_instances')
+          .select('status, completed_at, due_at')
+          .gte('due_at', today.toISOString())
+          .lt('due_at', tomorrow.toISOString())
+          .limit(500),
 
-      // Recent completions with details
-      const { data: completionsData } = await supabase
-        .from('completions')
-        .select(`
-          *,
-          task_instances(*, task_routines!routine_id(title), locations(name)),
-          profiles!user_id(display_name)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        // Recent completions with details
+        supabase
+          .from('completions')
+          .select(`
+            *,
+            task_instances(*, task_routines!routine_id(title), locations(name)),
+            profiles!user_id(display_name)
+          `)
+          .order('created_at', { ascending: false })
+          .limit(10),
+
+        // Chronic overdue data
+        supabase
+          .from('task_instances')
+          .select('routine_id, task_routines!routine_id(title, criticality), status, completed_at, due_at')
+          .in('status', ['done', 'skipped'])
+          .gte('due_at', sevenDaysAgo.toISOString())
+          .limit(500),
+
+        // Exceptions: skipped tasks
+        supabase
+          .from('task_instances')
+          .select('*, task_routines!routine_id(title), locations(name), completions(note, created_at)')
+          .eq('status', 'skipped')
+          .gte('due_at', sevenDaysAgo.toISOString())
+          .order('completed_at', { ascending: false })
+          .limit(10)
+      ]);
+
+      const recentTasks = recentTasksResult.data;
+      const todayTasks = todayTasksResult.data;
+      const completionsData = completionsResult.data;
+      const chronicData = chronicDataResult.data;
+      const skippedData = skippedDataResult.data;
 
       setRecentCompletions(completionsData || []);
 
@@ -127,12 +161,6 @@ export default function Dashboard() {
       });
 
       // Chronic overdue: tasks that are frequently late
-      const { data: chronicData } = await supabase
-        .from('task_instances')
-        .select('routine_id, task_routines!routine_id(title, criticality), status, completed_at, due_at')
-        .in('status', ['done', 'skipped'])
-        .gte('due_at', sevenDaysAgo.toISOString());
-
       const templateOverdueMap = new Map<string, { title: string; criticality: number; late: number; total: number }>();
       chronicData?.forEach(task => {
         const routineId = task.routine_id;
@@ -167,16 +195,6 @@ export default function Dashboard() {
         .slice(0, 5);
 
       setChronicOverdue(chronicList);
-
-      // Exceptions: skipped tasks
-      const { data: skippedData } = await supabase
-        .from('task_instances')
-        .select('*, task_routines!routine_id(title), locations(name), completions(note, created_at)')
-        .eq('status', 'skipped')
-        .gte('due_at', sevenDaysAgo.toISOString())
-        .order('completed_at', { ascending: false })
-        .limit(10);
-
       setExceptions(skippedData || []);
 
       const channel = supabase

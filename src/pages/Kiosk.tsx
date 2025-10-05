@@ -84,10 +84,12 @@ export default function Kiosk() {
   }, []);
 
   useEffect(() => {
-    loadCurrentShift();
-    loadAllShifts();
-    loadDepartments();
-    loadAreas();
+    Promise.all([
+      loadCurrentShift(),
+      loadAllShifts(),
+      loadDepartments(),
+      loadAreas()
+    ]);
   }, []);
 
   useEffect(() => {
