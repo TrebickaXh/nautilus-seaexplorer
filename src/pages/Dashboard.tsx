@@ -355,7 +355,7 @@ export default function Dashboard() {
 
       toast({
         title: "Test Data Created",
-        description: `Created 1 location, ${createdTemplates?.length || 0} templates, and 2 schedules.`,
+        description: `Created 1 location, ${createdTemplates?.length || 0} routines, and 2 schedules.`,
       });
 
       // Now materialize tasks
@@ -484,9 +484,9 @@ export default function Dashboard() {
                 <CardDescription>Common tasks and shortcuts</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/task-templates")}>
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/task-routines")}>
                   <FileText className="w-4 h-4 mr-2" />
-                  Manage Templates
+                  Manage Routines
                 </Button>
                 <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/task-instances")}>
                   <ListTodo className="w-4 h-4 mr-2" />

@@ -278,7 +278,7 @@ export default function Onboarding() {
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-muted-foreground/50" />
-            <span>Task templates</span>
+            <span>Task routines</span>
           </div>
         </div>
       </div>
