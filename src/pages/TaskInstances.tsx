@@ -57,11 +57,11 @@ export default function TaskInstances() {
       .from('task_instances')
       .select(`
         *,
-        task_routines(id, title, description, est_minutes, criticality, required_proof, steps),
+        task_templates(id, title, description, est_minutes, criticality, required_proof, steps),
         locations(id, name),
         departments(name),
         shifts(name),
-        completions(id, created_at, note, profiles!completions_user_id_fkey(display_name))
+        completions(id, created_at, note, profiles(display_name))
       `);
 
     // Apply time range filter
@@ -223,7 +223,7 @@ export default function TaskInstances() {
 
         <SkipTaskDialog
           taskId={skipTask?.id}
-          taskTemplate={skipTask?.task_routines}
+          taskTemplate={skipTask?.task_templates}
           open={skipDialogOpen}
           onClose={() => {
             setSkipDialogOpen(false);
@@ -234,7 +234,7 @@ export default function TaskInstances() {
 
         <CompleteTaskDialog
           taskId={completeTask?.id}
-          taskTemplate={completeTask?.task_routines}
+          taskTemplate={completeTask?.task_templates}
           open={completeDialogOpen}
           onClose={() => {
             setCompleteDialogOpen(false);

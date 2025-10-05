@@ -37,14 +37,14 @@ export default function Schedules() {
         .from('schedules')
         .select(`
           *, 
-          task_routines(title),
+          task_templates(title),
           departments(name),
           shifts(name, start_time, end_time)
         `)
         .is('archived_at', null)
         .order('created_at', { ascending: false }),
       supabase
-        .from('task_routines')
+        .from('task_templates')
         .select('id, title')
         .is('archived_at', null),
     ]);
@@ -124,7 +124,7 @@ export default function Schedules() {
                 {schedules.map(schedule => (
                   <TableRow key={schedule.id}>
                     <TableCell className="font-medium">
-                      {schedule.task_routines?.title || 'Unknown'}
+                      {schedule.task_templates?.title || 'Unknown'}
                     </TableCell>
                     <TableCell>
                       {schedule.departments?.name || '-'}
