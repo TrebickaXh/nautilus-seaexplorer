@@ -22,7 +22,16 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messageTimestamps = useRef<number[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
 
   useEffect(() => {
     loadOrCreateSession();
@@ -226,11 +235,15 @@ export default function Onboarding() {
                 <div
                   className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                     message.role === "user"
-                      ? "gradient-ocean text-primary-foreground"
-                      : "bg-muted"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
                   }`}
                 >
-                  <div className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-p:my-2 prose-strong:font-semibold">
+                  <div className={`text-sm leading-relaxed prose prose-sm max-w-none prose-p:my-2 prose-strong:font-semibold ${
+                    message.role === "user" 
+                      ? "prose-invert prose-headings:text-primary-foreground prose-p:text-primary-foreground prose-strong:text-primary-foreground" 
+                      : "dark:prose-invert"
+                  }`}>
                     <ReactMarkdown>{message.content}</ReactMarkdown>
                   </div>
                 </div>
@@ -247,6 +260,7 @@ export default function Onboarding() {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
 
           <div className="p-4 border-t">
