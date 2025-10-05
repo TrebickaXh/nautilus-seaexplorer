@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Pencil, Trash2, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowLeft } from 'lucide-react';
 import { TaskRoutineForm } from '@/components/TaskRoutineForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +29,6 @@ export default function TaskRoutines() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<TaskRoutine | null>(null);
-  const [materializing, setMaterializing] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -133,25 +132,6 @@ export default function TaskRoutines() {
     }
   };
 
-  const handleMaterialize = async () => {
-    setMaterializing(true);
-    try {
-      await triggerTaskMaterialization();
-      toast({
-        title: 'Success',
-        description: 'Task instances created successfully',
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create task instances',
-        variant: 'destructive',
-      });
-    } finally {
-      setMaterializing(false);
-    }
-  };
-
   if (roleLoading || loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -186,20 +166,10 @@ export default function TaskRoutines() {
                 <CardTitle>Task Routines</CardTitle>
                 <CardDescription>Manage reusable task routines</CardDescription>
               </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={handleMaterialize}
-                  disabled={materializing}
-                >
-                  <RefreshCw className={`mr-2 h-4 w-4 ${materializing ? 'animate-spin' : ''}`} />
-                  Generate Tasks
-                </Button>
-                <Button onClick={handleCreate}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Routine
-                </Button>
-              </div>
+              <Button onClick={handleCreate}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Routine
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
