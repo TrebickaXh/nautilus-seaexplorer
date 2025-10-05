@@ -24,23 +24,23 @@ serve(async (req) => {
       .select(`
         id,
         type,
-        template_id,
+        routine_id,
         window_start,
         window_end,
         days_of_week,
         cron_expr,
         shift_name,
+        shift_id,
+        department_id,
         assignee_role,
-        task_templates (
+        task_routines (
           id,
           title,
           org_id,
+          location_id,
+          department_id,
           criticality,
-          est_minutes,
-          locations (
-            id,
-            timezone
-          )
+          est_minutes
         )
       `)
       .is('archived_at', null);
@@ -55,15 +55,31 @@ serve(async (req) => {
 
     for (const schedule of schedules || []) {
       try {
-        // Get all locations for this template's org
-        const template: any = schedule.task_templates;
-        const { data: locations } = await supabase
-          .from('locations')
-          .select('id, timezone')
-          .eq('org_id', template.org_id)
-          .is('archived_at', null);
+        // Get the routine details
+        const routine: any = schedule.task_routines;
+        if (!routine) continue;
 
-        for (const location of locations || []) {
+        // Determine which location(s) to use
+        let targetLocations: any[] = [];
+        if (routine.location_id) {
+          // Routine is tied to a specific location
+          const { data: loc } = await supabase
+            .from('locations')
+            .select('id, timezone')
+            .eq('id', routine.location_id)
+            .maybeSingle();
+          if (loc) targetLocations = [loc];
+        } else {
+          // Get all locations for this org
+          const { data: locs } = await supabase
+            .from('locations')
+            .select('id, timezone')
+            .eq('org_id', routine.org_id)
+            .is('archived_at', null);
+          targetLocations = locs || [];
+        }
+
+        for (const location of targetLocations) {
           const instances = generateInstances(schedule, location, now, sevenDaysFromNow);
           
           // Check for duplicates and insert
@@ -71,10 +87,10 @@ serve(async (req) => {
             const { data: existing } = await supabase
               .from('task_instances')
               .select('id')
-              .eq('template_id', schedule.template_id)
+              .eq('routine_id', schedule.routine_id)
               .eq('location_id', location.id)
               .eq('due_at', instance.due_at)
-              .single();
+              .maybeSingle();
 
             if (!existing) {
               const { error: insertError } = await supabase
@@ -137,8 +153,10 @@ function generateInstances(schedule: any, location: any, startDate: Date, endDat
         const dueAt = new Date(windowEnd);
 
         instances.push({
-          template_id: schedule.template_id,
+          routine_id: schedule.routine_id,
           location_id: location.id,
+          department_id: schedule.department_id,
+          shift_id: schedule.shift_id,
           due_at: dueAt.toISOString(),
           window_start: windowStart.toISOString(),
           window_end: windowEnd.toISOString(),
@@ -155,8 +173,10 @@ function generateInstances(schedule: any, location: any, startDate: Date, endDat
       const dueDate = new Date(schedule.window_start);
       if (dueDate >= startDate && dueDate <= endDate) {
         instances.push({
-          template_id: schedule.template_id,
+          routine_id: schedule.routine_id,
           location_id: location.id,
+          department_id: schedule.department_id,
+          shift_id: schedule.shift_id,
           due_at: dueDate.toISOString(),
           window_start: schedule.window_start,
           window_end: schedule.window_end || schedule.window_start,

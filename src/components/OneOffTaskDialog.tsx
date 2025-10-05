@@ -149,6 +149,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
         department_id: values.department_id,
         due_at: dueAt,
         status: 'pending',
+        created_from: 'manual',
       };
 
       if (shiftId) {
