@@ -83,7 +83,6 @@ serve(async (req) => {
             .from('task_instances')
             .insert({
               routine_id: routine.id,
-              org_id: routine.org_id,
               location_id: routine.location_id,
               department_id: routine.department_id,
               shift_id: routine.shift_id,

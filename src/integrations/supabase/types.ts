@@ -672,7 +672,7 @@ export type Database = {
           due_at: string
           id: string
           location_id: string
-          routine_id: string
+          routine_id: string | null
           shift_id: string | null
           status: Database["public"]["Enums"]["task_status"]
           urgency_score: number | null
@@ -693,7 +693,7 @@ export type Database = {
           due_at: string
           id?: string
           location_id: string
-          routine_id: string
+          routine_id?: string | null
           shift_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           urgency_score?: number | null
@@ -714,7 +714,7 @@ export type Database = {
           due_at?: string
           id?: string
           location_id?: string
-          routine_id?: string
+          routine_id?: string | null
           shift_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           urgency_score?: number | null

@@ -306,6 +306,9 @@ serve(async (req) => {
 });
 
 async function setupOrganization(supabase: any, sessionId: string, config: any) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  
   const { data: session } = await supabase
     .from("onboarding_sessions")
     .select("user_id")
@@ -442,11 +445,41 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
       });
   }
 
-  // Create team members
+  // Create team member invitations
   for (const member of config.teamMembers || []) {
-    // Note: In a real system, you'd send invitation emails here
-    // For now, we'll just log that team members should be invited
     console.log(`Team member to invite: ${member.email} as ${member.role}`);
+    
+    // Get department IDs for this member
+    const memberDeptIds = (member.departments || [])
+      .map((deptName: string) => departmentMap[deptName])
+      .filter(Boolean);
+    
+    const primaryDeptId = memberDeptIds[0] || null;
+    
+    // Call the invite-user edge function
+    try {
+      const inviteResponse = await fetch(`${supabaseUrl}/functions/v1/invite-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`
+        },
+        body: JSON.stringify({
+          email: member.email,
+          displayName: member.name,
+          role: member.role || 'crew',
+          departmentId: primaryDeptId,
+          pin: member.pin || null
+        })
+      });
+      
+      if (!inviteResponse.ok) {
+        const errorText = await inviteResponse.text();
+        console.error(`Failed to invite ${member.email}:`, errorText);
+      }
+    } catch (inviteError) {
+      console.error(`Error inviting ${member.email}:`, inviteError);
+    }
   }
 
   // Get area IDs for task routines
@@ -499,14 +532,14 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
     await supabase
       .from("task_instances")
       .insert({
+        routine_id: null, // one-off tasks don't have a routine
         location_id: locationId,
         department_id: departmentId,
         shift_id: shiftId || null,
         area_id: areaId,
         due_at: task.due_at,
         status: 'pending',
-        created_from_v2: 'oneoff',
-        routine_id: null // one-off tasks don't have a routine
+        created_from_v2: 'oneoff'
       });
   }
 
