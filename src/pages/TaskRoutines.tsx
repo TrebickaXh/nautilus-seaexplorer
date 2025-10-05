@@ -9,7 +9,6 @@ import { TaskRoutineForm } from '@/components/TaskRoutineForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/useUserRole';
-import { triggerTaskMaterialization } from '@/utils/materializeTasks';
 
 interface TaskRoutine {
   id: string;
@@ -113,23 +112,13 @@ export default function TaskRoutines() {
   const handleFormSuccess = async () => {
     setDialogOpen(false);
     setEditingRoutine(null);
-    fetchRoutines();
     
-    // Automatically trigger task generation
-    try {
-      await triggerTaskMaterialization();
-      toast({
-        title: 'Success',
-        description: 'Routine saved and tasks generated',
-      });
-    } catch (error: any) {
-      console.error('Failed to generate tasks:', error);
-      toast({
-        title: 'Warning',
-        description: 'Routine saved but tasks will be generated in the next scheduled run',
-        variant: 'default',
-      });
-    }
+    toast({
+      title: 'Success',
+      description: 'Routine saved successfully',
+    });
+    
+    fetchRoutines();
   };
 
   if (roleLoading || loading) {
