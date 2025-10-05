@@ -57,7 +57,7 @@ export default function TaskInstances() {
       .from('task_instances')
       .select(`
         *,
-        task_routines(id, title, description, est_minutes, criticality, required_proof, steps),
+        task_routines!routine_id(id, title, description, est_minutes, criticality, required_proof, steps),
         locations(id, name),
         departments(name),
         shifts(name),

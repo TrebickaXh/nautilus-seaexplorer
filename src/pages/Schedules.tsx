@@ -37,7 +37,7 @@ export default function Schedules() {
         .from('schedules')
         .select(`
           *, 
-          task_routines(title),
+          task_routines!routine_id(title),
           departments(name),
           shifts(name, start_time, end_time)
         `)

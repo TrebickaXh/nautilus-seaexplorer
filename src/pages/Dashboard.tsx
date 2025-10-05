@@ -83,7 +83,7 @@ export default function Dashboard() {
       // Get tasks for last 7 days (for on-time rate)
       const { data: recentTasks } = await supabase
         .from('task_instances')
-        .select('*, task_routines(title), locations(name)')
+        .select('*, task_routines!routine_id(title), locations(name)')
         .gte('due_at', sevenDaysAgo.toISOString());
 
       // Get today's tasks
@@ -98,7 +98,7 @@ export default function Dashboard() {
         .from('completions')
         .select(`
           *,
-          task_instances(*, task_routines(title), locations(name)),
+          task_instances(*, task_routines!routine_id(title), locations(name)),
           profiles(display_name)
         `)
         .order('created_at', { ascending: false })
@@ -129,21 +129,21 @@ export default function Dashboard() {
       // Chronic overdue: tasks that are frequently late
       const { data: chronicData } = await supabase
         .from('task_instances')
-        .select('template_id, task_routines(title, criticality), status, completed_at, due_at')
+        .select('routine_id, task_routines!routine_id(title, criticality), status, completed_at, due_at')
         .in('status', ['done', 'skipped'])
         .gte('due_at', sevenDaysAgo.toISOString());
 
       const templateOverdueMap = new Map<string, { title: string; criticality: number; late: number; total: number }>();
       chronicData?.forEach(task => {
-        const templateId = task.template_id;
+        const routineId = task.routine_id;
         const title = task.task_routines?.title || 'Unknown';
         const criticality = task.task_routines?.criticality || 3;
         
-        if (!templateOverdueMap.has(templateId)) {
-          templateOverdueMap.set(templateId, { title, criticality, late: 0, total: 0 });
+        if (!templateOverdueMap.has(routineId)) {
+          templateOverdueMap.set(routineId, { title, criticality, late: 0, total: 0 });
         }
         
-        const entry = templateOverdueMap.get(templateId)!;
+        const entry = templateOverdueMap.get(routineId)!;
         entry.total++;
         
         if (task.status === 'done' && task.completed_at && new Date(task.completed_at) > new Date(task.due_at)) {
@@ -171,7 +171,7 @@ export default function Dashboard() {
       // Exceptions: skipped tasks
       const { data: skippedData } = await supabase
         .from('task_instances')
-        .select('*, task_routines(title), locations(name), completions(note, created_at)')
+        .select('*, task_routines!routine_id(title), locations(name), completions(note, created_at)')
         .eq('status', 'skipped')
         .gte('due_at', sevenDaysAgo.toISOString())
         .order('completed_at', { ascending: false })
@@ -327,7 +327,7 @@ export default function Dashboard() {
       if (createdTemplates && createdTemplates.length > 0) {
         const schedules = [
           {
-            template_id: createdTemplates[0].id,
+            routine_id: createdTemplates[0].id,
             type: 'window' as const,
             days_of_week: [1, 2, 3, 4, 5], // Mon-Fri
             window_start: '08:00:00',
@@ -336,7 +336,7 @@ export default function Dashboard() {
             shift_name: 'Morning Shift',
           },
           {
-            template_id: createdTemplates[1].id,
+            routine_id: createdTemplates[1].id,
             type: 'window' as const,
             days_of_week: [1, 2, 3, 4, 5],
             window_start: '14:00:00',

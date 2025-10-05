@@ -82,7 +82,7 @@ export function KioskTaskList({ userId }: KioskTaskListProps) {
         .from('task_instances')
         .select(`
           *,
-          task_routines (
+          task_routines!routine_id (
             id,
             title,
             description,
