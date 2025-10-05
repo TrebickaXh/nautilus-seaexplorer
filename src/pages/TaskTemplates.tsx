@@ -55,7 +55,7 @@ export default function TaskTemplates() {
       if (!profile?.org_id) throw new Error('No organization found');
 
       const { data, error } = await supabase
-        .from('task_templates')
+        .from('task_routines')
         .select('*')
         .eq('org_id', profile.org_id)
         .is('archived_at', null)
@@ -79,7 +79,7 @@ export default function TaskTemplates() {
 
     try {
       const { error } = await supabase
-        .from('task_templates')
+        .from('task_routines')
         .update({ archived_at: new Date().toISOString() })
         .eq('id', id);
 

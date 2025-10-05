@@ -50,7 +50,7 @@ export function TaskInstanceDetails({ task, open, onClose }: TaskInstanceDetails
 
   if (!task) return null;
 
-  const template = task.task_templates;
+  const template = task.task_routines;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

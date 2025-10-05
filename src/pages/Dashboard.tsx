@@ -83,7 +83,7 @@ export default function Dashboard() {
       // Get tasks for last 7 days (for on-time rate)
       const { data: recentTasks } = await supabase
         .from('task_instances')
-        .select('*, task_templates(title), locations(name)')
+        .select('*, task_routines(title), locations(name)')
         .gte('due_at', sevenDaysAgo.toISOString());
 
       // Get today's tasks
@@ -98,7 +98,7 @@ export default function Dashboard() {
         .from('completions')
         .select(`
           *,
-          task_instances(*, task_templates(title), locations(name)),
+          task_instances(*, task_routines(title), locations(name)),
           profiles(display_name)
         `)
         .order('created_at', { ascending: false })
@@ -129,15 +129,15 @@ export default function Dashboard() {
       // Chronic overdue: tasks that are frequently late
       const { data: chronicData } = await supabase
         .from('task_instances')
-        .select('template_id, task_templates(title, criticality), status, completed_at, due_at')
+        .select('template_id, task_routines(title, criticality), status, completed_at, due_at')
         .in('status', ['done', 'skipped'])
         .gte('due_at', sevenDaysAgo.toISOString());
 
       const templateOverdueMap = new Map<string, { title: string; criticality: number; late: number; total: number }>();
       chronicData?.forEach(task => {
         const templateId = task.template_id;
-        const title = task.task_templates?.title || 'Unknown';
-        const criticality = task.task_templates?.criticality || 3;
+        const title = task.task_routines?.title || 'Unknown';
+        const criticality = task.task_routines?.criticality || 3;
         
         if (!templateOverdueMap.has(templateId)) {
           templateOverdueMap.set(templateId, { title, criticality, late: 0, total: 0 });
@@ -171,7 +171,7 @@ export default function Dashboard() {
       // Exceptions: skipped tasks
       const { data: skippedData } = await supabase
         .from('task_instances')
-        .select('*, task_templates(title), locations(name), completions(note, created_at)')
+        .select('*, task_routines(title), locations(name), completions(note, created_at)')
         .eq('status', 'skipped')
         .gte('due_at', sevenDaysAgo.toISOString())
         .order('completed_at', { ascending: false })
@@ -317,7 +317,7 @@ export default function Dashboard() {
       ];
 
       const { data: createdTemplates, error: templateError } = await supabase
-        .from('task_templates')
+        .from('task_routines')
         .insert(templates)
         .select();
 
@@ -455,7 +455,7 @@ export default function Dashboard() {
                       <div key={completion.id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                         <CheckCircle2 className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{completion.task_instances?.task_templates?.title}</p>
+                          <p className="font-medium truncate">{completion.task_instances?.task_routines?.title}</p>
                           <p className="text-sm text-muted-foreground">
                             {completion.profiles?.display_name} • {completion.task_instances?.locations?.name}
                           </p>
@@ -569,7 +569,7 @@ export default function Dashboard() {
                       <div key={task.id} className="flex items-start gap-3 p-3 border rounded-lg">
                         <AlertCircle className="w-5 h-5 text-warning mt-0.5 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{task.task_templates?.title}</p>
+                          <p className="font-medium truncate">{task.task_routines?.title}</p>
                           <p className="text-sm text-muted-foreground">{task.locations?.name}</p>
                           {task.completions && task.completions[0]?.note && (
                             <p className="text-sm text-muted-foreground italic mt-1">

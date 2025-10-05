@@ -73,7 +73,7 @@ export function ScheduleForm({ scheduleId, onSuccess, onCancel }: ScheduleFormPr
 
   const loadTemplates = async () => {
     const { data } = await supabase
-      .from('task_templates')
+      .from('task_routines')
       .select('id, title, department_id, departments(name)')
       .is('archived_at', null)
       .order('title');

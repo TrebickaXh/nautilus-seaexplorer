@@ -72,7 +72,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
 
   const loadTemplates = async () => {
     const { data } = await supabase
-      .from('task_templates')
+      .from('task_routines')
       .select('*')
       .is('archived_at', null)
       .order('title');

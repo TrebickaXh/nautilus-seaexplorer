@@ -57,7 +57,7 @@ export default function TaskInstances() {
       .from('task_instances')
       .select(`
         *,
-        task_templates(id, title, description, est_minutes, criticality, required_proof, steps),
+        task_routines(id, title, description, est_minutes, criticality, required_proof, steps),
         locations(id, name),
         departments(name),
         shifts(name),
@@ -223,7 +223,7 @@ export default function TaskInstances() {
 
         <SkipTaskDialog
           taskId={skipTask?.id}
-          taskTemplate={skipTask?.task_templates}
+          taskTemplate={skipTask?.task_routines}
           open={skipDialogOpen}
           onClose={() => {
             setSkipDialogOpen(false);
@@ -234,7 +234,7 @@ export default function TaskInstances() {
 
         <CompleteTaskDialog
           taskId={completeTask?.id}
-          taskTemplate={completeTask?.task_templates}
+          taskTemplate={completeTask?.task_routines}
           open={completeDialogOpen}
           onClose={() => {
             setCompleteDialogOpen(false);
