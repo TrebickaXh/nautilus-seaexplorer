@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
-import TaskTemplates from "./pages/TaskTemplates";
+import TaskRoutines from "./pages/TaskRoutines";
 import Schedules from "./pages/Schedules";
 import Shifts from "./pages/Shifts";
 import TaskInstances from "./pages/TaskInstances";
@@ -33,7 +33,7 @@ const App = () => (
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
           <Route path="/kiosk" element={<Kiosk />} />
-          <Route path="/task-templates" element={<AppLayout><TaskTemplates /></AppLayout>} />
+          <Route path="/task-routines" element={<AppLayout><TaskRoutines /></AppLayout>} />
           <Route path="/shifts" element={<AppLayout><Shifts /></AppLayout>} />
           <Route path="/schedules" element={<AppLayout><Schedules /></AppLayout>} />
           <Route path="/task-instances" element={<AppLayout><TaskInstances /></AppLayout>} />

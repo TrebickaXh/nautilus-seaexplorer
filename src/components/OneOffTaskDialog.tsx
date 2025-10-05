@@ -31,7 +31,7 @@ interface OneOffTaskDialogProps {
 }
 
 export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogProps) {
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [routines, setRoutines] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
@@ -52,7 +52,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
 
   useEffect(() => {
     if (open) {
-      loadTemplates();
+      loadRoutines();
       loadLocations();
     }
   }, [open]);
@@ -78,13 +78,13 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
     }
   }, [selectedLocationId, selectedDepartmentId]);
 
-  const loadTemplates = async () => {
+  const loadRoutines = async () => {
     const { data } = await supabase
       .from('task_routines')
       .select('*')
       .is('archived_at', null)
       .order('title');
-    if (data) setTemplates(data);
+    if (data) setRoutines(data);
   };
 
   const loadLocations = async () => {
@@ -182,12 +182,12 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select template" />
+                        <SelectValue placeholder="Select routine" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {templates.map(t => (
-                        <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                      {routines.map(r => (
+                        <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

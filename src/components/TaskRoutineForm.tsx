@@ -12,7 +12,7 @@ import { Plus, X, Calendar } from 'lucide-react';
 import { z } from 'zod';
 import { CronBuilder } from './CronBuilder';
 
-const templateSchema = z.object({
+const routineSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200, "Title must be less than 200 characters"),
   description: z.string().max(1000, "Description must be less than 1000 characters").optional(),
   est_minutes: z.number().min(1, "Estimated time must be at least 1 minute").max(480, "Estimated time must be less than 8 hours"),
@@ -23,13 +23,13 @@ const templateSchema = z.object({
   area_ids: z.array(z.string()).min(1, "At least one area is required"),
 });
 
-interface TaskTemplateFormProps {
+interface TaskRoutineFormProps {
   template?: any;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplateFormProps) => {
+export const TaskRoutineForm = ({ template, onSuccess, onCancel }: TaskRoutineFormProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState<any[]>([]);
@@ -226,7 +226,7 @@ export const TaskTemplateForm = ({ template, onSuccess, onCancel }: TaskTemplate
 
     try {
       // Validate input
-      const result = templateSchema.safeParse(formData);
+      const result = routineSchema.safeParse(formData);
       if (!result.success) {
         const firstError = result.error.errors[0];
         toast({

@@ -38,7 +38,7 @@ const mainItems = [
 ];
 
 const managementItems = [
-  { title: 'Templates', url: '/task-templates', icon: FileText, roles: ['location_manager', 'org_admin'] },
+  { title: 'Routines', url: '/task-routines', icon: FileText, roles: ['location_manager', 'org_admin'] },
   { title: 'Shifts', url: '/shifts', icon: Clock, roles: ['location_manager', 'org_admin'] },
   { title: 'Schedules', url: '/schedules', icon: Calendar, roles: ['location_manager', 'org_admin'] },
   { title: 'Locations', url: '/locations', icon: MapPin, roles: ['location_manager', 'org_admin'] },

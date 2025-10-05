@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Pencil, Trash2, ArrowLeft } from 'lucide-react';
-import { TaskTemplateForm } from '@/components/TaskTemplateForm';
+import { TaskRoutineForm } from '@/components/TaskRoutineForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/useUserRole';
 
-interface TaskTemplate {
+interface TaskRoutine {
   id: string;
   title: string;
   description: string | null;
@@ -20,18 +20,18 @@ interface TaskTemplate {
   steps: any;
 }
 
-export default function TaskTemplates() {
+export default function TaskRoutines() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { isAdmin, loading: roleLoading } = useUserRole();
-  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [routines, setRoutines] = useState<TaskRoutine[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<TaskTemplate | null>(null);
+  const [editingRoutine, setEditingRoutine] = useState<TaskRoutine | null>(null);
 
   useEffect(() => {
     checkAuth();
-    fetchTemplates();
+    fetchRoutines();
   }, []);
 
   const checkAuth = async () => {
@@ -41,7 +41,7 @@ export default function TaskTemplates() {
     }
   };
 
-  const fetchTemplates = async () => {
+  const fetchRoutines = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -62,7 +62,7 @@ export default function TaskTemplates() {
         .order('title');
 
       if (error) throw error;
-      setTemplates(data || []);
+      setRoutines(data || []);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -75,7 +75,7 @@ export default function TaskTemplates() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
+    if (!confirm('Are you sure you want to delete this routine?')) return;
 
     try {
       const { error } = await supabase
@@ -87,9 +87,9 @@ export default function TaskTemplates() {
 
       toast({
         title: 'Success',
-        description: 'Template deleted successfully',
+        description: 'Routine deleted successfully',
       });
-      fetchTemplates();
+      fetchRoutines();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -99,20 +99,20 @@ export default function TaskTemplates() {
     }
   };
 
-  const handleEdit = (template: TaskTemplate) => {
-    setEditingTemplate(template);
+  const handleEdit = (routine: TaskRoutine) => {
+    setEditingRoutine(routine);
     setDialogOpen(true);
   };
 
   const handleCreate = () => {
-    setEditingTemplate(null);
+    setEditingRoutine(null);
     setDialogOpen(true);
   };
 
   const handleFormSuccess = () => {
     setDialogOpen(false);
-    setEditingTemplate(null);
-    fetchTemplates();
+    setEditingRoutine(null);
+    fetchRoutines();
   };
 
   if (roleLoading || loading) {
@@ -168,29 +168,29 @@ export default function TaskTemplates() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {templates.map((template) => (
-                  <TableRow key={template.id}>
-                    <TableCell className="font-medium">{template.title}</TableCell>
-                    <TableCell>{template.description || '-'}</TableCell>
-                    <TableCell>{template.est_minutes}</TableCell>
-                    <TableCell>{template.criticality}/5</TableCell>
-                    <TableCell className="capitalize">{template.required_proof}</TableCell>
+                {routines.map((routine) => (
+                  <TableRow key={routine.id}>
+                    <TableCell className="font-medium">{routine.title}</TableCell>
+                    <TableCell>{routine.description || '-'}</TableCell>
+                    <TableCell>{routine.est_minutes}</TableCell>
+                    <TableCell>{routine.criticality}/5</TableCell>
+                    <TableCell className="capitalize">{routine.required_proof}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(template)}>
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(routine)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(template.id)}>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(routine.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
-                {templates.length === 0 && (
+                {routines.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      No templates found. Create your first template to get started.
+                      No routines found. Create your first routine to get started.
                     </TableCell>
                   </TableRow>
                 )}
@@ -204,11 +204,11 @@ export default function TaskTemplates() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              {editingTemplate ? 'Edit Routine' : 'Create Routine'}
+              {editingRoutine ? 'Edit Routine' : 'Create Routine'}
             </DialogTitle>
           </DialogHeader>
-          <TaskTemplateForm
-            template={editingTemplate}
+          <TaskRoutineForm
+            template={editingRoutine}
             onSuccess={handleFormSuccess}
             onCancel={() => setDialogOpen(false)}
           />
