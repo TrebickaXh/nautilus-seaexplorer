@@ -61,8 +61,8 @@ export function AppSidebar() {
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive
-      ? 'bg-accent text-foreground font-medium rounded-md'
-      : 'hover:bg-accent/50 transition-colors rounded-md';
+      ? 'bg-primary text-primary-foreground font-medium rounded-md'
+      : 'hover:bg-accent transition-colors rounded-md';
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
