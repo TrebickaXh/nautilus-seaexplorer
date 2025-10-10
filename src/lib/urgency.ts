@@ -10,11 +10,14 @@ export function calculateTimeDecay(dueAt: Date, now: Date = new Date()): number 
   if (minutesUntilDue <= 0) {
     return 1.0; // Overdue
   } else if (minutesUntilDue <= 60) {
-    // Steep logistic curve in last 60 minutes
+    // Steep logistic curve in last 60 minutes - ramps from ~0.5 to 1.0
     return 1.0 / (1.0 + Math.exp(0.1 * (minutesUntilDue - 30)));
+  } else if (minutesUntilDue <= 480) {
+    // 1-8 hours: gradual increase from ~0.15 to 0.5
+    return 1.0 / (1.0 + Math.exp(0.015 * (minutesUntilDue - 240)));
   } else {
-    // Gradual increase before 60 minutes
-    return 1.0 / (1.0 + Math.exp(0.02 * (minutesUntilDue - 180)));
+    // 8-24+ hours: slow increase from ~0.05 to 0.15
+    return 1.0 / (1.0 + Math.exp(0.006 * (minutesUntilDue - 720)));
   }
 }
 
