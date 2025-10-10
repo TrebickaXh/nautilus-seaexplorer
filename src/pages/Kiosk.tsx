@@ -349,7 +349,17 @@ export default function Kiosk() {
             <div>
               <h1 className="text-xl font-bold">Task Kiosk</h1>
               <p className="text-sm text-muted-foreground">
-                {currentShift ? `${currentShift.name} • ${currentShift.departments?.name}` : 'No active shift'}
+                {currentShift ? (
+                  <>
+                    {currentShift.name}
+                    {selectedDepartmentId !== 'all' && (
+                      <> • {departments.find(d => d.id === selectedDepartmentId)?.name || 'Department'}</>
+                    )}
+                    {selectedAreaId !== 'all' && (
+                      <> • {areas.find(a => a.id === selectedAreaId)?.name || 'Area'}</>
+                    )}
+                  </>
+                ) : 'No active shift'}
               </p>
             </div>
             
