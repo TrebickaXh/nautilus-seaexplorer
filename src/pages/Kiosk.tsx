@@ -348,31 +348,29 @@ export default function Kiosk() {
               Back
             </Button>
             
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <h1 className="text-xl font-bold">Task Kiosk</h1>
-                <p className="text-sm text-muted-foreground">
-                  {currentShift ? (
-                    <>
-                      {currentShift.name}
-                      {selectedDepartmentId !== 'all' && (
-                        <> • {departments.find(d => d.id === selectedDepartmentId)?.name || 'Department'}</>
-                      )}
-                    </>
-                  ) : 'No active shift'}
-                </p>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                {isOnline ? (
-                  <Wifi className="h-5 w-5 text-green-500" />
-                ) : (
-                  <WifiOff className="h-5 w-5 text-destructive" />
-                )}
-                <span className="text-sm text-muted-foreground">
-                  {isOnline ? 'Online' : 'Offline'}
-                </span>
-              </div>
+            <div className="text-center">
+              <h1 className="text-xl font-bold">Task Kiosk</h1>
+              <p className="text-sm text-muted-foreground">
+                {currentShift ? (
+                  <>
+                    {currentShift.name}
+                    {selectedDepartmentId !== 'all' && (
+                      <> • {departments.find(d => d.id === selectedDepartmentId)?.name || 'Department'}</>
+                    )}
+                  </>
+                ) : 'No active shift'}
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {isOnline ? (
+                <Wifi className="h-5 w-5 text-green-500" />
+              ) : (
+                <WifiOff className="h-5 w-5 text-destructive" />
+              )}
+              <span className="text-sm text-muted-foreground">
+                {isOnline ? 'Online' : 'Offline'}
+              </span>
             </div>
           </div>
 
