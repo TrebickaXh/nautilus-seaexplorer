@@ -2,10 +2,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UrgencyBadge } from './UrgencyBadge';
-import { MoreVertical, Eye, SkipForward, Trash2, CheckCircle2, Copy } from 'lucide-react';
+import { MoreVertical, Eye, SkipForward, Trash2, CheckCircle2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
-import { toast } from 'sonner';
 
 interface TaskInstanceCardProps {
   task: any;
@@ -23,11 +22,6 @@ export function TaskInstanceCard({ task, onViewDetails, onSkip, onComplete, onDe
       case 'skipped': return 'secondary';
       default: return 'outline';
     }
-  };
-
-  const copyTaskId = () => {
-    navigator.clipboard.writeText(task.id);
-    toast.success('Task ID copied to clipboard');
   };
 
   const isOverdue = task.status === 'pending' && task.due_at && new Date(task.due_at) < new Date();
@@ -48,19 +42,6 @@ export function TaskInstanceCard({ task, onViewDetails, onSkip, onComplete, onDe
                 {task.shifts?.name && ` • ${task.shifts.name}`}
               </p>
             )}
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                ID: {task.id.slice(0, 8)}...
-              </span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0" 
-                onClick={copyTaskId}
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
-            </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

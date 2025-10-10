@@ -1,12 +1,14 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { UrgencyBadge } from './UrgencyBadge';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Clock, MapPin, User, FileCheck, CheckCircle2, Image as ImageIcon } from 'lucide-react';
+import { Clock, MapPin, User, FileCheck, CheckCircle2, Image as ImageIcon, Copy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface TaskInstanceDetailsProps {
   task: any;
@@ -52,11 +54,29 @@ export function TaskInstanceDetails({ task, open, onClose }: TaskInstanceDetails
 
   const template = task.task_routines;
 
+  const copyTaskId = () => {
+    navigator.clipboard.writeText(task.id);
+    toast.success('Task ID copied to clipboard');
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl">{template?.title || 'Task Details'}</DialogTitle>
+          <div className="flex items-center gap-2 pt-2">
+            <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1 rounded">
+              ID: {task.id}
+            </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-7 w-7 p-0" 
+              onClick={copyTaskId}
+            >
+              <Copy className="h-3 w-3" />
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">

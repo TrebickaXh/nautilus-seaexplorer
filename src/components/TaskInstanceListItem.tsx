@@ -1,10 +1,9 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UrgencyBadge } from './UrgencyBadge';
-import { MoreVertical, Eye, SkipForward, Trash2, CheckCircle2, Copy } from 'lucide-react';
+import { MoreVertical, Eye, SkipForward, Trash2, CheckCircle2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
-import { toast } from 'sonner';
 
 interface TaskInstanceListItemProps {
   task: any;
@@ -22,11 +21,6 @@ export function TaskInstanceListItem({ task, onViewDetails, onSkip, onComplete, 
       case 'skipped': return 'secondary';
       default: return 'outline';
     }
-  };
-
-  const copyTaskId = () => {
-    navigator.clipboard.writeText(task.id);
-    toast.success('Task ID copied to clipboard');
   };
 
   const isOverdue = task.status === 'pending' && task.due_at && new Date(task.due_at) < new Date();
@@ -59,19 +53,6 @@ export function TaskInstanceListItem({ task, onViewDetails, onSkip, onComplete, 
                   <span>{task.shifts.name}</span>
                 </>
               )}
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                ID: {task.id.slice(0, 8)}...
-              </span>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-5 w-5 p-0" 
-                onClick={copyTaskId}
-              >
-                <Copy className="h-3 w-3" />
-              </Button>
             </div>
           </div>
         </div>
