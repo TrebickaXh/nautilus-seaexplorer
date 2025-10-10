@@ -553,15 +553,25 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
   });
 
   // Create task routines
+  console.log(`Creating ${(config.taskRoutines || []).length} task routines...`);
+  console.log('Available departments:', Object.keys(departmentMap));
+  console.log('Available locations:', Object.keys(locationMap));
+  console.log('Available areas:', Object.keys(areaMap));
+  
   for (const routine of config.taskRoutines || []) {
     const departmentId = departmentMap[routine.departmentName];
     const shiftId = shiftMap[routine.shiftName];
     const locationId = locationMap[routine.locationName];
     const areaIds = (routine.areaNames || []).map((n: string) => areaMap[n]).filter(Boolean);
 
-    if (!departmentId || !locationId) continue;
+    console.log(`Routine "${routine.title}": dept=${routine.departmentName} (${departmentId ? 'found' : 'MISSING'}), loc=${routine.locationName} (${locationId ? 'found' : 'MISSING'}), areas=${routine.areaNames?.join(', ')} (matched ${areaIds.length})`);
 
-    await supabase
+    if (!departmentId || !locationId) {
+      console.error(`Skipping routine "${routine.title}" due to missing department or location`);
+      continue;
+    }
+
+    const { error: routineError } = await supabase
       .from("task_routines")
       .insert({
         org_id: org.id,
@@ -578,6 +588,12 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
         required_proof: routine.required_proof || 'none',
         active: true
       });
+
+    if (routineError) {
+      console.error(`Failed to create routine "${routine.title}":`, routineError);
+    } else {
+      console.log(`Created routine: "${routine.title}"`);
+    }
   }
 
   // Update department managers now that users are created

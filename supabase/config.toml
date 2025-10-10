@@ -3,6 +3,9 @@ project_id = "pmkhyxlpaclserfbkxka"
 [functions.onboarding-assistant]
 verify_jwt = true
 
+[functions.retry-onboarding-routines]
+verify_jwt = true
+
 [functions.materialize-tasks]
 verify_jwt = false
 
