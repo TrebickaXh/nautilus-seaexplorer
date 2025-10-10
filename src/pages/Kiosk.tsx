@@ -106,8 +106,8 @@ export default function Kiosk() {
 
   // Reset area and shift when department changes
   useEffect(() => {
+    setSelectedAreaId('all');
     if (selectedDepartmentId !== 'all') {
-      setSelectedAreaId('all');
       setSelectedShiftId('current');
     }
   }, [selectedDepartmentId]);
@@ -121,7 +121,7 @@ export default function Kiosk() {
     if (!selectedDept) return areas;
     
     // Filter areas that belong to the same location as the department
-    return areas.filter(area => area.location_id === (selectedDept as any).location_id);
+    return areas.filter(area => area.location_id === selectedDept.location_id);
   };
 
   // Get filtered shifts based on selected department
