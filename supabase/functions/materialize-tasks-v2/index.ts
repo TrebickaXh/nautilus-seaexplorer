@@ -146,6 +146,7 @@ serve(async (req) => {
 
 /**
  * Generate due timestamps based on recurrence rules
+ * Supports both time_of_day (legacy) and time_slots (new format from onboarding)
  */
 function generateDueSlots(
   recurrence: any,
@@ -155,16 +156,26 @@ function generateDueSlots(
 ): string[] {
   const slots: string[] = [];
   const type = recurrence.type;
-  const timeOfDay = recurrence.time_of_day; // "HH:MM" format
-
-  if (!timeOfDay) {
-    console.error('Missing time_of_day in recurrence');
+  
+  // Support both formats: time_of_day (legacy) and time_slots (new from onboarding)
+  const timeSlots: string[] = [];
+  
+  if (recurrence.time_slots && Array.isArray(recurrence.time_slots)) {
+    // New format: array of time slots
+    timeSlots.push(...recurrence.time_slots);
+  } else if (recurrence.time_of_day) {
+    // Legacy format: single time_of_day
+    timeSlots.push(recurrence.time_of_day);
+  } else {
+    console.error('Missing time_of_day or time_slots in recurrence');
     return slots;
   }
 
-  const [hours, minutes] = timeOfDay.split(':').map(Number);
+  // Generate slots for each time
+  for (const timeOfDay of timeSlots) {
+    const [hours, minutes] = timeOfDay.split(':').map(Number);
 
-  switch (type) {
+    switch (type) {
     case 'daily': {
       // Every day at specified time
       for (let i = 0; i < daysAhead; i++) {
@@ -256,6 +267,7 @@ function generateDueSlots(
 
     default:
       console.error(`Unknown recurrence type: ${type}`);
+    }
   }
 
   return slots;
