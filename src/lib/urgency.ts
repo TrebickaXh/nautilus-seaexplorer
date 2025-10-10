@@ -57,9 +57,9 @@ export function calculateUrgencyScore(
   const w1 = 0.4, w2 = 0.3, w3 = 0.2, w4 = 0.1;
   const score = w1 * timeDecay + w2 * criticality + w3 * overdueFlag + w4 * shiftProximity;
   
-  // Ensure overdue tasks always have critical urgency (>= 0.8)
-  if (overdueFlag === 1.0 && score < 0.8) {
-    return 0.8;
+  // Ensure overdue tasks always have critical urgency (minimum 0.85)
+  if (overdueFlag === 1.0 && score < 0.85) {
+    return 0.85;
   }
   
   return score;
