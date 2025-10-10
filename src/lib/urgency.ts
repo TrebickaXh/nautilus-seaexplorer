@@ -55,7 +55,14 @@ export function calculateUrgencyScore(
 
   // Weighted sum
   const w1 = 0.4, w2 = 0.3, w3 = 0.2, w4 = 0.1;
-  return w1 * timeDecay + w2 * criticality + w3 * overdueFlag + w4 * shiftProximity;
+  const score = w1 * timeDecay + w2 * criticality + w3 * overdueFlag + w4 * shiftProximity;
+  
+  // Ensure overdue tasks always have critical urgency (>= 0.8)
+  if (overdueFlag === 1.0 && score < 0.8) {
+    return 0.8;
+  }
+  
+  return score;
 }
 
 export function getUrgencyLevel(score: number): 'low' | 'medium' | 'high' | 'critical' {
