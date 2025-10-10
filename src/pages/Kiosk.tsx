@@ -63,8 +63,6 @@ export default function Kiosk() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('all');
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [selectedAreaId, setSelectedAreaId] = useState<string>('all');
   const [tasks, setTasks] = useState<TaskInstance[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<TaskInstance | null>(null);
@@ -89,8 +87,7 @@ export default function Kiosk() {
     Promise.all([
       loadCurrentShift(),
       loadAllShifts(),
-      loadDepartments(),
-      loadAreas()
+      loadDepartments()
     ]);
   }, []);
 
@@ -102,27 +99,14 @@ export default function Kiosk() {
 
   useEffect(() => {
     loadTasks();
-  }, [selectedShiftId, selectedDate, selectedDepartmentId, selectedAreaId]);
+  }, [selectedShiftId, selectedDate, selectedDepartmentId]);
 
-  // Reset area and shift when department changes
+  // Reset shift when department changes
   useEffect(() => {
-    setSelectedAreaId('all');
     if (selectedDepartmentId !== 'all') {
       setSelectedShiftId('current');
     }
   }, [selectedDepartmentId]);
-
-  // Get filtered areas based on selected department
-  const getFilteredAreas = () => {
-    if (selectedDepartmentId === 'all') return areas;
-    
-    // Get the location of the selected department
-    const selectedDept = departments.find(d => d.id === selectedDepartmentId);
-    if (!selectedDept) return areas;
-    
-    // Filter areas that belong to the same location as the department
-    return areas.filter(area => area.location_id === selectedDept.location_id);
-  };
 
   // Get filtered shifts based on selected department
   const getFilteredShifts = () => {
@@ -193,20 +177,6 @@ export default function Kiosk() {
     }
   };
 
-  const loadAreas = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('areas')
-        .select('id, name, location_id')
-        .is('archived_at', null)
-        .order('name');
-
-      if (error) throw error;
-      setAreas(data || []);
-    } catch (error: any) {
-      console.error('Failed to load areas:', error);
-    }
-  };
 
   const loadTasks = async () => {
     try {
@@ -239,11 +209,6 @@ export default function Kiosk() {
       // Apply department filter
       if (selectedDepartmentId !== 'all') {
         query = query.eq('department_id', selectedDepartmentId);
-      }
-
-      // Apply area filter
-      if (selectedAreaId !== 'all') {
-        query = query.eq('area_id', selectedAreaId);
       }
 
       query = query.order('urgency_score', { ascending: false });
@@ -387,9 +352,6 @@ export default function Kiosk() {
                     {selectedDepartmentId !== 'all' && (
                       <> • {departments.find(d => d.id === selectedDepartmentId)?.name || 'Department'}</>
                     )}
-                    {selectedAreaId !== 'all' && (
-                      <> • {areas.find(a => a.id === selectedAreaId)?.name || 'Area'}</>
-                    )}
                   </>
                 ) : 'No active shift'}
               </p>
@@ -414,7 +376,7 @@ export default function Kiosk() {
             </div>
           </div>
 
-          {/* Filter Controls - Reordered: Date | Department | Area | Shift */}
+          {/* Filter Controls: Date | Department | Shift */}
           <div className="flex flex-wrap items-center gap-3">
             <Filter className="h-5 w-5 text-muted-foreground" />
             
@@ -453,25 +415,6 @@ export default function Kiosk() {
                 {departments.map((dept) => (
                   <SelectItem key={dept.id} value={dept.id}>
                     {dept.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Area Filter - Filtered by Department */}
-            <Select 
-              value={selectedAreaId} 
-              onValueChange={setSelectedAreaId}
-              disabled={selectedDepartmentId === 'all' && getFilteredAreas().length === 0}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select area" />
-              </SelectTrigger>
-              <SelectContent className="z-50 bg-background">
-                <SelectItem value="all">All Areas</SelectItem>
-                {getFilteredAreas().map((area) => (
-                  <SelectItem key={area.id} value={area.id}>
-                    {area.name}
                   </SelectItem>
                 ))}
               </SelectContent>
