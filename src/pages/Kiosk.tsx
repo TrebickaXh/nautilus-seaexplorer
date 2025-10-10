@@ -20,7 +20,7 @@ interface Shift {
   start_time: string;
   end_time: string;
   days_of_week: number[];
-  department_id: string;
+  department_id: string | null;
   location_id: string;
   departments?: { name: string };
   locations?: { name: string };
@@ -39,11 +39,13 @@ interface TaskInstance {
 interface Department {
   id: string;
   name: string;
+  location_id: string;
 }
 
 interface Area {
   id: string;
   name: string;
+  location_id: string;
 }
 
 interface TeamMember {
@@ -102,6 +104,36 @@ export default function Kiosk() {
     loadTasks();
   }, [selectedShiftId, selectedDate, selectedDepartmentId, selectedAreaId]);
 
+  // Reset area and shift when department changes
+  useEffect(() => {
+    if (selectedDepartmentId !== 'all') {
+      setSelectedAreaId('all');
+      setSelectedShiftId('current');
+    }
+  }, [selectedDepartmentId]);
+
+  // Get filtered areas based on selected department
+  const getFilteredAreas = () => {
+    if (selectedDepartmentId === 'all') return areas;
+    
+    // Get the location of the selected department
+    const selectedDept = departments.find(d => d.id === selectedDepartmentId);
+    if (!selectedDept) return areas;
+    
+    // Filter areas that belong to the same location as the department
+    return areas.filter(area => area.location_id === (selectedDept as any).location_id);
+  };
+
+  // Get filtered shifts based on selected department
+  const getFilteredShifts = () => {
+    if (selectedDepartmentId === 'all') return allShifts;
+    
+    // Filter shifts that belong to the selected department OR have no department (general shifts)
+    return allShifts.filter(shift => 
+      shift.department_id === selectedDepartmentId || shift.department_id === null
+    );
+  };
+
   const loadCurrentShift = async () => {
     setLoading(true);
     try {
@@ -150,7 +182,7 @@ export default function Kiosk() {
     try {
       const { data, error } = await supabase
         .from('departments')
-        .select('id, name')
+        .select('id, name, location_id')
         .is('archived_at', null)
         .order('name');
 
@@ -165,7 +197,7 @@ export default function Kiosk() {
     try {
       const { data, error } = await supabase
         .from('areas')
-        .select('id, name')
+        .select('id, name, location_id')
         .is('archived_at', null)
         .order('name');
 
@@ -382,7 +414,7 @@ export default function Kiosk() {
             </div>
           </div>
 
-          {/* Filter Controls */}
+          {/* Filter Controls - Reordered: Date | Department | Area | Shift */}
           <div className="flex flex-wrap items-center gap-3">
             <Filter className="h-5 w-5 text-muted-foreground" />
             
@@ -411,22 +443,6 @@ export default function Kiosk() {
               </PopoverContent>
             </Popover>
 
-            {/* Shift Filter */}
-            <Select value={selectedShiftId} onValueChange={setSelectedShiftId}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select shift" />
-              </SelectTrigger>
-              <SelectContent className="z-50 bg-background">
-                <SelectItem value="current">Current Shift</SelectItem>
-                <SelectItem value="all">All Shifts</SelectItem>
-                {allShifts.map((shift) => (
-                  <SelectItem key={shift.id} value={shift.id}>
-                    {shift.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             {/* Department Filter */}
             <Select value={selectedDepartmentId} onValueChange={setSelectedDepartmentId}>
               <SelectTrigger className="w-[180px]">
@@ -442,16 +458,40 @@ export default function Kiosk() {
               </SelectContent>
             </Select>
 
-            {/* Area Filter */}
-            <Select value={selectedAreaId} onValueChange={setSelectedAreaId}>
+            {/* Area Filter - Filtered by Department */}
+            <Select 
+              value={selectedAreaId} 
+              onValueChange={setSelectedAreaId}
+              disabled={selectedDepartmentId === 'all' && getFilteredAreas().length === 0}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select area" />
               </SelectTrigger>
               <SelectContent className="z-50 bg-background">
                 <SelectItem value="all">All Areas</SelectItem>
-                {areas.map((area) => (
+                {getFilteredAreas().map((area) => (
                   <SelectItem key={area.id} value={area.id}>
                     {area.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Shift Filter - Filtered by Department */}
+            <Select 
+              value={selectedShiftId} 
+              onValueChange={setSelectedShiftId}
+              disabled={selectedDepartmentId !== 'all' && getFilteredShifts().length === 0}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select shift" />
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-background">
+                <SelectItem value="current">Current Shift</SelectItem>
+                <SelectItem value="all">All Shifts</SelectItem>
+                {getFilteredShifts().map((shift) => (
+                  <SelectItem key={shift.id} value={shift.id}>
+                    {shift.name}
                   </SelectItem>
                 ))}
               </SelectContent>
