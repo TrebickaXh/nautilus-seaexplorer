@@ -75,7 +75,7 @@ export default function Users() {
 
       // Get current user's org_id
       const { data: profile } = await supabase
-        .from('profiles')
+        .from('profiles_safe')
         .select('org_id')
         .eq('id', user.id)
         .single();
@@ -84,8 +84,9 @@ export default function Users() {
       setOrgId(profile.org_id);
 
       // Get all users in the same org with their roles
+      // Using profiles_safe view to exclude sensitive authentication columns (pin_hash, pin_attempts, pin_locked_until)
       const { data, error } = await supabase
-        .from('profiles')
+        .from('profiles_safe')
         .select(`
           id,
           display_name,
@@ -176,6 +177,7 @@ export default function Users() {
 
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
     try {
+      // Note: UPDATE operations must use the profiles table directly, not the view
       const { error } = await supabase
         .from('profiles')
         .update({ active: !currentStatus })

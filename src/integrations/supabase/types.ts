@@ -139,6 +139,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "completions_cosigner_user_id_fkey"
+            columns: ["cosigner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "completions_reassigned_shift_id_fkey"
             columns: ["reassigned_shift_id"]
             isOneToOne: false
@@ -157,6 +164,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -635,6 +649,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "suggestions_acted_by_user_id_fkey"
+            columns: ["acted_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "suggestions_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
@@ -888,6 +909,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_departments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_roles: {
@@ -915,6 +943,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -953,11 +988,88 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_shifts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      profiles_safe: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          department: string | null
+          display_name: string | null
+          email: string | null
+          employee_id: string | null
+          id: string | null
+          language_preference: string | null
+          last_login: string | null
+          nfc_uid: string | null
+          notes: string | null
+          notification_preferences: Json | null
+          org_id: string | null
+          phone: string | null
+          profile_photo_url: string | null
+          shift_type: string | null
+          timezone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          department?: string | null
+          display_name?: string | null
+          email?: string | null
+          employee_id?: string | null
+          id?: string | null
+          language_preference?: string | null
+          last_login?: string | null
+          nfc_uid?: string | null
+          notes?: string | null
+          notification_preferences?: Json | null
+          org_id?: string | null
+          phone?: string | null
+          profile_photo_url?: string | null
+          shift_type?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          department?: string | null
+          display_name?: string | null
+          email?: string | null
+          employee_id?: string | null
+          id?: string | null
+          language_preference?: string | null
+          last_login?: string | null
+          nfc_uid?: string | null
+          notes?: string | null
+          notification_preferences?: Json | null
+          org_id?: string | null
+          phone?: string | null
+          profile_photo_url?: string | null
+          shift_type?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_urgency_score: {
