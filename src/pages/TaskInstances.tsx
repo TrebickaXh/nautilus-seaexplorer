@@ -10,7 +10,7 @@ import { TaskInstanceDetails } from '@/components/TaskInstanceDetails';
 import { SkipTaskDialog } from '@/components/SkipTaskDialog';
 import { CompleteTaskDialog } from '@/components/CompleteTaskDialog';
 import { OneOffTaskDialog } from '@/components/OneOffTaskDialog';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, RefreshCw } from 'lucide-react';
 import { addDays, format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -28,6 +28,7 @@ export default function TaskInstances() {
   const [completeTask, setCompleteTask] = useState<any>(null);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [oneOffDialogOpen, setOneOffDialogOpen] = useState(false);
+  const [refreshingUrgency, setRefreshingUrgency] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin()) {
@@ -136,6 +137,22 @@ export default function TaskInstances() {
     }
   };
 
+  const handleRefreshUrgency = async () => {
+    setRefreshingUrgency(true);
+    try {
+      const { error } = await supabase.functions.invoke('update-urgency');
+      
+      if (error) throw error;
+      
+      toast.success('Urgency scores updated!');
+      await loadTasks(); // Reload tasks to show updated scores
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update urgency scores');
+    } finally {
+      setRefreshingUrgency(false);
+    }
+  };
+
   if (roleLoading || loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -150,10 +167,20 @@ export default function TaskInstances() {
             </Button>
             <h1 className="text-3xl font-bold">Task Instances</h1>
           </div>
-          <Button onClick={() => setOneOffDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create One-off Task
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleRefreshUrgency}
+              disabled={refreshingUrgency}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshingUrgency ? 'animate-spin' : ''}`} />
+              Refresh Urgency
+            </Button>
+            <Button onClick={() => setOneOffDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create One-off Task
+            </Button>
+          </div>
         </div>
 
         <div className="mb-6 flex gap-4">
