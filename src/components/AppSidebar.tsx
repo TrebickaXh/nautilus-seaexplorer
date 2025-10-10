@@ -61,7 +61,7 @@ export function AppSidebar() {
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     `w-full ${state === 'collapsed' ? 'px-2' : 'justify-start'} ${
       isActive
-        ? 'bg-accent text-foreground font-medium'
+        ? 'bg-accent text-white font-medium'
         : 'hover:bg-accent/50 transition-colors'
     }`;
 
@@ -71,7 +71,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className={state === 'collapsed' ? 'w-16' : 'w-64'}>
+    <Sidebar className={state === 'collapsed' ? 'w-16' : 'w-52'}>
       <SidebarContent>
         {/* Brand */}
         <div className="p-4 flex items-center gap-3">
