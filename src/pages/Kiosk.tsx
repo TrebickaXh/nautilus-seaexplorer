@@ -343,21 +343,26 @@ export default function Kiosk() {
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-xl font-bold">Task Kiosk</h1>
-              <p className="text-sm text-muted-foreground">
-                {currentShift ? (
-                  <>
-                    {currentShift.name}
-                    {selectedDepartmentId !== 'all' && (
-                      <> • {departments.find(d => d.id === selectedDepartmentId)?.name || 'Department'}</>
-                    )}
-                  </>
-                ) : 'No active shift'}
-              </p>
-            </div>
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
             
             <div className="flex items-center gap-4">
+              <div className="text-right">
+                <h1 className="text-xl font-bold">Task Kiosk</h1>
+                <p className="text-sm text-muted-foreground">
+                  {currentShift ? (
+                    <>
+                      {currentShift.name}
+                      {selectedDepartmentId !== 'all' && (
+                        <> • {departments.find(d => d.id === selectedDepartmentId)?.name || 'Department'}</>
+                      )}
+                    </>
+                  ) : 'No active shift'}
+                </p>
+              </div>
+              
               <div className="flex items-center gap-2">
                 {isOnline ? (
                   <Wifi className="h-5 w-5 text-green-500" />
@@ -368,11 +373,6 @@ export default function Kiosk() {
                   {isOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
-              
-              <Button variant="outline" onClick={() => navigate('/dashboard')}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
             </div>
           </div>
 
