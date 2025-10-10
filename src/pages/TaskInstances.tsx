@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TaskInstanceCard } from '@/components/TaskInstanceCard';
+import { TaskInstanceListItem } from '@/components/TaskInstanceListItem';
 import { TaskInstanceDetails } from '@/components/TaskInstanceDetails';
 import { SkipTaskDialog } from '@/components/SkipTaskDialog';
 import { CompleteTaskDialog } from '@/components/CompleteTaskDialog';
 import { OneOffTaskDialog } from '@/components/OneOffTaskDialog';
-import { ArrowLeft, Plus, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Plus, RefreshCw, LayoutGrid, List } from 'lucide-react';
 import { addDays, format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -29,6 +30,7 @@ export default function TaskInstances() {
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [oneOffDialogOpen, setOneOffDialogOpen] = useState(false);
   const [refreshingUrgency, setRefreshingUrgency] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     if (!roleLoading && !isAdmin()) {
@@ -183,31 +185,50 @@ export default function TaskInstances() {
           </div>
         </div>
 
-        <div className="mb-6 flex gap-4">
-          <Select value={timeRangeFilter} onValueChange={setTimeRangeFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="overdue">Overdue</SelectItem>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="next_7_days">Next 7 Days</SelectItem>
-              <SelectItem value="next_30_days">Next 30 Days</SelectItem>
-              <SelectItem value="all">All Tasks</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="done">Done</SelectItem>
-              <SelectItem value="skipped">Skipped</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="mb-6 flex gap-4 items-center justify-between">
+          <div className="flex gap-4">
+            <Select value={timeRangeFilter} onValueChange={setTimeRangeFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="overdue">Overdue</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="next_7_days">Next 7 Days</SelectItem>
+                <SelectItem value="next_30_days">Next 30 Days</SelectItem>
+                <SelectItem value="all">All Tasks</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="done">Done</SelectItem>
+                <SelectItem value="skipped">Skipped</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -225,10 +246,24 @@ export default function TaskInstances() {
               <p className="text-center text-muted-foreground py-8">
                 No task instances found. Create schedules to generate tasks automatically.
               </p>
-            ) : (
+            ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {tasks.map(task => (
                   <TaskInstanceCard
+                    key={task.id}
+                    task={task}
+                    onViewDetails={() => handleViewDetails(task)}
+                    onSkip={() => handleSkip(task)}
+                    onComplete={() => handleComplete(task)}
+                    onDelete={isAdmin() ? () => handleDelete(task.id) : undefined}
+                    isAdmin={isAdmin()}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {tasks.map(task => (
+                  <TaskInstanceListItem
                     key={task.id}
                     task={task}
                     onViewDetails={() => handleViewDetails(task)}
