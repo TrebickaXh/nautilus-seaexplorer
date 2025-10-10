@@ -29,7 +29,7 @@ Ask about:
 Ask about:
 - Which departments exist (Kitchen, Housekeeping, Security, Maintenance, Front Desk, etc.)
 - Which location each department belongs to
-- Who manages each department (optional)
+- Who manages each department (name and email if available)
 
 **Step 4 – Shifts**
 Ask about:
@@ -49,7 +49,7 @@ Ask about:
 **Step 7 – One-Time Tasks (Optional)**
 Ask about:
 - Any one-off tasks that don't repeat
-- For each: name, department, shift, area, due date/time, proof requirement
+- For each: title, description (optional), steps (optional), department, shift, area, location, due date/time, duration (est_minutes), importance (1-5), proof requirement (photo/note/signature/both/none)
 
 **Step 8 – Task Rules & Completion**
 Ask about:
@@ -112,7 +112,8 @@ When you have collected ALL 10 steps of information and the user confirms, respo
     {
       "name": "string",
       "locationName": "string",
-      "manager": "string (optional)"
+      "manager": "string (optional)",
+      "managerEmail": "string (optional)"
     }
   ],
   "shifts": [
@@ -154,11 +155,16 @@ When you have collected ALL 10 steps of information and the user confirms, respo
   "oneOffTasks": [
     {
       "title": "string",
+      "description": "string (optional)",
+      "steps": ["string"] (optional),
       "departmentName": "string",
       "shiftName": "string",
       "areaName": "string",
+      "locationName": "string",
       "due_at": "ISO8601 datetime",
-      "required_proof": "photo" | "note" | "none"
+      "est_minutes": number (optional),
+      "criticality": 1-5 (optional),
+      "required_proof": "photo" | "note" | "signature" | "both" | "none"
     }
   ],
   "taskRules": {
@@ -317,12 +323,18 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
 
   if (!session) throw new Error("Session not found");
 
-  // Create organization
+  // Create organization with settings
   const { data: org, error: orgError } = await supabase
     .from("organizations")
     .insert({
       name: config.orgName,
-      timezone: config.timezone || "UTC"
+      timezone: config.timezone || "UTC",
+      settings: {
+        operatingDays: config.operatingDays || null,
+        operatingHours: config.operatingHours || null,
+        taskRules: config.taskRules || null,
+        notifications: config.notifications || null
+      }
     })
     .select()
     .single();
@@ -352,7 +364,8 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
         org_id: org.id,
         name: loc.name,
         latitude: loc.latitude || null,
-        longitude: loc.longitude || null
+        longitude: loc.longitude || null,
+        address: loc.address || null
       })
       .select()
       .single();
@@ -371,8 +384,10 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
     }
   }
 
-  // Create departments
+  // Create departments (will update manager_user_id after users are created)
   const departmentMap: Record<string, string> = {};
+  const departmentsWithManagers: Array<{id: string, managerEmail: string}> = [];
+  
   for (const dept of config.departments || []) {
     const locationId = locationMap[dept.locationName];
     if (!locationId) continue;
@@ -389,6 +404,11 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
 
     if (deptError) throw deptError;
     departmentMap[dept.name] = department.id;
+    
+    // Track departments with managers (if email provided)
+    if (dept.managerEmail) {
+      departmentsWithManagers.push({ id: department.id, managerEmail: dept.managerEmail });
+    }
   }
 
   // Create shifts (and auto-fill 24-hour coverage)
@@ -445,7 +465,9 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
       });
   }
 
-  // Create team member invitations
+  // Create team member invitations and assignments
+  const userByEmail = new Map<string, string>();
+  
   for (const member of config.teamMembers || []) {
     console.log(`Team member to invite: ${member.email} as ${member.role}`);
     
@@ -469,6 +491,7 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
           displayName: member.name,
           role: member.role || 'crew',
           departmentId: primaryDeptId,
+          orgId: org.id,
           pin: member.pin || null
         })
       });
@@ -476,6 +499,43 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
       if (!inviteResponse.ok) {
         const errorText = await inviteResponse.text();
         console.error(`Failed to invite ${member.email}:`, errorText);
+        continue;
+      }
+
+      const inviteData = await inviteResponse.json();
+      const invitedUserId = inviteData.user?.id;
+      
+      if (!invitedUserId) {
+        console.error(`No user ID returned for ${member.email}`);
+        continue;
+      }
+
+      // Store for department manager lookups
+      userByEmail.set(member.email, invitedUserId);
+
+      // Assign ALL departments (not just primary)
+      if (memberDeptIds.length > 0) {
+        const deptAssignments = memberDeptIds.map((deptId: string, idx: number) => ({
+          user_id: invitedUserId,
+          department_id: deptId,
+          is_primary: idx === 0
+        }));
+        
+        await supabase.from('user_departments').insert(deptAssignments);
+      }
+
+      // Assign ALL shifts
+      const memberShiftIds = (member.shifts || [])
+        .map((shiftName: string) => shiftMap[shiftName])
+        .filter(Boolean);
+      
+      if (memberShiftIds.length > 0) {
+        const shiftAssignments = memberShiftIds.map((shiftId: string) => ({
+          user_id: invitedUserId,
+          shift_id: shiftId
+        }));
+        
+        await supabase.from('user_shifts').insert(shiftAssignments);
       }
     } catch (inviteError) {
       console.error(`Error inviting ${member.email}:`, inviteError);
@@ -520,7 +580,18 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
       });
   }
 
-  // Create one-off tasks
+  // Update department managers now that users are created
+  for (const deptWithManager of departmentsWithManagers) {
+    const managerUserId = userByEmail.get(deptWithManager.managerEmail);
+    if (managerUserId) {
+      await supabase
+        .from('departments')
+        .update({ manager_user_id: managerUserId })
+        .eq('id', deptWithManager.id);
+    }
+  }
+
+  // Create one-off tasks with required_proof
   for (const task of config.oneOffTasks || []) {
     const departmentId = departmentMap[task.departmentName];
     const shiftId = shiftMap[task.shiftName];
@@ -539,7 +610,17 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
         area_id: areaId,
         due_at: task.due_at,
         status: 'pending',
-        created_from_v2: 'oneoff'
+        created_from_v2: 'oneoff',
+        required_proof: task.required_proof || 'none',
+        denormalized_data: {
+          routine_title: task.title || 'One-off Task',
+          routine_description: task.description || null,
+          area_name: task.areaName,
+          est_minutes: task.est_minutes || 15,
+          criticality: task.criticality || 3,
+          required_proof: task.required_proof || 'none',
+          steps: task.steps || []
+        }
       });
   }
 

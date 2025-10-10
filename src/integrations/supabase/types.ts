@@ -182,6 +182,7 @@ export type Database = {
           description: string | null
           id: string
           location_id: string
+          manager_user_id: string | null
           name: string
         }
         Insert: {
@@ -190,6 +191,7 @@ export type Database = {
           description?: string | null
           id?: string
           location_id: string
+          manager_user_id?: string | null
           name: string
         }
         Update: {
@@ -198,6 +200,7 @@ export type Database = {
           description?: string | null
           id?: string
           location_id?: string
+          manager_user_id?: string | null
           name?: string
         }
         Relationships: [
@@ -212,6 +215,7 @@ export type Database = {
       }
       locations: {
         Row: {
+          address: string | null
           archived_at: string | null
           created_at: string
           id: string
@@ -221,6 +225,7 @@ export type Database = {
           org_id: string
         }
         Insert: {
+          address?: string | null
           archived_at?: string | null
           created_at?: string
           id?: string
@@ -230,6 +235,7 @@ export type Database = {
           org_id: string
         }
         Update: {
+          address?: string | null
           archived_at?: string | null
           created_at?: string
           id?: string
@@ -284,6 +290,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          settings: Json
           timezone: string
         }
         Insert: {
@@ -291,6 +298,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          settings?: Json
           timezone?: string
         }
         Update: {
@@ -298,6 +306,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          settings?: Json
           timezone?: string
         }
         Relationships: []
@@ -693,6 +702,7 @@ export type Database = {
           due_at: string
           id: string
           location_id: string
+          required_proof: Database["public"]["Enums"]["proof_type"] | null
           routine_id: string | null
           shift_id: string | null
           status: Database["public"]["Enums"]["task_status"]
@@ -714,6 +724,7 @@ export type Database = {
           due_at: string
           id?: string
           location_id: string
+          required_proof?: Database["public"]["Enums"]["proof_type"] | null
           routine_id?: string | null
           shift_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
@@ -735,6 +746,7 @@ export type Database = {
           due_at?: string
           id?: string
           location_id?: string
+          required_proof?: Database["public"]["Enums"]["proof_type"] | null
           routine_id?: string | null
           shift_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
