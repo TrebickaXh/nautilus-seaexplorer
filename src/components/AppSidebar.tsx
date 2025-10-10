@@ -8,7 +8,6 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
   useSidebar,
@@ -60,9 +59,11 @@ export function AppSidebar() {
   };
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
-    isActive
-      ? 'bg-accent text-foreground font-medium rounded-md'
-      : 'hover:bg-accent/50 transition-colors rounded-md';
+    `w-full ${state === 'collapsed' ? 'px-2' : 'justify-start'} ${
+      isActive
+        ? 'bg-accent text-foreground font-medium'
+        : 'hover:bg-accent/50 transition-colors'
+    }`;
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -98,16 +99,20 @@ export function AppSidebar() {
                 .filter(item => hasAccess(item.roles))
                 .map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end
-                        className={getNavCls}
-                      >
-                        <item.icon className="h-4 w-4 flex-shrink-0" />
-                        {state !== 'collapsed' && <span className="ml-2">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
+                    <NavLink
+                      to={item.url}
+                      end
+                    >
+                      {({ isActive }) => (
+                        <Button
+                          variant="ghost"
+                          className={getNavCls({ isActive })}
+                        >
+                          <item.icon className="h-4 w-4 flex-shrink-0" />
+                          {state !== 'collapsed' && <span className="ml-2">{item.title}</span>}
+                        </Button>
+                      )}
+                    </NavLink>
                   </SidebarMenuItem>
                 ))}
             </SidebarMenu>
@@ -126,16 +131,20 @@ export function AppSidebar() {
                   .filter(item => hasAccess(item.roles))
                   .map((item) => (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to={item.url}
-                          end
-                          className={getNavCls}
-                        >
-                          <item.icon className="h-4 w-4 flex-shrink-0" />
-                          {state !== 'collapsed' && <span className="ml-2">{item.title}</span>}
-                        </NavLink>
-                      </SidebarMenuButton>
+                      <NavLink
+                        to={item.url}
+                        end
+                      >
+                        {({ isActive }) => (
+                          <Button
+                            variant="ghost"
+                            className={getNavCls({ isActive })}
+                          >
+                            <item.icon className="h-4 w-4 flex-shrink-0" />
+                            {state !== 'collapsed' && <span className="ml-2">{item.title}</span>}
+                          </Button>
+                        )}
+                      </NavLink>
                     </SidebarMenuItem>
                   ))}
               </SidebarMenu>
@@ -154,16 +163,20 @@ export function AppSidebar() {
                 .filter(item => hasAccess(item.roles))
                 .map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end
-                        className={getNavCls}
-                      >
-                        <item.icon className="h-4 w-4 flex-shrink-0" />
-                        {state !== 'collapsed' && <span className="ml-2">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
+                    <NavLink
+                      to={item.url}
+                      end
+                    >
+                      {({ isActive }) => (
+                        <Button
+                          variant="ghost"
+                          className={getNavCls({ isActive })}
+                        >
+                          <item.icon className="h-4 w-4 flex-shrink-0" />
+                          {state !== 'collapsed' && <span className="ml-2">{item.title}</span>}
+                        </Button>
+                      )}
+                    </NavLink>
                   </SidebarMenuItem>
                 ))}
             </SidebarMenu>
