@@ -48,14 +48,12 @@ serve(async (req) => {
     // Auto-generate employee ID if not provided
     let finalEmployeeId = employeeId;
     if (!finalEmployeeId || finalEmployeeId.trim() === '') {
-      // Get count of existing users in org to generate sequential ID
-      const { count } = await supabaseAdmin
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('org_id', orgId);
-      
-      const nextNumber = (count || 0) + 1;
-      finalEmployeeId = `EMP-${String(nextNumber).padStart(4, '0')}`;
+      // Generate unique employee ID: EMP-YYYYMMDD-XXXXX (5 random alphanumeric chars)
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const randomPart = Array.from({ length: 5 }, () => 
+        '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 33)]
+      ).join('');
+      finalEmployeeId = `EMP-${datePart}-${randomPart}`;
     }
 
     // Create user without sending email
