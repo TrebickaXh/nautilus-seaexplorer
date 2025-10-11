@@ -62,7 +62,7 @@ export function useShifts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('shifts')
-        .select('id, name, location_id, locations(name)')
+        .select('id, name, location_id, department_id, locations(name)')
         .order('name');
       
       if (error) throw error;
