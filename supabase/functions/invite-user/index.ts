@@ -88,6 +88,14 @@ serve(async (req) => {
       );
     }
 
+    // Ensure employee_id is set in profiles table (in case trigger doesn't populate it)
+    if (userData.user) {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ employee_id: finalEmployeeId })
+        .eq("id", userData.user.id);
+    }
+
     // Update profile with shift_type if provided
     if (shiftType && userData.user) {
       await supabaseAdmin
