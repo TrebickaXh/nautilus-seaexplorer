@@ -57,9 +57,9 @@ interface TeamMember {
 export default function Kiosk() {
   const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [currentShift, setCurrentShift] = useState<Shift | null>(null);
+  const [activeShifts, setActiveShifts] = useState<Shift[]>([]);
   const [allShifts, setAllShifts] = useState<Shift[]>([]);
-  const [selectedShiftId, setSelectedShiftId] = useState<string>('current');
+  const [selectedShiftId, setSelectedShiftId] = useState<string>('active');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('all');
@@ -85,17 +85,17 @@ export default function Kiosk() {
 
   useEffect(() => {
     Promise.all([
-      loadCurrentShift(),
+      loadActiveShifts(),
       loadAllShifts(),
       loadDepartments()
     ]);
   }, []);
 
   useEffect(() => {
-    if (currentShift) {
+    if (activeShifts.length > 0) {
       loadTeamMembers();
     }
-  }, [currentShift]);
+  }, [activeShifts]);
 
   useEffect(() => {
     loadTasks();
@@ -104,7 +104,7 @@ export default function Kiosk() {
   // Reset shift when department changes
   useEffect(() => {
     if (selectedDepartmentId !== 'all') {
-      setSelectedShiftId('current');
+      setSelectedShiftId('active');
     }
   }, [selectedDepartmentId]);
 
@@ -118,7 +118,7 @@ export default function Kiosk() {
     );
   };
 
-  const loadCurrentShift = async () => {
+  const loadActiveShifts = async () => {
     setLoading(true);
     try {
       const now = new Date();
@@ -133,14 +133,16 @@ export default function Kiosk() {
 
       if (error) throw error;
 
-      const activeShift = shifts?.find((shift: Shift) => {
+      // Find ALL active shifts (not just the first one)
+      const currentActiveShifts = shifts?.filter((shift: Shift) => {
         const isTimeInRange = currentTime >= shift.start_time && currentTime <= shift.end_time;
         return isTimeInRange;
-      });
+      }) || [];
 
-      setCurrentShift(activeShift || null);
+      console.log(`Found ${currentActiveShifts.length} active shifts:`, currentActiveShifts.map(s => s.name));
+      setActiveShifts(currentActiveShifts);
     } catch (error: any) {
-      toast.error('Failed to load current shift');
+      toast.error('Failed to load active shifts');
       console.error(error);
     } finally {
       setLoading(false);
@@ -180,9 +182,6 @@ export default function Kiosk() {
 
   const loadTasks = async () => {
     try {
-      // Determine which shift to filter by
-      const shiftId = selectedShiftId === 'current' ? currentShift?.id : selectedShiftId;
-      
       // Build date range for selected date
       const startOfDay = new Date(selectedDate);
       startOfDay.setHours(0, 0, 0, 0);
@@ -202,8 +201,15 @@ export default function Kiosk() {
         .lte('due_at', endOfDay.toISOString());
 
       // Apply shift filter
-      if (shiftId && shiftId !== 'all') {
-        query = query.eq('shift_id', shiftId);
+      if (selectedShiftId === 'active') {
+        // Show tasks from ALL currently active shifts
+        if (activeShifts.length > 0) {
+          const activeShiftIds = activeShifts.map(s => s.id);
+          query = query.in('shift_id', activeShiftIds);
+        }
+      } else if (selectedShiftId !== 'all') {
+        // Show tasks from a specific selected shift
+        query = query.eq('shift_id', selectedShiftId);
       }
 
       // Apply department filter
@@ -224,24 +230,33 @@ export default function Kiosk() {
   };
 
   const loadTeamMembers = async () => {
-    if (!currentShift) return;
+    if (activeShifts.length === 0) return;
 
     try {
+      // Load team members from ALL active shifts
+      const activeShiftIds = activeShifts.map(s => s.id);
+      
       const { data, error } = await supabase
         .from('user_shifts')
         .select(`
           user_id,
           profiles(id, display_name, pin_hash)
         `)
-        .eq('shift_id', currentShift.id);
+        .in('shift_id', activeShiftIds);
 
       if (error) throw error;
 
-      const members = (data || [])
-        .map((us: any) => us.profiles)
-        .filter(Boolean);
+      // Deduplicate team members (same person might be assigned to multiple shifts)
+      const uniqueMembers = Array.from(
+        new Map(
+          (data || [])
+            .map((us: any) => us.profiles)
+            .filter(Boolean)
+            .map(member => [member.id, member])
+        ).values()
+      );
 
-      setTeamMembers(members);
+      setTeamMembers(uniqueMembers);
     } catch (error: any) {
       console.error('Failed to load team members:', error);
     }
@@ -320,12 +335,12 @@ export default function Kiosk() {
     );
   }
 
-  if (!currentShift) {
+  if (activeShifts.length === 0) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="p-8 max-w-md text-center">
           <Clock className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <h2 className="text-2xl font-bold mb-2">No Active Shift</h2>
+          <h2 className="text-2xl font-bold mb-2">No Active Shifts</h2>
           <p className="text-muted-foreground mb-4">
             There are no shifts scheduled for this time period.
           </p>
@@ -351,14 +366,18 @@ export default function Kiosk() {
             <div className="text-center">
               <h1 className="text-xl font-bold">Task Kiosk</h1>
               <p className="text-sm text-muted-foreground">
-                {currentShift ? (
+                {activeShifts.length > 0 ? (
                   <>
-                    {currentShift.name}
+                    {activeShifts.length === 1 ? (
+                      activeShifts[0].name
+                    ) : (
+                      `${activeShifts.length} Active Shifts`
+                    )}
                     {selectedDepartmentId !== 'all' && (
                       <> • {departments.find(d => d.id === selectedDepartmentId)?.name || 'Department'}</>
                     )}
                   </>
-                ) : 'No active shift'}
+                ) : 'No active shifts'}
               </p>
             </div>
             
@@ -428,7 +447,7 @@ export default function Kiosk() {
                 <SelectValue placeholder="Select shift" />
               </SelectTrigger>
               <SelectContent className="z-50 bg-background">
-                <SelectItem value="current">Current Shift</SelectItem>
+                <SelectItem value="active">Active Shifts</SelectItem>
                 <SelectItem value="all">All Shifts</SelectItem>
                 {getFilteredShifts().map((shift) => (
                   <SelectItem key={shift.id} value={shift.id}>
@@ -445,7 +464,10 @@ export default function Kiosk() {
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-2">Pending Tasks</h2>
           <p className="text-muted-foreground">
-            {tasks.length} task{tasks.length !== 1 ? 's' : ''} for this shift
+            {tasks.length} task{tasks.length !== 1 ? 's' : ''} 
+            {selectedShiftId === 'active' && activeShifts.length > 1 && (
+              <> across {activeShifts.length} active shifts</>
+            )}
           </p>
         </div>
 
