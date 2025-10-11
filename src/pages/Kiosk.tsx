@@ -279,12 +279,19 @@ export default function Kiosk() {
     }
 
     try {
+      // Verify PIN - it will return the user who owns this PIN
       const { data: verified, error: pinError } = await supabase.functions.invoke('verify-pin', {
-        body: { userId: selectedMember, pin }
+        body: { pin }
       });
 
-      if (pinError || !verified?.valid) {
+      if (pinError || !verified?.success) {
         toast.error('Invalid PIN');
+        return;
+      }
+
+      // Check if the PIN belongs to the selected team member
+      if (verified.user.id !== selectedMember) {
+        toast.error('PIN does not match the selected team member');
         return;
       }
 
@@ -317,6 +324,7 @@ export default function Kiosk() {
       loadTasks();
     } catch (error: any) {
       toast.error(error.message || 'Failed to complete task');
+      console.error('Task completion error:', error);
     }
   };
 
