@@ -84,7 +84,6 @@ export default function Users() {
       setOrgId(profile.org_id);
 
       // Get all users in the same org with their roles
-      // Using profiles_safe view to exclude sensitive authentication columns (pin_hash, pin_attempts, pin_locked_until)
       const { data, error } = await supabase
         .from('profiles_safe')
         .select(`
@@ -105,34 +104,53 @@ export default function Users() {
 
       if (error) throw error;
 
-      // Fetch department names and counts for each user
-      const usersWithDepartments = await Promise.all(
-        (data || []).map(async (user) => {
-          const { data: deptData } = await supabase
-            .from('user_departments')
-            .select('departments(name)')
-            .eq('user_id', user.id)
-            .eq('is_primary', true)
-            .single();
+      // Batch fetch all department and shift data in parallel
+      const userIds = (data || []).map(u => u.id);
+      
+      const [deptAssignments, shiftAssignments] = await Promise.all([
+        supabase
+          .from('user_departments')
+          .select('user_id, is_primary, departments(name)')
+          .in('user_id', userIds),
+        supabase
+          .from('user_shifts')
+          .select('user_id')
+          .in('user_id', userIds)
+      ]);
 
-          const { count: deptCount } = await supabase
-            .from('user_departments')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id);
+      // Build lookup maps for O(1) access
+      const deptMap = new Map<string, { primary: string | null; count: number }>();
+      const shiftCountMap = new Map<string, number>();
 
-          const { count: shiftCount } = await supabase
-            .from('user_shifts')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id);
+      // Process departments
+      if (deptAssignments.data) {
+        deptAssignments.data.forEach((dept) => {
+          const existing = deptMap.get(dept.user_id) || { primary: null, count: 0 };
+          existing.count++;
+          if (dept.is_primary && (dept.departments as any)?.name) {
+            existing.primary = (dept.departments as any).name;
+          }
+          deptMap.set(dept.user_id, existing);
+        });
+      }
 
-          return {
-            ...user,
-            department_name: (deptData?.departments as any)?.name || null,
-            department_count: deptCount || 0,
-            shift_count: shiftCount || 0,
-          };
-        })
-      );
+      // Process shifts
+      if (shiftAssignments.data) {
+        shiftAssignments.data.forEach((shift) => {
+          shiftCountMap.set(shift.user_id, (shiftCountMap.get(shift.user_id) || 0) + 1);
+        });
+      }
+
+      // Combine data efficiently
+      const usersWithDepartments = (data || []).map((user) => {
+        const deptInfo = deptMap.get(user.id) || { primary: null, count: 0 };
+        return {
+          ...user,
+          department_name: deptInfo.primary,
+          department_count: deptInfo.count,
+          shift_count: shiftCountMap.get(user.id) || 0,
+        };
+      });
 
       setUsers(usersWithDepartments as any);
     } catch (error: any) {
