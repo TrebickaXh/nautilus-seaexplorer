@@ -37,12 +37,28 @@ export default function Reports() {
 
   // Filter shifts based on selected department
   const availableShifts = useMemo(() => {
+    console.log('🔍 Filtering shifts:', {
+      selectedDepartmentId,
+      totalShifts: shifts.length,
+      shiftsWithDeptId: shifts.filter((s: any) => s.department_id).length,
+      shiftsWithoutDeptId: shifts.filter((s: any) => !s.department_id).length,
+      sampleShift: shifts[0]
+    });
+    
     if (selectedDepartmentId === 'all') {
       return shifts;
     }
-    return shifts.filter((shift: any) => 
+    
+    const filtered = shifts.filter((shift: any) => 
       shift.department_id === selectedDepartmentId || shift.department_id === null
     );
+    
+    console.log('📊 Filtered result:', {
+      availableCount: filtered.length,
+      filtered: filtered.map((s: any) => ({ name: s.name, dept_id: s.department_id }))
+    });
+    
+    return filtered;
   }, [shifts, selectedDepartmentId]);
 
   // Reset shift selection when department changes if current shift is not available
