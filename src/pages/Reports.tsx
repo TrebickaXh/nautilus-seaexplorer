@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +34,26 @@ export default function Reports() {
 
   const { data: shifts = [] } = useShifts();
   const { data: departments = [] } = useDepartments();
+
+  // Filter shifts based on selected department
+  const availableShifts = useMemo(() => {
+    if (selectedDepartmentId === 'all') {
+      return shifts;
+    }
+    return shifts.filter((shift: any) => 
+      shift.department_id === selectedDepartmentId || shift.department_id === null
+    );
+  }, [shifts, selectedDepartmentId]);
+
+  // Reset shift selection when department changes if current shift is not available
+  useEffect(() => {
+    if (selectedShiftId !== 'all') {
+      const isShiftAvailable = availableShifts.some((shift: any) => shift.id === selectedShiftId);
+      if (!isShiftAvailable) {
+        setSelectedShiftId('all');
+      }
+    }
+  }, [selectedDepartmentId, availableShifts, selectedShiftId]);
 
   // Calculate metrics - memoized to avoid recalculation on every render
   const onTimeData = useMemo(
@@ -126,23 +146,6 @@ export default function Reports() {
                   </SelectContent>
                 </Select>
               </div>
-              
-              <div>
-                <label className="text-sm font-medium mb-2 block">Shift</label>
-                <Select value={selectedShiftId} onValueChange={setSelectedShiftId}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Shifts</SelectItem>
-                    {shifts.map((shift: any) => (
-                      <SelectItem key={shift.id} value={shift.id}>
-                        {shift.name} {shift.locations?.name && `(${shift.locations.name})`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Department</label>
@@ -155,6 +158,23 @@ export default function Reports() {
                     {departments.map((dept: any) => (
                       <SelectItem key={dept.id} value={dept.id}>
                         {dept.name} {dept.locations?.name && `(${dept.locations.name})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium mb-2 block">Shift</label>
+                <Select value={selectedShiftId} onValueChange={setSelectedShiftId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Shifts</SelectItem>
+                    {availableShifts.map((shift: any) => (
+                      <SelectItem key={shift.id} value={shift.id}>
+                        {shift.name} {shift.locations?.name && `(${shift.locations.name})`}
                       </SelectItem>
                     ))}
                   </SelectContent>
