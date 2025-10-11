@@ -52,6 +52,7 @@ interface TeamMember {
   id: string;
   display_name: string;
   pin_hash: string | null;
+  is_admin?: boolean;
 }
 
 export default function Kiosk() {
@@ -236,7 +237,7 @@ export default function Kiosk() {
       // Load team members from ALL active shifts
       const activeShiftIds = activeShifts.map(s => s.id);
       
-      const { data, error } = await supabase
+      const { data: shiftMembers, error: shiftError } = await supabase
         .from('user_shifts')
         .select(`
           user_id,
@@ -244,18 +245,53 @@ export default function Kiosk() {
         `)
         .in('shift_id', activeShiftIds);
 
-      if (error) throw error;
+      if (shiftError) throw shiftError;
 
-      // Deduplicate team members (same person might be assigned to multiple shifts)
-      const uniqueMembers = Array.from(
-        new Map(
-          (data || [])
-            .map((us: any) => us.profiles)
-            .filter(Boolean)
-            .map(member => [member.id, member])
-        ).values()
-      );
+      // Get current user's org_id to find all org admins
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('org_id')
+        .eq('id', user.id)
+        .single();
+
+      // Load all org admins from the same organization
+      const { data: adminRoles, error: adminError } = await supabase
+        .from('user_roles')
+        .select(`
+          user_id,
+          profiles!inner(id, display_name, pin_hash, org_id)
+        `)
+        .eq('role', 'org_admin')
+        .eq('profiles.org_id', userProfile?.org_id);
+
+      if (adminError) throw adminError;
+
+      // Combine shift members and org admins
+      const shiftMemberProfiles = (shiftMembers || [])
+        .map((us: any) => us.profiles)
+        .filter(Boolean)
+        .map(member => ({ ...member, is_admin: false }));
+
+      const adminProfiles = (adminRoles || [])
+        .map((ar: any) => ar.profiles)
+        .filter(Boolean)
+        .map(admin => ({ ...admin, is_admin: true }));
+
+      // Deduplicate (if admin is also in shift, mark them as admin)
+      const memberMap = new Map();
+      
+      shiftMemberProfiles.forEach(member => {
+        memberMap.set(member.id, member);
+      });
+      
+      adminProfiles.forEach(admin => {
+        memberMap.set(admin.id, admin);
+      });
+
+      const uniqueMembers = Array.from(memberMap.values());
       setTeamMembers(uniqueMembers);
     } catch (error: any) {
       console.error('Failed to load team members:', error);
@@ -550,8 +586,14 @@ export default function Kiosk() {
                     key={member.id}
                     variant={selectedMember === member.id ? 'default' : 'outline'}
                     onClick={() => handleMemberSelect(member.id)}
+                    className="relative"
                   >
                     {member.display_name}
+                    {member.is_admin && (
+                      <Badge className="absolute -top-1 -right-1 text-[10px] px-1 py-0 h-4" variant="secondary">
+                        Admin
+                      </Badge>
+                    )}
                   </Button>
                 ))}
               </div>
