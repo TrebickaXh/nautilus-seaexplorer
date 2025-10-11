@@ -1,6 +1,20 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.2.4/mod.ts";
+
+// Hash PIN using Web Crypto API (compatible with Deno Deploy)
+async function hashPin(pin: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Compare PIN with hash
+async function verifyPin(pin: string, hash: string): Promise<boolean> {
+  const pinHash = await hashPin(pin);
+  return pinHash === hash;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -96,7 +110,7 @@ serve(async (req) => {
       }
 
       try {
-        const isMatch = await bcrypt.compare(pin, profile.pin_hash);
+        const isMatch = await verifyPin(pin, profile.pin_hash);
         if (isMatch) {
           // Reset attempt counter on successful login
           await supabaseAdmin
