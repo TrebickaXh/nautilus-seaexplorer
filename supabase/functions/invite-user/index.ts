@@ -45,6 +45,19 @@ serve(async (req) => {
       orgId,
     }: InviteUserRequest = await req.json();
 
+    // Auto-generate employee ID if not provided
+    let finalEmployeeId = employeeId;
+    if (!finalEmployeeId || finalEmployeeId.trim() === '') {
+      // Get count of existing users in org to generate sequential ID
+      const { count } = await supabaseAdmin
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('org_id', orgId);
+      
+      const nextNumber = (count || 0) + 1;
+      finalEmployeeId = `EMP-${String(nextNumber).padStart(4, '0')}`;
+    }
+
     // Create user without sending email
     const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -55,7 +68,7 @@ serve(async (req) => {
         role,
         phone,
         department_id: departmentId,
-        employee_id: employeeId,
+        employee_id: finalEmployeeId,
       },
     });
 
