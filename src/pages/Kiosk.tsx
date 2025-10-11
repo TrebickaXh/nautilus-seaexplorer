@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Wifi, WifiOff, ArrowLeft, CheckCircle2, Clock, CalendarIcon, Filter } from 'lucide-react';
+import { Wifi, WifiOff, ArrowLeft, CheckCircle2, Clock, CalendarIcon, Filter, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -485,9 +485,20 @@ export default function Kiosk() {
                 </Badge>
               </div>
               
-              <p className="text-sm text-muted-foreground mb-2">
-                {task.areas?.name}
-              </p>
+              <div className="space-y-1 mb-2">
+                {task.departments?.name && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Building2 className="h-3 w-3" />
+                    <span>{task.departments.name}</span>
+                  </div>
+                )}
+                
+                {task.areas?.name && (
+                  <p className="text-sm text-muted-foreground">
+                    {task.areas.name}
+                  </p>
+                )}
+              </div>
               
               <p className="text-sm text-muted-foreground">
                 Due: {format(new Date(task.due_at), 'h:mm a')}
