@@ -334,6 +334,10 @@ export default function Dashboard() {
                 <CardDescription>Common tasks and shortcuts</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/task-instances?filter=overdue")}>
+                  <AlertCircle className="w-4 h-4 mr-2 text-destructive" />
+                  View Overdue Tasks
+                </Button>
                 <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/task-routines")}>
                   <FileText className="w-4 h-4 mr-2" />
                   Manage Routines

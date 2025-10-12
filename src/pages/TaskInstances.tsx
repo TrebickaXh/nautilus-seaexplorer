@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
@@ -17,11 +17,15 @@ import { toast } from 'sonner';
 
 export default function TaskInstances() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAdmin, loading: roleLoading } = useUserRole();
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
-  const [timeRangeFilter, setTimeRangeFilter] = useState('next_7_days');
+  const [timeRangeFilter, setTimeRangeFilter] = useState(() => {
+    const filterParam = searchParams.get('filter');
+    return filterParam === 'overdue' ? 'overdue' : 'next_7_days';
+  });
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [skipTask, setSkipTask] = useState<any>(null);
