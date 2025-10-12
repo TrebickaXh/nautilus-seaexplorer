@@ -304,29 +304,22 @@ export default function Kiosk() {
     setPin('');
   };
 
+  const handleMemberSelect = (memberId: string) => {
+    setSelectedMember(memberId);
+  };
+
   const handleComplete = async () => {
-    if (!selectedTask || !pin) {
-      toast.error('Please enter your PIN');
+    if (!selectedTask || !selectedMember || !pin) {
+      toast.error('Please select a team member and enter PIN');
       return;
     }
 
     try {
-      // First verify the PIN to get the user ID
-      const { data: verified, error: pinError } = await supabase.functions.invoke('verify-pin', {
-        body: { pin }
-      });
-
-      if (pinError || !verified?.success) {
-        toast.error('Invalid PIN');
-        setPin('');
-        return;
-      }
-
-      // Now complete the task with the verified user's ID
+      // Use the secure complete-task edge function
       const { data, error } = await supabase.functions.invoke('complete-task', {
         body: {
           taskInstanceId: selectedTask.id,
-          userId: verified.user.id,
+          userId: selectedMember,
           pin: pin,
           outcome: 'completed'
         }
@@ -334,25 +327,23 @@ export default function Kiosk() {
 
       if (error) {
         console.error('Task completion error:', error);
-        toast.error(error.message || 'Failed to complete task');
-        setPin('');
+        toast.error(error.message || 'Invalid PIN or failed to complete task');
         return;
       }
 
       if (!data?.success) {
         toast.error('Failed to complete task');
-        setPin('');
         return;
       }
 
-      toast.success(`Task completed by ${verified.user.display_name}!`);
+      toast.success('Task completed!');
       setSelectedTask(null);
+      setSelectedMember(null);
       setPin('');
       loadTasks();
     } catch (error: any) {
       toast.error(error.message || 'Failed to complete task');
       console.error('Task completion error:', error);
-      setPin('');
     }
   };
 
@@ -570,22 +561,43 @@ export default function Kiosk() {
 
             <div>
               <label className="text-sm font-medium mb-2 block">
-                Enter Your PIN
+                Who completed this task?
               </label>
-              <Input
-                type="password"
-                inputMode="numeric"
-                maxLength={6}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                placeholder="Enter 4-6 digit PIN"
-                className="text-center text-2xl tracking-widest"
-                autoFocus
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                Enter your PIN to complete this task
-              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {teamMembers.map((member) => (
+                  <Button
+                    key={member.id}
+                    variant={selectedMember === member.id ? 'default' : 'outline'}
+                    onClick={() => handleMemberSelect(member.id)}
+                    className="relative"
+                  >
+                    {member.display_name}
+                    {member.is_admin && (
+                      <Badge className="absolute -top-1 -right-1 text-[10px] px-1 py-0 h-4" variant="secondary">
+                        Admin
+                      </Badge>
+                    )}
+                  </Button>
+                ))}
+              </div>
             </div>
+
+            {selectedMember && (
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Enter PIN to verify
+                </label>
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Enter PIN"
+                  className="text-center text-2xl tracking-widest"
+                />
+              </div>
+            )}
 
             <div className="flex gap-2 pt-4">
               <Button 
@@ -597,7 +609,7 @@ export default function Kiosk() {
               </Button>
               <Button 
                 onClick={handleComplete}
-                disabled={!pin || pin.length < 4}
+                disabled={!selectedMember || pin.length < 4}
                 className="flex-1"
               >
                 Complete
