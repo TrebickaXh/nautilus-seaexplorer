@@ -116,22 +116,6 @@ serve(async (req) => {
     // Hash the PIN server-side
     const pinHash = await hashPin(pin);
 
-    // Check if another user already has this PIN (security check)
-    const { data: existingPin } = await supabase
-      .from('profiles')
-      .select('id, display_name')
-      .eq('pin_hash', pinHash)
-      .neq('id', userId)
-      .single();
-
-    if (existingPin) {
-      console.warn(`Duplicate PIN detected: User ${existingPin.display_name} already has this PIN`);
-      return new Response(
-        JSON.stringify({ error: 'This PIN is already in use by another user. Please choose a different PIN.' }), 
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Update profile with hashed PIN and reset attempt counter
     const { error: updateError } = await supabase
       .from('profiles')
