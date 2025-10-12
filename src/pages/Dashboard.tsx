@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -297,30 +298,32 @@ export default function Dashboard() {
                     <p className="text-sm">Completed tasks will appear here</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {recentCompletions.map((completion) => (
-                      <div key={completion.id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <CheckCircle2 className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{completion.task_instances?.task_routines?.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {completion.profiles?.display_name} • {completion.task_instances?.locations?.name}
-                          </p>
-                          {completion.note && (
-                            <p className="text-sm text-muted-foreground italic mt-1">"{completion.note}"</p>
-                          )}
-                        </div>
-                        {completion.photo_url && (
-                          <div className="flex-shrink-0">
-                            <img src={completion.photo_url} alt="Proof" className="w-12 h-12 object-cover rounded" />
+                  <ScrollArea className="h-[400px] pr-4">
+                    <div className="space-y-3">
+                      {recentCompletions.map((completion) => (
+                        <div key={completion.id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                          <CheckCircle2 className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{completion.task_instances?.task_routines?.title}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {completion.profiles?.display_name} • {completion.task_instances?.locations?.name}
+                            </p>
+                            {completion.note && (
+                              <p className="text-sm text-muted-foreground italic mt-1">"{completion.note}"</p>
+                            )}
                           </div>
-                        )}
-                        <span className="text-xs text-muted-foreground flex-shrink-0">
-                          {new Date(completion.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                          {completion.photo_url && (
+                            <div className="flex-shrink-0">
+                              <img src={completion.photo_url} alt="Proof" className="w-12 h-12 object-cover rounded" />
+                            </div>
+                          )}
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            {new Date(completion.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 )}
               </CardContent>
             </Card>
