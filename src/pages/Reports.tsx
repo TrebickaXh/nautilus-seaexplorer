@@ -5,13 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 import { Download, TrendingUp, Clock, AlertCircle, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { useReportData, useShifts, useDepartments } from "@/hooks/useReportData";
 import {
   calculateOnTimeMetrics,
-  calculateMtcMetrics,
+  calculateCompletionMetrics,
+  calculateTeamMemberMetrics,
   calculateCoverageMetrics,
   exportMetricsToCSV,
   type GroupByType,
@@ -77,9 +78,26 @@ export default function Reports() {
     [tasks, groupBy]
   );
 
-  const mtcData = useMemo(
-    () => calculateMtcMetrics(tasks, groupBy),
+  const completionData = useMemo(
+    () => calculateCompletionMetrics(tasks, groupBy),
     [tasks, groupBy]
+  );
+
+  const teamMemberData = useMemo(
+    () => calculateTeamMemberMetrics(tasks),
+    [tasks]
+  );
+
+  // Department-specific metrics
+  const departmentData = useMemo(
+    () => calculateCompletionMetrics(tasks, 'department'),
+    [tasks]
+  );
+
+  // Shift-specific metrics
+  const shiftData = useMemo(
+    () => calculateCompletionMetrics(tasks, 'shift'),
+    [tasks]
   );
 
   const coverageData = useMemo(
@@ -265,24 +283,24 @@ export default function Reports() {
           </CardContent>
         </Card>
 
-        {/* Mean Time to Complete */}
+        {/* Tasks by Department */}
         <Card className="mb-6 shadow-ocean">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
-              Mean Time to Complete
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Tasks by Department
             </CardTitle>
-            <CardDescription>Average time from task availability to completion (minutes)</CardDescription>
+            <CardDescription>Completed and overdue tasks grouped by department</CardDescription>
           </CardHeader>
           <CardContent>
-            {mtcData.length === 0 ? (
+            {departmentData.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No completion data available</p>
+                <p>No department data available</p>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={mtcData}>
+                <BarChart data={departmentData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis 
                     dataKey="name" 
@@ -292,10 +310,7 @@ export default function Reports() {
                     textAnchor="end"
                     height={100}
                   />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    label={{ value: 'Avg Minutes', angle: -90, position: 'insideLeft' }}
-                  />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: 'hsl(var(--background))',
@@ -303,7 +318,95 @@ export default function Reports() {
                       borderRadius: '8px'
                     }}
                   />
-                  <Bar dataKey="avgMinutes" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                  <Legend />
+                  <Bar dataKey="completed" fill="hsl(var(--success))" radius={[8, 8, 0, 0]} name="Completed" />
+                  <Bar dataKey="overdue" fill="hsl(var(--destructive))" radius={[8, 8, 0, 0]} name="Overdue" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Tasks by Shift */}
+        <Card className="mb-6 shadow-ocean">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" />
+              Tasks by Shift
+            </CardTitle>
+            <CardDescription>Completed and overdue tasks grouped by shift</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {shiftData.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No shift data available</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={shiftData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fontSize: 12 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                  />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="completed" fill="hsl(var(--success))" radius={[8, 8, 0, 0]} name="Completed" />
+                  <Bar dataKey="overdue" fill="hsl(var(--destructive))" radius={[8, 8, 0, 0]} name="Overdue" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Tasks by Team Member */}
+        <Card className="mb-6 shadow-ocean">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-accent" />
+              Tasks Completed by Team Member
+            </CardTitle>
+            <CardDescription>Number of tasks completed by each team member</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {teamMemberData.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>No team member completion data available</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={teamMemberData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fontSize: 12 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={100}
+                  />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Bar dataKey="completed" fill="hsl(var(--accent))" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}

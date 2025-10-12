@@ -26,10 +26,10 @@ export function useReportData(filters: ReportFilters) {
           locations(name),
           departments(name),
           shifts(name),
-          completions(created_at, user_id)
+          completions(created_at, user_id, profiles!user_id(display_name))
         `)
         .gte('due_at', startDate.toISOString())
-        .in('status', ['done', 'skipped']);
+        .in('status', ['done', 'skipped', 'pending']);
 
       // Apply shift filter
       if (filters.shiftId !== 'all') {

@@ -14,7 +14,7 @@ export interface TaskInstance {
   locations?: { name: string };
   departments?: { name: string };
   shifts?: { name: string };
-  completions?: Array<{ created_at: string; user_id: string }>;
+  completions?: Array<{ created_at: string; user_id: string; profiles?: { display_name: string } }>;
 }
 
 export interface OnTimeMetric {
@@ -24,10 +24,17 @@ export interface OnTimeMetric {
   onTime: number;
 }
 
-export interface MtcMetric {
+export interface CompletionMetric {
   name: string;
-  avgMinutes: number;
-  count: number;
+  completed: number;
+  overdue: number;
+  total: number;
+}
+
+export interface TeamMemberMetric {
+  name: string;
+  completed: number;
+  userId: string;
 }
 
 export interface CoverageMetric {
@@ -76,41 +83,73 @@ export function calculateOnTimeMetrics(
 }
 
 /**
- * Calculate mean time to complete grouped by specified dimension
+ * Calculate completed and overdue tasks by group
  */
-export function calculateMtcMetrics(
+export function calculateCompletionMetrics(
   tasks: TaskInstance[],
   groupBy: GroupByType
-): MtcMetric[] {
-  const mtcMap = new Map<string, { times: number[]; name: string }>();
+): CompletionMetric[] {
+  const metricsMap = new Map<string, { completed: number; overdue: number; total: number; name: string }>();
 
   tasks.forEach(task => {
-    if (task.status === 'done' && task.completed_at && task.completions?.[0]?.created_at) {
-      const { key, name } = getGroupKeyAndName(task, groupBy);
+    const { key, name } = getGroupKeyAndName(task, groupBy);
 
-      if (!mtcMap.has(key)) {
-        mtcMap.set(key, { times: [], name });
-      }
+    if (!metricsMap.has(key)) {
+      metricsMap.set(key, { completed: 0, overdue: 0, total: 0, name });
+    }
 
-      const dueTime = new Date(task.due_at).getTime();
-      const completeTime = new Date(task.completions[0].created_at).getTime();
-      const minutes = (completeTime - dueTime) / (1000 * 60);
+    const metrics = metricsMap.get(key)!;
+    metrics.total++;
 
-      mtcMap.get(key)!.times.push(minutes);
+    if (task.status === 'done') {
+      metrics.completed++;
+    }
+
+    // Check if task is overdue (past due_at and not completed)
+    if (task.status === 'pending' && new Date(task.due_at) < new Date()) {
+      metrics.overdue++;
     }
   });
 
-  return Array.from(mtcMap.entries())
+  return Array.from(metricsMap.entries())
     .map(([_, data]) => ({
       name: data.name,
-      avgMinutes:
-        data.times.length > 0
-          ? Math.round(data.times.reduce((a, b) => a + b, 0) / data.times.length)
-          : 0,
-      count: data.times.length,
+      completed: data.completed,
+      overdue: data.overdue,
+      total: data.total,
     }))
-    .filter(item => item.count > 0)
-    .sort((a, b) => a.avgMinutes - b.avgMinutes);
+    .sort((a, b) => b.completed - a.completed);
+}
+
+/**
+ * Calculate tasks completed by team member
+ */
+export function calculateTeamMemberMetrics(
+  tasks: TaskInstance[]
+): TeamMemberMetric[] {
+  const memberMap = new Map<string, { completed: number; name: string }>();
+
+  tasks.forEach(task => {
+    if (task.status === 'done' && task.completions && task.completions.length > 0) {
+      const completion = task.completions[0];
+      const userId = completion.user_id;
+      const userName = completion.profiles?.display_name || 'Unknown User';
+      
+      if (!memberMap.has(userId)) {
+        memberMap.set(userId, { completed: 0, name: userName });
+      }
+      
+      memberMap.get(userId)!.completed++;
+    }
+  });
+
+  return Array.from(memberMap.entries())
+    .map(([userId, data]) => ({
+      userId,
+      name: data.name,
+      completed: data.completed,
+    }))
+    .sort((a, b) => b.completed - a.completed);
 }
 
 /**
