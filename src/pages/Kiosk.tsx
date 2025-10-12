@@ -315,43 +315,26 @@ export default function Kiosk() {
     }
 
     try {
-      // Verify PIN - it will return the user who owns this PIN
-      const { data: verified, error: pinError } = await supabase.functions.invoke('verify-pin', {
-        body: { pin }
+      // Use the secure complete-task edge function
+      const { data, error } = await supabase.functions.invoke('complete-task', {
+        body: {
+          taskInstanceId: selectedTask.id,
+          userId: selectedMember,
+          pin: pin,
+          outcome: 'completed'
+        }
       });
 
-      if (pinError || !verified?.success) {
-        toast.error('Invalid PIN');
+      if (error) {
+        console.error('Task completion error:', error);
+        toast.error(error.message || 'Invalid PIN or failed to complete task');
         return;
       }
 
-      // Check if the PIN belongs to the selected team member
-      if (verified.user.id !== selectedMember) {
-        toast.error('PIN does not match the selected team member');
+      if (!data?.success) {
+        toast.error('Failed to complete task');
         return;
       }
-
-      const { error: completionError } = await supabase
-        .from('completions')
-        .insert({
-          task_instance_id: selectedTask.id,
-          user_id: selectedMember,
-          outcome: 'completed',
-          note: null,
-          photo_url: null
-        });
-
-      if (completionError) throw completionError;
-
-      const { error: updateError } = await supabase
-        .from('task_instances')
-        .update({ 
-          status: 'done',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', selectedTask.id);
-
-      if (updateError) throw updateError;
 
       toast.success('Task completed!');
       setSelectedTask(null);
