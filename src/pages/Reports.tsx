@@ -263,7 +263,8 @@ export default function Reports() {
                   />
                   <YAxis 
                     stroke="hsl(var(--muted-foreground))"
-                    label={{ value: 'On-Time Rate (%)', angle: -90, position: 'insideLeft' }}
+                    label={{ value: 'Percentage (%)', angle: -90, position: 'insideLeft' }}
+                    domain={[0, 100]}
                   />
                   <Tooltip 
                     contentStyle={{ 
@@ -271,6 +272,7 @@ export default function Reports() {
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px'
                     }}
+                    formatter={(value: number) => `${value}%`}
                   />
                   <Bar dataKey="rate" radius={[8, 8, 0, 0]}>
                     {onTimeData.map((entry, index) => (
