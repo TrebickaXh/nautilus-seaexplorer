@@ -21,7 +21,10 @@ export default function TaskInstances() {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const filterParam = searchParams.get('filter');
+    return filterParam === 'skipped' ? 'skipped' : 'all';
+  });
   const [timeRangeFilter, setTimeRangeFilter] = useState(() => {
     const filterParam = searchParams.get('filter');
     return filterParam === 'overdue' ? 'overdue' : 'next_7_days';

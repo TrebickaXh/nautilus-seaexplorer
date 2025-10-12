@@ -338,6 +338,10 @@ export default function Dashboard() {
                   <AlertCircle className="w-4 h-4 mr-2 text-destructive" />
                   View Overdue Tasks
                 </Button>
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/task-instances?filter=skipped")}>
+                  <AlertCircle className="w-4 h-4 mr-2 text-warning" />
+                  View Skipped Tasks
+                </Button>
                 <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/task-routines")}>
                   <FileText className="w-4 h-4 mr-2" />
                   Manage Routines
