@@ -39,27 +39,45 @@ serve(async (req) => {
 
     console.log(`Completing task ${taskInstanceId} for user ${userId}`);
 
-    // Verify PIN using verify-pin function
-    const { data: verified, error: pinError } = await supabaseAdmin.functions.invoke('verify-pin', {
-      body: { pin }
-    });
+    // Get the selected user's PIN hash and org_id
+    const { data: userProfile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('pin_hash, display_name, org_id')
+      .eq('id', userId)
+      .single();
 
-    if (pinError || !verified?.success) {
-      console.error('PIN verification failed:', pinError);
+    if (profileError || !userProfile) {
+      console.error('User not found:', profileError);
       return new Response(
-        JSON.stringify({ error: 'Invalid PIN' }), 
+        JSON.stringify({ error: 'User not found' }), 
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!userProfile.pin_hash) {
+      console.error('User does not have a PIN set');
+      return new Response(
+        JSON.stringify({ error: 'This team member does not have a PIN set' }), 
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify the PIN against the selected user's PIN hash (SHA-256)
+    const encoder = new TextEncoder();
+    const data = encoder.encode(pin);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const pinHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (pinHash !== userProfile.pin_hash) {
+      console.error('Invalid PIN for selected user:', { userId, displayName: userProfile.display_name });
+      return new Response(
+        JSON.stringify({ error: 'Invalid PIN for the selected team member' }), 
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Verify the PIN belongs to the specified user
-    if (verified.user.id !== userId) {
-      console.error('PIN does not match user:', { verifiedUserId: verified.user.id, requestedUserId: userId });
-      return new Response(
-        JSON.stringify({ error: 'PIN does not match the selected team member' }), 
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log(`PIN verified for user: ${userProfile.display_name}`);
 
     // Get task details
     const { data: task, error: taskError } = await supabaseAdmin
@@ -90,13 +108,7 @@ serve(async (req) => {
       .eq('id', task.location_id)
       .single();
 
-    const { data: userProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('org_id')
-      .eq('id', userId)
-      .single();
-
-    if (!location || !userProfile || location.org_id !== userProfile.org_id) {
+    if (!location || location.org_id !== userProfile.org_id) {
       return new Response(
         JSON.stringify({ error: 'User cannot complete tasks from different organization' }), 
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
