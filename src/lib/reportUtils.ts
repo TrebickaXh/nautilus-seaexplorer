@@ -46,28 +46,31 @@ export type GroupByType = 'template' | 'location' | 'role' | 'department' | 'shi
 
 /**
  * Calculate on-time completion rate grouped by specified dimension
+ * Rate = (On-Time Tasks / Completed Tasks) * 100
  */
 export function calculateOnTimeMetrics(
   tasks: TaskInstance[],
   groupBy: GroupByType
 ): OnTimeMetric[] {
-  const groupedOnTime = new Map<string, { total: number; onTime: number; name: string }>();
+  const groupedOnTime = new Map<string, { completed: number; onTime: number; name: string }>();
 
   tasks.forEach(task => {
+    // Only count completed tasks
+    if (task.status !== 'done') {
+      return;
+    }
+
     const { key, name } = getGroupKeyAndName(task, groupBy);
 
     if (!groupedOnTime.has(key)) {
-      groupedOnTime.set(key, { total: 0, onTime: 0, name });
+      groupedOnTime.set(key, { completed: 0, onTime: 0, name });
     }
 
     const group = groupedOnTime.get(key)!;
-    group.total++;
+    group.completed++;
 
-    if (
-      task.status === 'done' &&
-      task.completed_at &&
-      new Date(task.completed_at) <= new Date(task.due_at)
-    ) {
+    // Check if completed on time
+    if (task.completed_at && new Date(task.completed_at) <= new Date(task.due_at)) {
       group.onTime++;
     }
   });
@@ -75,8 +78,8 @@ export function calculateOnTimeMetrics(
   return Array.from(groupedOnTime.entries())
     .map(([_, data]) => ({
       name: data.name,
-      rate: data.total > 0 ? Math.round((data.onTime / data.total) * 100) : 0,
-      total: data.total,
+      rate: data.completed > 0 ? Math.round((data.onTime / data.completed) * 100) : 0,
+      total: data.completed,
       onTime: data.onTime,
     }))
     .sort((a, b) => b.rate - a.rate);
