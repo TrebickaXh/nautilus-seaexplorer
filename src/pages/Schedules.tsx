@@ -9,6 +9,7 @@ import { ClaimsPanel } from "@/components/schedules/ClaimsPanel";
 import { ScheduleStats } from "@/components/schedules/ScheduleStats";
 import { ShiftDialog } from "@/components/schedules/ShiftDialog";
 import { BulkShiftDialog } from "@/components/schedules/BulkShiftDialog";
+import { CopyWeekDialog } from "@/components/schedules/CopyWeekDialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock } from "lucide-react";
@@ -29,6 +30,7 @@ export default function Schedules() {
   const [showClaims, setShowClaims] = useState(false);
   const [createShiftOpen, setCreateShiftOpen] = useState(false);
   const [bulkShiftOpen, setBulkShiftOpen] = useState(false);
+  const [copyWeekOpen, setCopyWeekOpen] = useState(false);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const daysCount = viewMode === "day" ? 1 : viewMode === "week" ? 7 : viewMode === "2week" ? 14 : 30;
@@ -90,6 +92,10 @@ export default function Schedules() {
                 <Button onClick={() => setBulkShiftOpen(true)} variant="outline">
                   <CalendarClock className="w-4 h-4 mr-2" />
                   Bulk Create
+                </Button>
+                <Button onClick={() => setCopyWeekOpen(true)} variant="outline">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Copy Week
                 </Button>
               </div>
             )}
@@ -240,6 +246,12 @@ export default function Schedules() {
         open={bulkShiftOpen}
         onOpenChange={setBulkShiftOpen}
         startDate={weekStart}
+      />
+
+      <CopyWeekDialog
+        open={copyWeekOpen}
+        onOpenChange={setCopyWeekOpen}
+        sourceWeekStart={weekStart}
       />
     </div>
   );

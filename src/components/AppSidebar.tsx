@@ -31,6 +31,7 @@ import { Separator } from './ui/separator';
 
 const mainItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, roles: ['crew', 'location_manager', 'org_admin'] },
+  { title: 'My Schedule', url: '/my-schedule', icon: Calendar, roles: ['crew', 'location_manager', 'org_admin'] },
   { title: 'Tasks', url: '/task-instances', icon: ListTodo, roles: ['crew', 'location_manager', 'org_admin'] },
   { title: 'Kiosk', url: '/kiosk', icon: Tablet, roles: ['crew', 'location_manager', 'org_admin'] },
   { title: 'Reports', url: '/reports', icon: BarChart3, roles: ['location_manager', 'org_admin'] },
@@ -39,7 +40,7 @@ const mainItems = [
 const managementItems = [
   { title: 'Routines', url: '/task-routines', icon: FileText, roles: ['location_manager', 'org_admin'] },
   { title: 'Shifts', url: '/shifts', icon: Clock, roles: ['location_manager', 'org_admin'] },
-  { title: 'Schedules', url: '/schedules', icon: Calendar, roles: ['crew', 'location_manager', 'org_admin'] },
+  { title: 'Schedules', url: '/schedules', icon: Calendar, roles: ['location_manager', 'org_admin'] },
   { title: 'Availability', url: '/employee-availability', icon: Users, roles: ['location_manager', 'org_admin'] },
   { title: 'Locations', url: '/locations', icon: MapPin, roles: ['location_manager', 'org_admin'] },
   { title: 'Team', url: '/users', icon: Users, roles: ['org_admin'] },
