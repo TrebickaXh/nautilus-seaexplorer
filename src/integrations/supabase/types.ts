@@ -558,25 +558,34 @@ export type Database = {
       }
       schedule_assignments: {
         Row: {
+          assignment_method: string | null
+          assignment_score: number | null
           created_at: string
           employee_id: string
           id: string
+          metadata: Json | null
           shift_id: string
           status: Database["public"]["Enums"]["assignment_status"]
           updated_at: string
         }
         Insert: {
+          assignment_method?: string | null
+          assignment_score?: number | null
           created_at?: string
           employee_id: string
           id?: string
+          metadata?: Json | null
           shift_id: string
           status?: Database["public"]["Enums"]["assignment_status"]
           updated_at?: string
         }
         Update: {
+          assignment_method?: string | null
+          assignment_score?: number | null
           created_at?: string
           employee_id?: string
           id?: string
+          metadata?: Json | null
           shift_id?: string
           status?: Database["public"]["Enums"]["assignment_status"]
           updated_at?: string

@@ -11,6 +11,7 @@ import { OvertimeTracker } from "@/components/schedules/OvertimeTracker";
 import { ScheduleTemplates } from "@/components/schedules/ScheduleTemplates";
 import { ShiftDialog } from "@/components/schedules/ShiftDialog";
 import { BulkShiftDialog } from "@/components/schedules/BulkShiftDialog";
+import { BulkAssignmentWizard } from "@/components/schedules/BulkAssignmentWizard";
 import { CopyWeekDialog } from "@/components/schedules/CopyWeekDialog";
 import { ScheduleFilters } from "@/components/schedules/ScheduleFilters";
 import { ExportScheduleDialog } from "@/components/schedules/ExportScheduleDialog";
@@ -18,7 +19,7 @@ import { RequestTimeOffDialog } from "@/components/schedules/RequestTimeOffDialo
 import { PublishScheduleDialog } from "@/components/schedules/PublishScheduleDialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock, Download, CalendarOff, Send } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock, Download, CalendarOff, Send, Users } from "lucide-react";
 import { addDays, startOfWeek, endOfWeek, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +37,7 @@ export default function Schedules() {
   const [showClaims, setShowClaims] = useState(false);
   const [createShiftOpen, setCreateShiftOpen] = useState(false);
   const [bulkShiftOpen, setBulkShiftOpen] = useState(false);
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const [copyWeekOpen, setCopyWeekOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
@@ -128,6 +130,10 @@ export default function Schedules() {
                   <Button onClick={() => setBulkShiftOpen(true)} variant="outline">
                     <CalendarClock className="w-4 h-4 mr-2" />
                     Bulk Create
+                  </Button>
+                  <Button onClick={() => setBulkAssignOpen(true)} variant="outline">
+                    <Users className="w-4 h-4 mr-2" />
+                    Bulk Assign
                   </Button>
                   <Button onClick={() => setCopyWeekOpen(true)} variant="outline">
                     <Calendar className="w-4 h-4 mr-2" />
@@ -332,6 +338,13 @@ export default function Schedules() {
         weekStart={weekStart}
         weekEnd={weekEnd}
         shifts={filteredShifts}
+      />
+
+      <BulkAssignmentWizard
+        open={bulkAssignOpen}
+        onOpenChange={setBulkAssignOpen}
+        shifts={filteredShifts}
+        employees={filteredEmployees}
       />
     </div>
   );

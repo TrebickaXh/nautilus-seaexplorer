@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.verify-pin]
 verify_jwt = false
+
+[functions.suggest-shift-assignments]
+verify_jwt = true

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AutoAssignDialog } from "./AutoAssignDialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -34,6 +35,8 @@ interface ShiftDialogProps {
 export function ShiftDialog({ open, onOpenChange, editShift, defaultDate }: ShiftDialogProps) {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [showAutoAssign, setShowAutoAssign] = useState(false);
+  const [createdShiftId, setCreatedShiftId] = useState<string | null>(null);
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments"],
@@ -83,7 +86,7 @@ export function ShiftDialog({ open, onOpenChange, editShift, defaultDate }: Shif
       // Generate a default name from start time
       const shiftName = `Shift ${format(new Date(data.start_at), "HH:mm")}`;
 
-      const { error } = await supabase.from("shifts").insert({
+      const { data: newShift, error } = await supabase.from("shifts").insert({
         department_id: data.department_id,
         location_id: data.location_id,
         start_at: data.start_at,
@@ -96,14 +99,15 @@ export function ShiftDialog({ open, onOpenChange, editShift, defaultDate }: Shif
         start_time: format(new Date(data.start_at), "HH:mm:ss"),
         end_time: format(new Date(data.end_at), "HH:mm:ss"),
         days_of_week: [new Date(data.start_at).getDay()],
-      });
+      }).select().single();
       if (error) throw error;
+      return newShift;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["schedule-shifts"] });
       toast.success("Shift created successfully");
-      onOpenChange(false);
-      form.reset();
+      setCreatedShiftId(data.id);
+      setShowAutoAssign(true);
     },
     onError: (error) => {
       toast.error("Failed to create shift: " + error.message);
@@ -253,6 +257,21 @@ export function ShiftDialog({ open, onOpenChange, editShift, defaultDate }: Shif
           </form>
         </Form>
       </DialogContent>
+
+      {createdShiftId && (
+        <AutoAssignDialog
+          open={showAutoAssign}
+          onOpenChange={(open) => {
+            setShowAutoAssign(open);
+            if (!open) {
+              setCreatedShiftId(null);
+              onOpenChange(false);
+              form.reset();
+            }
+          }}
+          shiftId={createdShiftId}
+        />
+      )}
     </Dialog>
   );
 }
