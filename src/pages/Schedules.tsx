@@ -5,6 +5,8 @@ import { OpenShiftsPanel } from "@/components/schedules/OpenShiftsPanel";
 import { ApprovalsPanel } from "@/components/schedules/ApprovalsPanel";
 import { TimeOffPanel } from "@/components/schedules/TimeOffPanel";
 import { SwapRequestsPanel } from "@/components/schedules/SwapRequestsPanel";
+import { ClaimsPanel } from "@/components/schedules/ClaimsPanel";
+import { ScheduleStats } from "@/components/schedules/ScheduleStats";
 import { ShiftDialog } from "@/components/schedules/ShiftDialog";
 import { BulkShiftDialog } from "@/components/schedules/BulkShiftDialog";
 import { Button } from "@/components/ui/button";
@@ -13,6 +15,7 @@ import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock } from "lucide
 import { addDays, startOfWeek, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useScheduleData } from "@/hooks/useScheduleData";
 
 export default function Schedules() {
   const { isAdmin, loading: roleLoading } = useUserRole();
@@ -23,10 +26,13 @@ export default function Schedules() {
   const [showApprovals, setShowApprovals] = useState(false);
   const [showTimeOff, setShowTimeOff] = useState(false);
   const [showSwapRequests, setShowSwapRequests] = useState(false);
+  const [showClaims, setShowClaims] = useState(false);
   const [createShiftOpen, setCreateShiftOpen] = useState(false);
   const [bulkShiftOpen, setBulkShiftOpen] = useState(false);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+  const daysCount = viewMode === "day" ? 1 : viewMode === "week" ? 7 : viewMode === "2week" ? 14 : 30;
+  const { shifts, employees } = useScheduleData(weekStart, daysCount, selectedDepartment);
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments"],
@@ -154,6 +160,13 @@ export default function Schedules() {
               {isAdminRole && (
                 <>
                   <Button
+                    variant={showClaims ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowClaims(!showClaims)}
+                  >
+                    Claims
+                  </Button>
+                  <Button
                     variant={showApprovals ? "default" : "outline"}
                     size="sm"
                     onClick={() => setShowApprovals(!showApprovals)}
@@ -172,6 +185,9 @@ export default function Schedules() {
             </div>
           </div>
         </div>
+
+        {/* Stats */}
+        <ScheduleStats shifts={shifts} employees={employees} />
 
         {/* Calendar Grid */}
         <div className="flex-1 overflow-auto">
@@ -205,6 +221,12 @@ export default function Schedules() {
       {showSwapRequests && (
         <div className="w-96 border-l bg-background overflow-auto">
           <SwapRequestsPanel onClose={() => setShowSwapRequests(false)} />
+        </div>
+      )}
+
+      {showClaims && isAdminRole && (
+        <div className="w-96 border-l bg-background overflow-auto">
+          <ClaimsPanel onClose={() => setShowClaims(false)} />
         </div>
       )}
 
