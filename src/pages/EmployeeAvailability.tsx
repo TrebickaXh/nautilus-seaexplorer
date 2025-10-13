@@ -6,24 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AvailabilityDialog } from "@/components/schedules/AvailabilityDialog";
-import { Calendar, Search, Settings } from "lucide-react";
+import { Calendar, Search, UserCheck } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export default function EmployeeAvailability() {
-  const [search, setSearch] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [availabilityDialogOpen, setAvailabilityDialogOpen] = useState(false);
+  const { isAdmin } = useUserRole();
 
   const { data: employees = [], isLoading } = useQuery({
-    queryKey: ["employees-availability"],
+    queryKey: ["employees-with-availability"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select(`
           *,
-          user_departments!inner(department_id, is_primary, departments(id, name)),
-          positions(name)
+          position:positions(name)
         `)
         .eq("active", true)
-        .order("display_name", { ascending: true });
+        .order("display_name");
 
       if (error) throw error;
       return data;
@@ -31,94 +33,99 @@ export default function EmployeeAvailability() {
   });
 
   const filteredEmployees = employees.filter((emp: any) =>
-    emp.display_name?.toLowerCase().includes(search.toLowerCase())
+    emp.display_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getAvailabilitySummary = (availability: any) => {
+  const formatAvailability = (availability: any) => {
     if (!availability) return "Not set";
 
     const days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-    const availableDays = days.filter((day) => availability[day]?.length > 0);
+    const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    
+    const availableDays = days
+      .map((day, idx) => (availability[day]?.length > 0 ? dayNames[idx] : null))
+      .filter(Boolean);
 
-    if (availableDays.length === 0) return "Not available";
-    if (availableDays.length === 7) return "Available all week";
-    return `${availableDays.length} days available`;
+    return availableDays.length > 0 ? availableDays.join(", ") : "No availability";
   };
 
+  const openAvailabilityDialog = (employee: any) => {
+    setSelectedEmployee(employee);
+    setAvailabilityDialogOpen(true);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading employees...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-6 h-6 text-primary" />
-          <h1 className="text-2xl font-bold">Employee Availability</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Employee Availability</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage when employees are available to work
+          </p>
         </div>
+        <Calendar className="w-8 h-8 text-primary" />
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search employees..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+        <Input
+          placeholder="Search employees..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
-      {isLoading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading...</div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredEmployees.map((employee: any) => (
-            <Card key={employee.id}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center justify-between">
-                  <span>{employee.display_name}</span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setSelectedEmployee(employee)}
-                  >
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {employee.positions?.name && (
-                  <Badge variant="outline">{employee.positions.name}</Badge>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {filteredEmployees.map((employee: any) => (
+          <Card key={employee.id} className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">{employee.display_name}</CardTitle>
+                {employee.availability_rules && (
+                  <Badge variant="secondary">
+                    <UserCheck className="w-3 h-3 mr-1" />
+                    Set
+                  </Badge>
                 )}
-                
-                {employee.user_departments?.[0]?.departments && (
-                  <div className="text-sm text-muted-foreground">
-                    {employee.user_departments[0].departments.name}
-                  </div>
-                )}
+              </div>
+              {employee.position?.name && (
+                <p className="text-sm text-muted-foreground">{employee.position.name}</p>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="text-sm font-medium mb-1">Available Days:</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatAvailability(employee.availability_rules)}
+                </p>
+              </div>
 
-                <div className="text-sm">
-                  <span className="font-medium">Availability: </span>
-                  <span className="text-muted-foreground">
-                    {getAvailabilitySummary(employee.availability_rules)}
-                  </span>
-                </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => openAvailabilityDialog(employee)}
+                disabled={!isAdmin}
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                {employee.availability_rules ? "Edit Availability" : "Set Availability"}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-                {employee.skills?.length > 0 && (
-                  <div className="flex gap-1 flex-wrap">
-                    {employee.skills.slice(0, 3).map((skill: string) => (
-                      <Badge key={skill} variant="secondary" className="text-xs">
-                        {skill}
-                      </Badge>
-                    ))}
-                    {employee.skills.length > 3 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{employee.skills.length - 3}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+      {filteredEmployees.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          No employees found
         </div>
       )}
 
@@ -127,8 +134,8 @@ export default function EmployeeAvailability() {
           employeeId={selectedEmployee.id}
           employeeName={selectedEmployee.display_name}
           currentAvailability={selectedEmployee.availability_rules}
-          open={!!selectedEmployee}
-          onOpenChange={(open) => !open && setSelectedEmployee(null)}
+          open={availabilityDialogOpen}
+          onOpenChange={setAvailabilityDialogOpen}
         />
       )}
     </div>

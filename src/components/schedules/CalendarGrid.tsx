@@ -1,6 +1,7 @@
 import { useScheduleData } from "@/hooks/useScheduleData";
 import { ShiftChip } from "./ShiftChip";
 import { ConflictIndicator } from "./ConflictIndicator";
+import { useConflictDetection } from "@/hooks/useConflictDetection";
 import { format, addDays } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -13,6 +14,17 @@ interface CalendarGridProps {
 export function CalendarGrid({ startDate, viewMode, departmentFilter }: CalendarGridProps) {
   const daysToShow = viewMode === "day" ? 1 : viewMode === "week" ? 7 : viewMode === "2week" ? 14 : 30;
   const { shifts, employees, departments, loading } = useScheduleData(startDate, daysToShow, departmentFilter);
+  
+  // Build availability map for conflict detection
+  const employeeAvailability = employees.reduce((acc: any, emp: any) => {
+    if (emp.availability_rules) {
+      acc[emp.id] = emp.availability_rules;
+    }
+    return acc;
+  }, {});
+  
+  // Detect conflicts
+  const conflicts = useConflictDetection(shifts, employeeAvailability);
 
   if (loading) {
     return (
@@ -108,7 +120,14 @@ export function CalendarGrid({ startDate, viewMode, departmentFilter }: Calendar
                     <div key={day.toISOString()} className="flex-1 min-w-[150px] p-2 border-r">
                       <div className="space-y-1">
                         {dayShifts.map((shift) => (
-                          <ShiftChip key={shift.id} shift={shift} />
+                          <div key={shift.id} className="space-y-1">
+                            <ShiftChip shift={shift} />
+                            {conflicts[employee.id]?.some(c => c.shiftIds.includes(shift.id)) && (
+                              <ConflictIndicator 
+                                conflicts={conflicts[employee.id].filter(c => c.shiftIds.includes(shift.id))} 
+                              />
+                            )}
+                          </div>
                         ))}
                       </div>
                     </div>
