@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useState } from "react";
 import { ShiftDialog } from "./ShiftDialog";
+import { AssignEmployeeDialog } from "./AssignEmployeeDialog";
 
 interface ShiftDetailsDrawerProps {
   shift: any;
@@ -21,6 +22,7 @@ export function ShiftDetailsDrawer({ shift, open, onOpenChange }: ShiftDetailsDr
   const queryClient = useQueryClient();
   const { isAdmin } = useUserRole();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
   const postToOpenMutation = useMutation({
     mutationFn: async () => {
@@ -187,6 +189,15 @@ export function ShiftDetailsDrawer({ shift, open, onOpenChange }: ShiftDetailsDr
             <div className="space-y-2">
               {isAdmin && (
                 <>
+                  {!shift.employee_name && (
+                    <Button
+                      className="w-full"
+                      onClick={() => setAssignDialogOpen(true)}
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      Assign Employee
+                    </Button>
+                  )}
                   <Button
                     className="w-full"
                     variant="outline"
@@ -241,6 +252,12 @@ export function ShiftDetailsDrawer({ shift, open, onOpenChange }: ShiftDetailsDr
           editShift={shift}
         />
       )}
+
+      <AssignEmployeeDialog
+        shift={shift}
+        open={assignDialogOpen}
+        onOpenChange={setAssignDialogOpen}
+      />
     </>
   );
 }

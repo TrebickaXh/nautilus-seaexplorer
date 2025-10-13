@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { addDays, startOfWeek, format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Schedules() {
   const { isAdmin, loading: roleLoading } = useUserRole();
@@ -19,6 +21,18 @@ export default function Schedules() {
   const [createShiftOpen, setCreateShiftOpen] = useState(false);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("departments")
+        .select("id, name, location_id, locations(id, name)")
+        .is("archived_at", null);
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const navigatePrevious = () => {
     const daysToSubtract = viewMode === "week" ? 7 : viewMode === "2week" ? 14 : viewMode === "month" ? 30 : 1;
@@ -42,6 +56,8 @@ export default function Schedules() {
     );
   }
 
+  const isAdminRole = isAdmin();
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Main Content */}
@@ -53,7 +69,7 @@ export default function Schedules() {
               <Calendar className="w-6 h-6 text-primary" />
               <h1 className="text-2xl font-bold">Schedules</h1>
             </div>
-            {isAdmin && (
+            {isAdminRole && (
               <Button onClick={() => setCreateShiftOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Shift
@@ -99,7 +115,11 @@ export default function Schedules() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Departments</SelectItem>
-                {/* Will be populated dynamically */}
+                {departments.map((dept: any) => (
+                  <SelectItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -112,7 +132,7 @@ export default function Schedules() {
               >
                 Open Shifts
               </Button>
-              {isAdmin && (
+              {isAdminRole && (
                 <Button
                   variant={showApprovals ? "default" : "outline"}
                   size="sm"
@@ -142,7 +162,7 @@ export default function Schedules() {
         </div>
       )}
 
-      {showApprovals && isAdmin && (
+      {showApprovals && isAdminRole && (
         <div className="w-96 border-l bg-background overflow-auto">
           <ApprovalsPanel onClose={() => setShowApprovals(false)} />
         </div>
