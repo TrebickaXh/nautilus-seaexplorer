@@ -13,10 +13,11 @@ import { CopyWeekDialog } from "@/components/schedules/CopyWeekDialog";
 import { ScheduleFilters } from "@/components/schedules/ScheduleFilters";
 import { ExportScheduleDialog } from "@/components/schedules/ExportScheduleDialog";
 import { RequestTimeOffDialog } from "@/components/schedules/RequestTimeOffDialog";
+import { PublishScheduleDialog } from "@/components/schedules/PublishScheduleDialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock, Download, CalendarOff } from "lucide-react";
-import { addDays, startOfWeek, format } from "date-fns";
+import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock, Download, CalendarOff, Send } from "lucide-react";
+import { addDays, startOfWeek, endOfWeek, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useScheduleData } from "@/hooks/useScheduleData";
@@ -36,12 +37,14 @@ export default function Schedules() {
   const [copyWeekOpen, setCopyWeekOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState<string>("all");
   const [showUnassigned, setShowUnassigned] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
   const daysCount = viewMode === "day" ? 1 : viewMode === "week" ? 7 : viewMode === "2week" ? 14 : 30;
   const { shifts, employees, positions } = useScheduleData(weekStart, daysCount, selectedDepartment);
 
@@ -127,6 +130,10 @@ export default function Schedules() {
                   <Button onClick={() => setCopyWeekOpen(true)} variant="outline">
                     <Calendar className="w-4 h-4 mr-2" />
                     Copy Week
+                  </Button>
+                  <Button onClick={() => setPublishOpen(true)} variant="default">
+                    <Send className="w-4 h-4 mr-2" />
+                    Publish
                   </Button>
                 </>
               )}
@@ -302,6 +309,14 @@ export default function Schedules() {
       <RequestTimeOffDialog
         open={timeOffOpen}
         onOpenChange={setTimeOffOpen}
+      />
+
+      <PublishScheduleDialog
+        open={publishOpen}
+        onOpenChange={setPublishOpen}
+        weekStart={weekStart}
+        weekEnd={weekEnd}
+        shifts={filteredShifts}
       />
     </div>
   );

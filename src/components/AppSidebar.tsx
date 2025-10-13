@@ -25,6 +25,7 @@ import {
   Tablet,
   BarChart3,
   Clock,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -41,6 +42,7 @@ const managementItems = [
   { title: 'Routines', url: '/task-routines', icon: FileText, roles: ['location_manager', 'org_admin'] },
   { title: 'Shifts', url: '/shifts', icon: Clock, roles: ['location_manager', 'org_admin'] },
   { title: 'Schedules', url: '/schedules', icon: Calendar, roles: ['location_manager', 'org_admin'] },
+  { title: 'Coverage', url: '/schedule-coverage', icon: TrendingUp, roles: ['location_manager', 'org_admin'] },
   { title: 'Availability', url: '/employee-availability', icon: Users, roles: ['location_manager', 'org_admin'] },
   { title: 'Locations', url: '/locations', icon: MapPin, roles: ['location_manager', 'org_admin'] },
   { title: 'Team', url: '/users', icon: Users, roles: ['org_admin'] },
