@@ -8,6 +8,7 @@ import { SwapRequestsPanel } from "@/components/schedules/SwapRequestsPanel";
 import { ClaimsPanel } from "@/components/schedules/ClaimsPanel";
 import { ScheduleStats } from "@/components/schedules/ScheduleStats";
 import { OvertimeTracker } from "@/components/schedules/OvertimeTracker";
+import { ScheduleTemplates } from "@/components/schedules/ScheduleTemplates";
 import { ShiftDialog } from "@/components/schedules/ShiftDialog";
 import { BulkShiftDialog } from "@/components/schedules/BulkShiftDialog";
 import { CopyWeekDialog } from "@/components/schedules/CopyWeekDialog";
@@ -238,12 +239,18 @@ export default function Schedules() {
         </div>
 
         {/* Stats & Overtime */}
-        <div className="p-4 grid gap-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <ScheduleStats shifts={filteredShifts} employees={filteredEmployees} />
-          </div>
-          <div>
+        <div className="p-4 space-y-4">
+          <ScheduleStats shifts={filteredShifts} employees={filteredEmployees} />
+          
+          <div className="grid gap-4 lg:grid-cols-2">
             <OvertimeTracker weekStart={weekStart} />
+            {isAdminRole && (
+              <ScheduleTemplates 
+                currentWeekStart={weekStart}
+                currentWeekEnd={weekEnd}
+                currentShifts={filteredShifts}
+              />
+            )}
           </div>
         </div>
 

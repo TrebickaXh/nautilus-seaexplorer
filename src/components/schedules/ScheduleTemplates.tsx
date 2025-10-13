@@ -17,7 +17,13 @@ interface ScheduleTemplate {
   created_at: string;
 }
 
-export function ScheduleTemplates() {
+interface ScheduleTemplatesProps {
+  currentWeekStart: Date;
+  currentWeekEnd: Date;
+  currentShifts: any[];
+}
+
+export function ScheduleTemplates({ currentWeekStart, currentWeekEnd, currentShifts }: ScheduleTemplatesProps) {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
@@ -34,68 +40,83 @@ export function ScheduleTemplates() {
 
   const saveTemplateMutation = useMutation({
     mutationFn: async () => {
-      // Get current week's schedule
-      const { data: shifts } = await supabase
-        .from("shifts")
-        .select(`
-          *,
-          assignments:schedule_assignments(*)
-        `);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Create template data from current shifts
+      const templateData = {
+        shifts: currentShifts.map(s => ({
+          department_id: s.department_id,
+          location_id: s.location_id,
+          name: s.name,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          days_of_week: s.days_of_week,
+          required_skills: s.required_skills,
+          notes: s.notes,
+        })),
+        week_start: currentWeekStart.toISOString(),
+        week_end: currentWeekEnd.toISOString(),
+      };
 
       // This would save to a schedule_templates table
       // Implementation pending table creation
       toast.info("Template save functionality will be available after database migration");
+      
+      // Return success for now
+      return templateData;
     },
     onSuccess: () => {
-      toast.success("Template saved successfully");
+      toast.success("Template configuration ready - database migration needed");
       setSaveDialogOpen(false);
       setTemplateName("");
       setTemplateDescription("");
       queryClient.invalidateQueries({ queryKey: ["schedule-templates"] });
     },
+    onError: (error) => {
+      toast.error("Failed to save template: " + error.message);
+    },
   });
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Schedule Templates</h3>
-        <Button onClick={() => setSaveDialogOpen(true)}>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Save className="w-5 h-5" />
+          Schedule Templates
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Button onClick={() => setSaveDialogOpen(true)} className="w-full">
           <Save className="w-4 h-4 mr-2" />
-          Save Current as Template
+          Save Current Week as Template
         </Button>
-      </div>
 
-      {isLoading ? (
-        <div className="text-center py-8 text-muted-foreground">Loading templates...</div>
-      ) : templates.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No templates saved yet. Save your current schedule as a template to reuse it later.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {templates.map((template) => (
-            <Card key={template.id}>
-              <CardHeader>
-                <CardTitle className="text-base">{template.name}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">{template.description}</p>
-                <div className="flex gap-2">
+        {isLoading ? (
+          <div className="text-center py-4 text-muted-foreground text-sm">Loading templates...</div>
+        ) : templates.length === 0 ? (
+          <div className="py-4 text-center text-muted-foreground text-sm">
+            No templates saved yet. Save your current schedule to reuse it later.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {templates.map((template) => (
+              <div key={template.id} className="p-3 border rounded-lg">
+                <div className="font-medium text-sm">{template.name}</div>
+                <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
+                <div className="flex gap-2 mt-2">
                   <Button variant="outline" size="sm" className="flex-1">
-                    <Upload className="w-4 h-4 mr-1" />
-                    Apply Template
+                    <Upload className="w-3 h-3 mr-1" />
+                    Apply
                   </Button>
                   <Button variant="outline" size="sm">
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3 h-3" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              </div>
+            ))}
+          </div>
+        )}
 
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogContent>
@@ -133,6 +154,7 @@ export function ScheduleTemplates() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
