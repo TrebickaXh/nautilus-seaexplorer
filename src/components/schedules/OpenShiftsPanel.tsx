@@ -1,16 +1,20 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Clock, MapPin } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { ShiftClaimDialog } from "./ShiftClaimDialog";
 
 interface OpenShiftsPanelProps {
   onClose: () => void;
 }
 
 export function OpenShiftsPanel({ onClose }: OpenShiftsPanelProps) {
+  const [claimDialogOpen, setClaimDialogOpen] = useState(false);
+  const [selectedShift, setSelectedShift] = useState<any>(null);
+  
   const { data: openShifts, isLoading } = useQuery({
     queryKey: ["open-shifts"],
     queryFn: async () => {
@@ -30,25 +34,6 @@ export function OpenShiftsPanel({ onClose }: OpenShiftsPanelProps) {
       return data;
     },
   });
-
-  const handleClaim = async (shiftId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase
-      .from("shift_claims")
-      .insert({
-        shift_id: shiftId,
-        claimant_employee_id: user.id,
-        status: "waiting",
-      });
-
-    if (error) {
-      toast.error("Failed to claim shift");
-    } else {
-      toast.success("Claim submitted for manager review");
-    }
-  };
 
   return (
     <div className="flex flex-col h-full">
@@ -102,7 +87,10 @@ export function OpenShiftsPanel({ onClose }: OpenShiftsPanelProps) {
                   <Button
                     className="w-full"
                     size="sm"
-                    onClick={() => handleClaim(shift.id)}
+                    onClick={() => {
+                      setSelectedShift(shift);
+                      setClaimDialogOpen(true);
+                    }}
                   >
                     Claim Shift
                   </Button>
@@ -116,6 +104,14 @@ export function OpenShiftsPanel({ onClose }: OpenShiftsPanelProps) {
           </div>
         )}
       </div>
+
+      {selectedShift && (
+        <ShiftClaimDialog
+          shift={selectedShift}
+          open={claimDialogOpen}
+          onOpenChange={setClaimDialogOpen}
+        />
+      )}
     </div>
   );
 }
