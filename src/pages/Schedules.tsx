@@ -10,9 +10,12 @@ import { ScheduleStats } from "@/components/schedules/ScheduleStats";
 import { ShiftDialog } from "@/components/schedules/ShiftDialog";
 import { BulkShiftDialog } from "@/components/schedules/BulkShiftDialog";
 import { CopyWeekDialog } from "@/components/schedules/CopyWeekDialog";
+import { ScheduleFilters } from "@/components/schedules/ScheduleFilters";
+import { ExportScheduleDialog } from "@/components/schedules/ExportScheduleDialog";
+import { RequestTimeOffDialog } from "@/components/schedules/RequestTimeOffDialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock, Download, CalendarOff } from "lucide-react";
 import { addDays, startOfWeek, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,10 +34,31 @@ export default function Schedules() {
   const [createShiftOpen, setCreateShiftOpen] = useState(false);
   const [bulkShiftOpen, setBulkShiftOpen] = useState(false);
   const [copyWeekOpen, setCopyWeekOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [timeOffOpen, setTimeOffOpen] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState<string>("all");
+  const [showUnassigned, setShowUnassigned] = useState(false);
+  const [showConflicts, setShowConflicts] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const daysCount = viewMode === "day" ? 1 : viewMode === "week" ? 7 : viewMode === "2week" ? 14 : 30;
-  const { shifts, employees } = useScheduleData(weekStart, daysCount, selectedDepartment);
+  const { shifts, employees, positions } = useScheduleData(weekStart, daysCount, selectedDepartment);
+
+  // Apply filters
+  const filteredShifts = shifts.filter((shift: any) => {
+    if (showUnassigned && shift.employee_id) return false;
+    if (showConflicts && !shift.has_claims && !shift.has_swaps) return false;
+    if (selectedPosition !== "all" && shift.position_id !== selectedPosition) return false;
+    if (searchQuery && shift.employee_name && !shift.employee_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
+
+  const filteredEmployees = employees.filter((emp: any) => {
+    if (selectedPosition !== "all" && emp.position_id !== selectedPosition) return false;
+    if (searchQuery && !emp.display_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    return true;
+  });
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments"],
@@ -83,22 +107,34 @@ export default function Schedules() {
               <Calendar className="w-6 h-6 text-primary" />
               <h1 className="text-2xl font-bold">Schedules</h1>
             </div>
-            {isAdminRole && (
-              <div className="flex gap-2">
-                <Button onClick={() => setCreateShiftOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Shift
+            <div className="flex gap-2">
+              {!isAdminRole && (
+                <Button onClick={() => setTimeOffOpen(true)} variant="outline">
+                  <CalendarOff className="w-4 h-4 mr-2" />
+                  Request Time Off
                 </Button>
-                <Button onClick={() => setBulkShiftOpen(true)} variant="outline">
-                  <CalendarClock className="w-4 h-4 mr-2" />
-                  Bulk Create
-                </Button>
-                <Button onClick={() => setCopyWeekOpen(true)} variant="outline">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Copy Week
-                </Button>
-              </div>
-            )}
+              )}
+              {isAdminRole && (
+                <>
+                  <Button onClick={() => setCreateShiftOpen(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Shift
+                  </Button>
+                  <Button onClick={() => setBulkShiftOpen(true)} variant="outline">
+                    <CalendarClock className="w-4 h-4 mr-2" />
+                    Bulk Create
+                  </Button>
+                  <Button onClick={() => setCopyWeekOpen(true)} variant="outline">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Copy Week
+                  </Button>
+                </>
+              )}
+              <Button onClick={() => setExportOpen(true)} variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+            </div>
           </div>
 
           {/* Controls */}
@@ -132,20 +168,21 @@ export default function Schedules() {
               </SelectContent>
             </Select>
 
-            {/* Department Filter */}
-            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="All Departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                {departments.map((dept: any) => (
-                  <SelectItem key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Filters */}
+            <ScheduleFilters
+              departments={departments}
+              positions={positions}
+              selectedDepartment={selectedDepartment}
+              onDepartmentChange={setSelectedDepartment}
+              selectedPosition={selectedPosition}
+              onPositionChange={setSelectedPosition}
+              showUnassigned={showUnassigned}
+              onShowUnassignedChange={setShowUnassigned}
+              showConflicts={showConflicts}
+              onShowConflictsChange={setShowConflicts}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+            />
 
             {/* Quick Actions */}
             <div className="ml-auto flex gap-2">
@@ -193,7 +230,7 @@ export default function Schedules() {
         </div>
 
         {/* Stats */}
-        <ScheduleStats shifts={shifts} employees={employees} />
+        <ScheduleStats shifts={filteredShifts} employees={filteredEmployees} />
 
         {/* Calendar Grid */}
         <div className="flex-1 overflow-auto">
@@ -252,6 +289,19 @@ export default function Schedules() {
         open={copyWeekOpen}
         onOpenChange={setCopyWeekOpen}
         sourceWeekStart={weekStart}
+      />
+
+      <ExportScheduleDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        shifts={filteredShifts}
+        employees={filteredEmployees}
+        weekStart={weekStart}
+      />
+
+      <RequestTimeOffDialog
+        open={timeOffOpen}
+        onOpenChange={setTimeOffOpen}
       />
     </div>
   );
