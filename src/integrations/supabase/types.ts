@@ -854,35 +854,53 @@ export type Database = {
         Row: {
           archived_at: string | null
           created_at: string
+          created_by: string | null
           days_of_week: number[]
           department_id: string | null
+          end_at: string | null
           end_time: string
           id: string
           location_id: string
           name: string
+          notes: string | null
+          required_skills: string[] | null
+          start_at: string | null
           start_time: string
+          status: Database["public"]["Enums"]["shift_status"] | null
         }
         Insert: {
           archived_at?: string | null
           created_at?: string
+          created_by?: string | null
           days_of_week?: number[]
           department_id?: string | null
+          end_at?: string | null
           end_time: string
           id?: string
           location_id: string
           name: string
+          notes?: string | null
+          required_skills?: string[] | null
+          start_at?: string | null
           start_time: string
+          status?: Database["public"]["Enums"]["shift_status"] | null
         }
         Update: {
           archived_at?: string | null
           created_at?: string
+          created_by?: string | null
           days_of_week?: number[]
           department_id?: string | null
+          end_at?: string | null
           end_time?: string
           id?: string
           location_id?: string
           name?: string
+          notes?: string | null
+          required_skills?: string[] | null
+          start_at?: string | null
           start_time?: string
+          status?: Database["public"]["Enums"]["shift_status"] | null
         }
         Relationships: [
           {

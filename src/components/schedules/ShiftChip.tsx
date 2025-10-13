@@ -2,6 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Clock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { ShiftDetailsDrawer } from "./ShiftDetailsDrawer";
 
 interface ShiftChipProps {
   shift: any;
@@ -9,16 +11,19 @@ interface ShiftChipProps {
 }
 
 export function ShiftChip({ shift, isOpen }: ShiftChipProps) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const startTime = format(new Date(shift.start_at), "HH:mm");
   const endTime = format(new Date(shift.end_at), "HH:mm");
 
   return (
-    <div
-      className={cn(
-        "p-2 rounded border text-xs cursor-pointer hover:shadow-md transition-shadow",
-        isOpen ? "bg-primary/10 border-primary" : "bg-card border-border"
-      )}
-    >
+    <>
+      <div
+        className={cn(
+          "p-2 rounded border text-xs cursor-pointer hover:shadow-md transition-shadow",
+          isOpen ? "bg-primary/10 border-primary" : "bg-card border-border"
+        )}
+        onClick={() => setDetailsOpen(true)}
+      >
       <div className="flex items-center gap-1 mb-1">
         <Clock className="w-3 h-3" />
         <span className="font-medium">
@@ -47,6 +52,13 @@ export function ShiftChip({ shift, isOpen }: ShiftChipProps) {
           </Badge>
         )}
       </div>
-    </div>
+      </div>
+
+      <ShiftDetailsDrawer
+        shift={shift}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+      />
+    </>
   );
 }

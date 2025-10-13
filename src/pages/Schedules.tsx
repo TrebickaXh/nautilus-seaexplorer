@@ -3,6 +3,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { CalendarGrid } from "@/components/schedules/CalendarGrid";
 import { OpenShiftsPanel } from "@/components/schedules/OpenShiftsPanel";
 import { ApprovalsPanel } from "@/components/schedules/ApprovalsPanel";
+import { ShiftDialog } from "@/components/schedules/ShiftDialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -15,6 +16,7 @@ export default function Schedules() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [showOpenShifts, setShowOpenShifts] = useState(false);
   const [showApprovals, setShowApprovals] = useState(false);
+  const [createShiftOpen, setCreateShiftOpen] = useState(false);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
 
@@ -52,7 +54,7 @@ export default function Schedules() {
               <h1 className="text-2xl font-bold">Schedules</h1>
             </div>
             {isAdmin && (
-              <Button>
+              <Button onClick={() => setCreateShiftOpen(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Shift
               </Button>
@@ -145,6 +147,12 @@ export default function Schedules() {
           <ApprovalsPanel onClose={() => setShowApprovals(false)} />
         </div>
       )}
+
+      <ShiftDialog
+        open={createShiftOpen}
+        onOpenChange={setCreateShiftOpen}
+        defaultDate={currentDate}
+      />
     </div>
   );
 }
