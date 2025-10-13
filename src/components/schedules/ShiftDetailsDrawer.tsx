@@ -3,9 +3,10 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Clock, MapPin, Users, Briefcase, RefreshCw, UserX } from "lucide-react";
+import { Clock, MapPin, Users, Briefcase, RefreshCw, UserX, MessageSquare } from "lucide-react";
 import { AssignEmployeeDialog } from "./AssignEmployeeDialog";
 import { SwapRequestDialog } from "./SwapRequestDialog";
+import { ScheduleNotesDialog } from "./ScheduleNotesDialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ interface ShiftDetailsDrawerProps {
 export function ShiftDetailsDrawer({ shift, open, onOpenChange }: ShiftDetailsDrawerProps) {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [swapDialogOpen, setSwapDialogOpen] = useState(false);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const { isAdmin } = useUserRole();
   const queryClient = useQueryClient();
 
@@ -99,7 +101,7 @@ export function ShiftDetailsDrawer({ shift, open, onOpenChange }: ShiftDetailsDr
             )}
           </div>
 
-          <div className="p-6 pt-0">
+          <div className="p-6 pt-0 space-y-3">
             {!shift.employee_id ? (
               isAdmin() ? (
                 <Button className="w-full" onClick={() => setAssignDialogOpen(true)}>
@@ -133,6 +135,15 @@ export function ShiftDetailsDrawer({ shift, open, onOpenChange }: ShiftDetailsDr
                 )}
               </div>
             )}
+            
+            <Button 
+              className="w-full" 
+              variant="outline"
+              onClick={() => setNotesDialogOpen(true)}
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              View Notes & Comments
+            </Button>
           </div>
         </DrawerContent>
       </Drawer>
@@ -151,6 +162,12 @@ export function ShiftDetailsDrawer({ shift, open, onOpenChange }: ShiftDetailsDr
           shiftDetails={shift}
         />
       )}
+
+      <ScheduleNotesDialog
+        shiftId={shift.id}
+        open={notesDialogOpen}
+        onOpenChange={setNotesDialogOpen}
+      />
     </>
   );
 }
