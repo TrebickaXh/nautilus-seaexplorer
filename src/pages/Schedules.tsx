@@ -4,6 +4,7 @@ import { CalendarGrid } from "@/components/schedules/CalendarGrid";
 import { OpenShiftsPanel } from "@/components/schedules/OpenShiftsPanel";
 import { ApprovalsPanel } from "@/components/schedules/ApprovalsPanel";
 import { TimeOffPanel } from "@/components/schedules/TimeOffPanel";
+import { SwapRequestsPanel } from "@/components/schedules/SwapRequestsPanel";
 import { ShiftDialog } from "@/components/schedules/ShiftDialog";
 import { BulkShiftDialog } from "@/components/schedules/BulkShiftDialog";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ export default function Schedules() {
   const [showOpenShifts, setShowOpenShifts] = useState(false);
   const [showApprovals, setShowApprovals] = useState(false);
   const [showTimeOff, setShowTimeOff] = useState(false);
+  const [showSwapRequests, setShowSwapRequests] = useState(false);
   const [createShiftOpen, setCreateShiftOpen] = useState(false);
   const [bulkShiftOpen, setBulkShiftOpen] = useState(false);
 
@@ -142,6 +144,13 @@ export default function Schedules() {
               >
                 Open Shifts
               </Button>
+              <Button
+                variant={showSwapRequests ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowSwapRequests(!showSwapRequests)}
+              >
+                Swaps
+              </Button>
               {isAdminRole && (
                 <>
                   <Button
@@ -190,6 +199,12 @@ export default function Schedules() {
       {showTimeOff && isAdminRole && (
         <div className="w-96 border-l bg-background overflow-auto">
           <TimeOffPanel onClose={() => setShowTimeOff(false)} />
+        </div>
+      )}
+
+      {showSwapRequests && (
+        <div className="w-96 border-l bg-background overflow-auto">
+          <SwapRequestsPanel onClose={() => setShowSwapRequests(false)} />
         </div>
       )}
 

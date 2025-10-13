@@ -9,6 +9,10 @@ export interface RuleResult {
     projectedWeeklyHours: number;
     projectedOvertimeHours: number;
   };
+  conflicts?: {
+    type: "overlap" | "rest_violation" | "overtime" | "availability";
+    message: string;
+  }[];
 }
 
 export interface ShiftChange {
@@ -29,6 +33,7 @@ export async function evaluateAssignment(change: ShiftChange): Promise<RuleResul
     eligible: true,
     warnings: [],
     blocks: [],
+    conflicts: [],
     metrics: {
       projectedWeeklyHours: 0,
       projectedOvertimeHours: 0,
@@ -92,6 +97,10 @@ export async function evaluateAssignment(change: ShiftChange): Promise<RuleResul
         ) {
           result.blocks.push("OVERLAP_EXISTING_SHIFT");
           result.eligible = false;
+          result.conflicts?.push({
+            type: "overlap",
+            message: `Overlaps with shift at ${existingStart.toLocaleTimeString()}`,
+          });
         }
 
         // Check 3: Minimum rest hours
@@ -100,6 +109,10 @@ export async function evaluateAssignment(change: ShiftChange): Promise<RuleResul
           if (hoursBetween >= 0 && hoursBetween < laborRules.min_rest_hours) {
             result.blocks.push(`REST_VIOLATION_${laborRules.min_rest_hours}H`);
             result.eligible = false;
+            result.conflicts?.push({
+              type: "rest_violation",
+              message: `Less than ${laborRules.min_rest_hours} hours rest between shifts`,
+            });
           }
 
           // Check rest before (if new shift ends before existing starts)
@@ -107,6 +120,10 @@ export async function evaluateAssignment(change: ShiftChange): Promise<RuleResul
           if (hoursBeforeNext >= 0 && hoursBeforeNext < laborRules.min_rest_hours) {
             result.blocks.push(`REST_VIOLATION_${laborRules.min_rest_hours}H`);
             result.eligible = false;
+            result.conflicts?.push({
+              type: "rest_violation",
+              message: `Less than ${laborRules.min_rest_hours} hours rest between shifts`,
+            });
           }
         }
       }
@@ -119,17 +136,12 @@ export async function evaluateAssignment(change: ShiftChange): Promise<RuleResul
       const dayKey = dayNames[dayOfWeek];
       
       const availableWindows = (employee.availability_rules as any)[dayKey];
-      if (availableWindows && Array.isArray(availableWindows)) {
-        const shiftStartTime = shiftStart.toTimeString().slice(0, 5);
-        const shiftEndTime = shiftEnd.toTimeString().slice(0, 5);
-        
-        const isWithinAvailability = availableWindows.some((window: string[]) => {
-          return shiftStartTime >= window[0] && shiftEndTime <= window[1];
+      if (!availableWindows || availableWindows.length === 0) {
+        result.warnings.push("OUTSIDE_AVAILABILITY_WINDOW");
+        result.conflicts?.push({
+          type: "availability",
+          message: "Outside employee's preferred availability",
         });
-
-        if (!isWithinAvailability) {
-          result.warnings.push("OUTSIDE_AVAILABILITY_WINDOW");
-        }
       }
     }
 
@@ -166,6 +178,10 @@ export async function evaluateAssignment(change: ShiftChange): Promise<RuleResul
       if (totalWeeklyHours > overtimeThreshold) {
         result.metrics.projectedOvertimeHours = totalWeeklyHours - overtimeThreshold;
         result.warnings.push(`OVERTIME_FORECAST_${result.metrics.projectedOvertimeHours}H`);
+        result.conflicts?.push({
+          type: "overtime",
+          message: `Will exceed ${overtimeThreshold}h limit (${totalWeeklyHours}h total)`,
+        });
       }
 
       // Check daily max

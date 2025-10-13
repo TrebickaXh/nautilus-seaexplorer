@@ -24,6 +24,12 @@ export function ShiftChip({ shift, isOpen }: ShiftChipProps) {
       message: "Has pending claims that need review",
     });
   }
+  if (shift.has_swaps) {
+    conflicts.push({
+      type: "availability" as const,
+      message: "Has pending swap requests",
+    });
+  }
 
   return (
     <>
