@@ -7,6 +7,7 @@ import { TimeOffPanel } from "@/components/schedules/TimeOffPanel";
 import { SwapRequestsPanel } from "@/components/schedules/SwapRequestsPanel";
 import { ClaimsPanel } from "@/components/schedules/ClaimsPanel";
 import { ScheduleStats } from "@/components/schedules/ScheduleStats";
+import { OvertimeTracker } from "@/components/schedules/OvertimeTracker";
 import { ShiftDialog } from "@/components/schedules/ShiftDialog";
 import { BulkShiftDialog } from "@/components/schedules/BulkShiftDialog";
 import { CopyWeekDialog } from "@/components/schedules/CopyWeekDialog";
@@ -236,8 +237,15 @@ export default function Schedules() {
           </div>
         </div>
 
-        {/* Stats */}
-        <ScheduleStats shifts={filteredShifts} employees={filteredEmployees} />
+        {/* Stats & Overtime */}
+        <div className="p-4 grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ScheduleStats shifts={filteredShifts} employees={filteredEmployees} />
+          </div>
+          <div>
+            <OvertimeTracker weekStart={weekStart} />
+          </div>
+        </div>
 
         {/* Calendar Grid */}
         <div className="flex-1 overflow-auto">
