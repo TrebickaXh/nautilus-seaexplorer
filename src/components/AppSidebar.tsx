@@ -40,6 +40,7 @@ const managementItems = [
   { title: 'Routines', url: '/task-routines', icon: FileText, roles: ['location_manager', 'org_admin'] },
   { title: 'Shifts', url: '/shifts', icon: Clock, roles: ['location_manager', 'org_admin'] },
   { title: 'Schedules', url: '/schedules', icon: Calendar, roles: ['crew', 'location_manager', 'org_admin'] },
+  { title: 'Availability', url: '/employee-availability', icon: Users, roles: ['location_manager', 'org_admin'] },
   { title: 'Locations', url: '/locations', icon: MapPin, roles: ['location_manager', 'org_admin'] },
   { title: 'Team', url: '/users', icon: Users, roles: ['org_admin'] },
 ];

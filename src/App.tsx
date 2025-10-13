@@ -17,6 +17,7 @@ import Settings from "./pages/Settings";
 import Kiosk from "./pages/Kiosk";
 import Reports from "./pages/Reports";
 import Schedules from "./pages/Schedules";
+import EmployeeAvailability from "./pages/EmployeeAvailability";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
           <Route path="/reports" element={<AppLayout><Reports /></AppLayout>} />
           <Route path="/schedules" element={<AppLayout><Schedules /></AppLayout>} />
+          <Route path="/employee-availability" element={<AppLayout><EmployeeAvailability /></AppLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

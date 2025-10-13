@@ -1,5 +1,6 @@
 import { useScheduleData } from "@/hooks/useScheduleData";
 import { ShiftChip } from "./ShiftChip";
+import { ConflictIndicator } from "./ConflictIndicator";
 import { format, addDays } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 
