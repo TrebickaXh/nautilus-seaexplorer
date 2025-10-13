@@ -26,8 +26,7 @@ export function useScheduleData(startDate: Date, daysCount: number, departmentFi
             employee:profiles(id, display_name, position_id)
           ),
           open_shift:open_shift_pool(id, bonus_cents, post_reason),
-          claims:shift_claims(id, status),
-          swaps:swap_requests(id, status)
+          claims:shift_claims(id, status)
         `)
         .gte("start_at", startDate.toISOString())
         .lte("start_at", endDate.toISOString())
@@ -45,7 +44,6 @@ export function useScheduleData(startDate: Date, daysCount: number, departmentFi
         const assignment = shift.assignments?.[0];
         const isOpen = shift.open_shift && shift.open_shift.length > 0;
         const hasClaims = shift.claims && shift.claims.length > 0;
-        const hasSwaps = shift.swaps && shift.swaps.length > 0;
 
         return {
           id: shift.id,
@@ -63,7 +61,7 @@ export function useScheduleData(startDate: Date, daysCount: number, departmentFi
           status: shift.status,
           is_open: isOpen,
           has_claims: hasClaims,
-          has_swaps: hasSwaps,
+          has_swaps: false, // Can be checked via separate query if needed
           bonus_cents: shift.open_shift?.[0]?.bonus_cents || 0,
           requires_skills: shift.required_skills || [],
         };

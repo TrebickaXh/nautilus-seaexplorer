@@ -21,7 +21,7 @@ export function TimeOffPanel({ onClose }: TimeOffPanelProps) {
         .from("time_off_requests")
         .select(`
           *,
-          employee:profiles(id, display_name)
+          employee:profiles!time_off_requests_employee_id_fkey(id, display_name)
         `)
         .eq("status", "pending")
         .order("start_date", { ascending: true });
