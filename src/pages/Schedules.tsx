@@ -125,17 +125,9 @@ export default function Schedules() {
               )}
               {isAdminRole && (
                 <>
-                  <Button onClick={() => setShiftTemplatesOpen(true)} variant="outline">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Manage Shifts
-                  </Button>
-                  <Button onClick={() => setCreateShiftOpen(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Shift
-                  </Button>
-                  <Button onClick={() => setBulkShiftOpen(true)} variant="outline">
-                    <CalendarClock className="w-4 h-4 mr-2" />
-                    Bulk Create
+                  <Button onClick={() => setConflictsPanelOpen(true)} variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50">
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    Resolve Conflicts
                   </Button>
                   <Button onClick={() => setBulkAssignOpen(true)} variant="outline">
                     <Users className="w-4 h-4 mr-2" />
