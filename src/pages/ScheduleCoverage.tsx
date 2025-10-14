@@ -126,38 +126,82 @@ export default function ScheduleCoverage() {
   };
 
   const autoAssignMutation = useMutation({
-    mutationFn: async (shiftId: string) => {
-      // Get suggestions
-      const { data: suggestions, error: suggestError } = await supabase.functions.invoke(
-        "suggest-shift-assignments",
-        { body: { shift_id: shiftId } }
-      );
+    mutationFn: async () => {
+      // Get all unassigned shifts for the week
+      const unassignedShifts = coverageData?.filter((shift: any) => 
+        !shift.assignment || shift.assignment.length === 0
+      ) || [];
 
-      if (suggestError) throw suggestError;
-      if (!suggestions?.suggestions?.length) {
-        throw new Error("No suitable employees found for this shift");
+      if (unassignedShifts.length === 0) {
+        throw new Error("No unassigned shifts found");
       }
 
-      // Get the best match (highest score)
-      const bestMatch = suggestions.suggestions[0];
+      const results = {
+        success: 0,
+        failed: 0,
+        errors: [] as string[]
+      };
 
-      // Create assignment
-      const { error: assignError } = await supabase
-        .from("schedule_assignments")
-        .insert({
-          shift_id: shiftId,
-          employee_id: bestMatch.employee_id,
-          assignment_method: "ai_auto",
-          assignment_score: bestMatch.total_score,
-        });
+      // Process each shift
+      for (const shift of unassignedShifts) {
+        try {
+          // Get suggestions for this shift
+          const { data: suggestions, error: suggestError } = await supabase.functions.invoke(
+            "suggest-shift-assignments",
+            { body: { shift_id: shift.id } }
+          );
 
-      if (assignError) throw assignError;
+          if (suggestError) {
+            results.failed++;
+            results.errors.push(`${shift.name || 'Unnamed shift'}: ${suggestError.message}`);
+            continue;
+          }
 
-      return { employee: bestMatch, shiftId };
+          if (!suggestions?.suggestions?.length) {
+            results.failed++;
+            results.errors.push(`${shift.name || 'Unnamed shift'}: No suitable employees found`);
+            continue;
+          }
+
+          // Get the best match (highest score)
+          const bestMatch = suggestions.suggestions[0];
+
+          // Create assignment
+          const { error: assignError } = await supabase
+            .from("schedule_assignments")
+            .insert({
+              shift_id: shift.id,
+              employee_id: bestMatch.employee_id,
+              assignment_method: "ai_auto",
+              assignment_score: bestMatch.total_score,
+            });
+
+          if (assignError) {
+            results.failed++;
+            results.errors.push(`${shift.name || 'Unnamed shift'}: ${assignError.message}`);
+          } else {
+            results.success++;
+          }
+        } catch (error: any) {
+          results.failed++;
+          results.errors.push(`${shift.name || 'Unnamed shift'}: ${error.message}`);
+        }
+      }
+
+      return results;
     },
-    onSuccess: (data) => {
+    onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: ["schedule-coverage"] });
-      toast.success(`Assigned ${data.employee.name} to shift (score: ${data.employee.total_score})`);
+      
+      if (results.success > 0) {
+        toast.success(`Successfully assigned ${results.success} shift${results.success > 1 ? 's' : ''}`);
+      }
+      
+      if (results.failed > 0) {
+        toast.error(`Failed to assign ${results.failed} shift${results.failed > 1 ? 's' : ''}`, {
+          description: results.errors.slice(0, 3).join('\n')
+        });
+      }
     },
     onError: (error: Error) => {
       toast.error(`Auto-assign failed: ${error.message}`);
@@ -217,18 +261,11 @@ export default function ScheduleCoverage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              const openShift = coverageData?.find((shift: any) => 
-                !shift.assignment || shift.assignment.length === 0
-              );
-              if (openShift) {
-                autoAssignMutation.mutate(openShift.id);
-              }
-            }}
+            onClick={() => autoAssignMutation.mutate()}
             disabled={!coverageData || coverageData.every((shift: any) => shift.assignment && shift.assignment.length > 0) || autoAssignMutation.isPending}
           >
             <Sparkles className="w-4 h-4 mr-2" />
-            {autoAssignMutation.isPending ? "Assigning..." : "AI Auto-Assign"}
+            {autoAssignMutation.isPending ? "Assigning..." : "AI Auto-Assign All"}
           </Button>
           <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
             <SelectTrigger className="w-48">
