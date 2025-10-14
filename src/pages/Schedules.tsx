@@ -9,6 +9,7 @@ import { ClaimsPanel } from "@/components/schedules/ClaimsPanel";
 import { ScheduleStats } from "@/components/schedules/ScheduleStats";
 import { OvertimeTracker } from "@/components/schedules/OvertimeTracker";
 import { ScheduleTemplates } from "@/components/schedules/ScheduleTemplates";
+import { ShiftTemplatesDialog } from "@/components/schedules/ShiftTemplatesDialog";
 import { ShiftDialog } from "@/components/schedules/ShiftDialog";
 import { BulkShiftDialog } from "@/components/schedules/BulkShiftDialog";
 import { BulkAssignmentWizard } from "@/components/schedules/BulkAssignmentWizard";
@@ -20,7 +21,7 @@ import { RequestTimeOffDialog } from "@/components/schedules/RequestTimeOffDialo
 import { PublishScheduleDialog } from "@/components/schedules/PublishScheduleDialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock, Download, CalendarOff, Send, Users } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock, Download, CalendarOff, Send, Users, Settings } from "lucide-react";
 import { addDays, startOfWeek, endOfWeek, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +49,7 @@ export default function Schedules() {
   const [showUnassigned, setShowUnassigned] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [shiftTemplatesOpen, setShiftTemplatesOpen] = useState(false);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
@@ -125,6 +127,10 @@ export default function Schedules() {
               )}
               {isAdminRole && (
                 <>
+                  <Button onClick={() => setShiftTemplatesOpen(true)} variant="outline">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Manage Shifts
+                  </Button>
                   <Button onClick={() => setCreateShiftOpen(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Create Shift
@@ -357,6 +363,11 @@ export default function Schedules() {
         open={generateTemplatesOpen}
         onOpenChange={setGenerateTemplatesOpen}
         onSuccess={() => window.location.reload()}
+      />
+
+      <ShiftTemplatesDialog
+        open={shiftTemplatesOpen}
+        onOpenChange={setShiftTemplatesOpen}
       />
     </div>
   );
