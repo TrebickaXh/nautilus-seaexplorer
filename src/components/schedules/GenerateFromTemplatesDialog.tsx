@@ -25,7 +25,7 @@ export function GenerateFromTemplatesDialog({
 }: GenerateFromTemplatesDialogProps) {
   const [startDate, setStartDate] = useState<Date>(startOfWeek(new Date()));
   const [endDate, setEndDate] = useState<Date>(endOfWeek(addDays(new Date(), 14)));
-  const [departmentId, setDepartmentId] = useState<string>('');
+  const [departmentId, setDepartmentId] = useState<string>('all');
   const [autoAssign, setAutoAssign] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -51,7 +51,7 @@ export function GenerateFromTemplatesDialog({
         .eq('is_template', true)
         .is('archived_at', null);
 
-      if (departmentId) {
+      if (departmentId && departmentId !== 'all') {
         query = query.eq('department_id', departmentId);
       }
 
@@ -79,7 +79,7 @@ export function GenerateFromTemplatesDialog({
         body: {
           start_date: startDate.toISOString().split('T')[0],
           end_date: endDate.toISOString().split('T')[0],
-          department_id: departmentId || null,
+          department_id: departmentId !== 'all' ? departmentId : null,
           auto_assign: autoAssign,
         },
       });
@@ -146,7 +146,7 @@ export function GenerateFromTemplatesDialog({
                 <SelectValue placeholder="All departments" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All departments</SelectItem>
+                <SelectItem value="all">All departments</SelectItem>
                 {departments?.map((dept) => (
                   <SelectItem key={dept.id} value={dept.id}>
                     {dept.name} - {dept.locations?.name}
