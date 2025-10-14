@@ -12,6 +12,8 @@ export function useScheduleData(startDate: Date, daysCount: number, departmentFi
     error: shiftsError,
   } = useQuery({
     queryKey: ["schedule-shifts", startDate.toISOString(), daysCount, departmentFilter],
+    staleTime: 30000, // Cache for 30 seconds
+    placeholderData: (previousData) => previousData, // Keep previous data while loading
     queryFn: async () => {
       let query = supabase
         .from("shifts")
@@ -77,6 +79,8 @@ export function useScheduleData(startDate: Date, daysCount: number, departmentFi
     isLoading: employeesLoading,
   } = useQuery({
     queryKey: ["schedule-employees", departmentFilter],
+    staleTime: 60000, // Cache for 60 seconds (employees don't change often)
+    placeholderData: (previousData) => previousData,
     queryFn: async () => {
       const { data: userDepts } = await supabase
         .from("user_departments")
@@ -114,6 +118,8 @@ export function useScheduleData(startDate: Date, daysCount: number, departmentFi
     isLoading: departmentsLoading,
   } = useQuery({
     queryKey: ["departments"],
+    staleTime: 300000, // Cache for 5 minutes (departments rarely change)
+    placeholderData: (previousData) => previousData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("departments")
@@ -129,6 +135,8 @@ export function useScheduleData(startDate: Date, daysCount: number, departmentFi
   // Fetch positions
   const { data: positions = [] } = useQuery({
     queryKey: ["positions"],
+    staleTime: 300000, // Cache for 5 minutes (positions rarely change)
+    placeholderData: (previousData) => previousData,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("positions")

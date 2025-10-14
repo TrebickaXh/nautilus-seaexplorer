@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useScheduleData } from "@/hooks/useScheduleData";
 import { ShiftChip } from "./ShiftChip";
 import { ConflictIndicator } from "./ConflictIndicator";
@@ -15,13 +16,31 @@ export function CalendarGrid({ startDate, viewMode, departmentFilter }: Calendar
   const daysToShow = viewMode === "day" ? 1 : viewMode === "week" ? 7 : viewMode === "2week" ? 14 : 30;
   const { shifts, employees, departments, loading } = useScheduleData(startDate, daysToShow, departmentFilter);
   
-  // Build availability map for conflict detection
-  const employeeAvailability = employees.reduce((acc: any, emp: any) => {
-    if (emp.availability_rules) {
-      acc[emp.id] = emp.availability_rules;
-    }
-    return acc;
-  }, {});
+  // Memoize expensive computations
+  const days = useMemo(
+    () => Array.from({ length: daysToShow }, (_, i) => addDays(startDate, i)),
+    [startDate, daysToShow]
+  );
+
+  const employeeAvailability = useMemo(
+    () => employees.reduce((acc: any, emp: any) => {
+      if (emp.availability_rules) {
+        acc[emp.id] = emp.availability_rules;
+      }
+      return acc;
+    }, {}),
+    [employees]
+  );
+
+  const employeesByDept = useMemo(
+    () => employees.reduce((acc, emp) => {
+      const deptId = emp.department_id || "unassigned";
+      if (!acc[deptId]) acc[deptId] = [];
+      acc[deptId].push(emp);
+      return acc;
+    }, {} as Record<string, typeof employees>),
+    [employees]
+  );
   
   // Detect conflicts
   const conflicts = useConflictDetection(shifts, employeeAvailability);
@@ -35,16 +54,6 @@ export function CalendarGrid({ startDate, viewMode, departmentFilter }: Calendar
       </div>
     );
   }
-
-  const days = Array.from({ length: daysToShow }, (_, i) => addDays(startDate, i));
-
-  // Group employees by department
-  const employeesByDept = employees.reduce((acc, emp) => {
-    const deptId = emp.department_id || "unassigned";
-    if (!acc[deptId]) acc[deptId] = [];
-    acc[deptId].push(emp);
-    return acc;
-  }, {} as Record<string, typeof employees>);
 
   return (
     <div className="min-w-max">
