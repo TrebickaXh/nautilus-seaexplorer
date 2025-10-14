@@ -72,7 +72,15 @@ export function GenerateFromTemplatesDialog({
       return;
     }
 
+    // Warn if date range is large
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysDiff > 30) {
+      toast.error('Date range cannot exceed 30 days. Please select a shorter period.');
+      return;
+    }
+
     setLoading(true);
+    const loadingToast = toast.loading('Generating shifts... This may take a moment.');
 
     try {
       const { data, error } = await supabase.functions.invoke('materialize-shifts-from-templates', {
@@ -86,14 +94,16 @@ export function GenerateFromTemplatesDialog({
 
       if (error) throw error;
 
+      toast.dismiss(loadingToast);
       toast.success(
-        `Generated ${data.shifts_created} shifts with ${data.assignments_created} assignments`
+        `Successfully generated ${data.shifts_created} shifts with ${data.assignments_created} employee assignments!`
       );
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
       console.error('Error generating shifts:', error);
-      toast.error(error.message || 'Failed to generate shifts from templates');
+      toast.dismiss(loadingToast);
+      toast.error(error.message || 'Failed to generate shifts. Please try a shorter date range.');
     } finally {
       setLoading(false);
     }

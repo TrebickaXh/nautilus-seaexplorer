@@ -123,7 +123,7 @@ serve(async (req) => {
         .select('id')
         .eq('template_shift_id', template.id)
         .eq('start_at', shift.start_at)
-        .single();
+        .maybeSingle();
 
       if (existingShift) {
         console.log('Shift already exists, skipping:', shift.name, shift.start_at);
@@ -146,50 +146,28 @@ serve(async (req) => {
 
       // Auto-assign if enabled and there are eligible employees
       if (auto_assign && eligibleEmployees.length > 0) {
-        // Use the suggest-shift-assignments function to get ranked employees
-        const { data: suggestions, error: suggestError } = await supabase.functions.invoke(
-          'suggest-shift-assignments',
-          { body: { shift_id: createdShift.id } }
-        );
-
-        if (suggestError) {
-          console.error('Error getting assignment suggestions:', suggestError);
-          continue;
-        }
-
-        // Auto-assign employees with high confidence (score >= 70)
-        const highConfidenceMatches = suggestions?.suggestions?.filter(
-          (s: any) => s.total_score >= 70 && !s.conflicts.length
-        ) || [];
-
-        for (const match of highConfidenceMatches) {
+        // Simple direct assignment of all eligible employees
+        for (const emp of eligibleEmployees) {
           const assignment = {
             shift_id: createdShift.id,
-            employee_id: match.employee_id,
+            employee_id: emp.user_id,
             status: 'assigned',
             assignment_method: 'auto_from_template',
-            assignment_score: match.total_score,
-            metadata: {
-              template_id: template.id,
-              score_breakdown: match.score_breakdown,
-            },
+            metadata: { template_id: template.id },
           };
-
           assignmentsToCreate.push(assignment);
         }
+      } else if (!auto_assign || eligibleEmployees.length === 0) {
+        // Create as open shift if no auto-assign or no eligible employees
+        const { error: openShiftError } = await supabase
+          .from('open_shift_pool')
+          .insert({
+            shift_id: createdShift.id,
+            post_reason: auto_assign ? 'No assigned employees' : 'Auto-assign disabled',
+          });
 
-        // If no high-confidence matches, create as open shift
-        if (highConfidenceMatches.length === 0 && eligibleEmployees.length > 0) {
-          const { error: openShiftError } = await supabase
-            .from('open_shift_pool')
-            .insert({
-              shift_id: createdShift.id,
-              post_reason: 'Generated from template - no auto-match found',
-            });
-
-          if (openShiftError) {
-            console.error('Error creating open shift:', openShiftError);
-          }
+        if (openShiftError) {
+          console.error('Error creating open shift:', openShiftError);
         }
       }
     }
@@ -223,7 +201,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in materialize-shifts-from-templates:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
