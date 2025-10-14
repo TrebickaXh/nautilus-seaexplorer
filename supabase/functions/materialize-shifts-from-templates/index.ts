@@ -53,16 +53,38 @@ serve(async (req) => {
     for (const template of templates || []) {
       console.log(`Processing template: ${template.name}`);
 
-      // Get eligible employees for this template
-      const { data: eligibleEmployees, error: employeesError } = await supabase
+      // Get eligible employees for this template from user_shifts
+      const { data: templateEmployees, error: templateEmployeesError } = await supabase
         .from('user_shifts')
         .select('user_id, profiles(id, display_name, skills, position_id)')
         .eq('shift_id', template.id);
 
-      if (employeesError) {
-        console.error('Error fetching eligible employees:', employeesError);
+      if (templateEmployeesError) {
+        console.error('Error fetching template employees:', templateEmployeesError);
         continue;
       }
+
+      // Get employees from the department if template has a department
+      let departmentEmployees: any[] = [];
+      if (template.department_id) {
+        const { data: deptEmps, error: deptError } = await supabase
+          .from('user_departments')
+          .select('user_id, profiles(id, display_name, skills, position_id)')
+          .eq('department_id', template.department_id);
+
+        if (!deptError && deptEmps) {
+          departmentEmployees = deptEmps;
+        }
+      }
+
+      // Combine both sources (unique by user_id)
+      const employeeMap = new Map();
+      [...(templateEmployees || []), ...departmentEmployees].forEach(emp => {
+        if (!employeeMap.has(emp.user_id)) {
+          employeeMap.set(emp.user_id, emp);
+        }
+      });
+      const eligibleEmployees = Array.from(employeeMap.values());
 
       // Generate shifts for each matching day
       for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
