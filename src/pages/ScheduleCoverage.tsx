@@ -5,12 +5,15 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, TrendingUp, Users, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, TrendingUp, Users, AlertTriangle, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { AutoAssignDialog } from "@/components/schedules/AutoAssignDialog";
 import { format, addWeeks, startOfWeek, endOfWeek } from "date-fns";
 
 export default function ScheduleCoverage() {
   const [currentWeek, setCurrentWeek] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+  const [autoAssignDialogOpen, setAutoAssignDialogOpen] = useState(false);
+  const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -171,7 +174,25 @@ export default function ScheduleCoverage() {
         <span className="text-sm font-medium">
           {format(weekStart, "MMM d")} - {format(weekEnd, "MMM d, yyyy")}
         </span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Find first open shift to use for auto-assign
+              const openShift = coverageData?.find((shift: any) => 
+                !shift.assignment || shift.assignment.length === 0
+              );
+              if (openShift) {
+                setSelectedShiftId(openShift.id);
+                setAutoAssignDialogOpen(true);
+              }
+            }}
+            disabled={!coverageData || coverageData.every((shift: any) => shift.assignment && shift.assignment.length > 0)}
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            AI Auto-Assign
+          </Button>
           <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="All Departments" />
@@ -325,6 +346,14 @@ export default function ScheduleCoverage() {
             </Card>
           )}
         </>
+      )}
+
+      {selectedShiftId && (
+        <AutoAssignDialog
+          open={autoAssignDialogOpen}
+          onOpenChange={setAutoAssignDialogOpen}
+          shiftId={selectedShiftId}
+        />
       )}
     </div>
   );
