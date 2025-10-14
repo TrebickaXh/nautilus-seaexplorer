@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, TrendingUp, Users, AlertTriangle, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
-import { AutoAssignDialog } from "@/components/schedules/AutoAssignDialog";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { format, addWeeks, startOfWeek, endOfWeek } from "date-fns";
 
 export default function ScheduleCoverage() {
   const [currentWeek, setCurrentWeek] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
-  const [autoAssignDialogOpen, setAutoAssignDialogOpen] = useState(false);
-  const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -125,6 +125,45 @@ export default function ScheduleCoverage() {
     return Array.from(deptMap.values()).sort((a, b) => b.total - a.total);
   };
 
+  const autoAssignMutation = useMutation({
+    mutationFn: async (shiftId: string) => {
+      // Get suggestions
+      const { data: suggestions, error: suggestError } = await supabase.functions.invoke(
+        "suggest-shift-assignments",
+        { body: { shift_id: shiftId } }
+      );
+
+      if (suggestError) throw suggestError;
+      if (!suggestions?.suggestions?.length) {
+        throw new Error("No suitable employees found for this shift");
+      }
+
+      // Get the best match (highest score)
+      const bestMatch = suggestions.suggestions[0];
+
+      // Create assignment
+      const { error: assignError } = await supabase
+        .from("schedule_assignments")
+        .insert({
+          shift_id: shiftId,
+          employee_id: bestMatch.employee_id,
+          assignment_method: "ai_auto",
+          assignment_score: bestMatch.total_score,
+        });
+
+      if (assignError) throw assignError;
+
+      return { employee: bestMatch, shiftId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["schedule-coverage"] });
+      toast.success(`Assigned ${data.employee.name} to shift (score: ${data.employee.total_score})`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Auto-assign failed: ${error.message}`);
+    },
+  });
+
   const stats = calculateCoverageStats();
   const deptCoverage = getCoverageByDepartment();
 
@@ -179,19 +218,17 @@ export default function ScheduleCoverage() {
             variant="outline"
             size="sm"
             onClick={() => {
-              // Find first open shift to use for auto-assign
               const openShift = coverageData?.find((shift: any) => 
                 !shift.assignment || shift.assignment.length === 0
               );
               if (openShift) {
-                setSelectedShiftId(openShift.id);
-                setAutoAssignDialogOpen(true);
+                autoAssignMutation.mutate(openShift.id);
               }
             }}
-            disabled={!coverageData || coverageData.every((shift: any) => shift.assignment && shift.assignment.length > 0)}
+            disabled={!coverageData || coverageData.every((shift: any) => shift.assignment && shift.assignment.length > 0) || autoAssignMutation.isPending}
           >
             <Sparkles className="w-4 h-4 mr-2" />
-            AI Auto-Assign
+            {autoAssignMutation.isPending ? "Assigning..." : "AI Auto-Assign"}
           </Button>
           <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
             <SelectTrigger className="w-48">
@@ -346,14 +383,6 @@ export default function ScheduleCoverage() {
             </Card>
           )}
         </>
-      )}
-
-      {selectedShiftId && (
-        <AutoAssignDialog
-          open={autoAssignDialogOpen}
-          onOpenChange={setAutoAssignDialogOpen}
-          shiftId={selectedShiftId}
-        />
       )}
     </div>
   );
