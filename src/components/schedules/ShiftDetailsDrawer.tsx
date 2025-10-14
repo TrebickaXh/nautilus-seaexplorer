@@ -3,8 +3,9 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Clock, MapPin, Users, Briefcase, RefreshCw, UserX, MessageSquare } from "lucide-react";
+import { Clock, MapPin, Users, Briefcase, RefreshCw, UserX, MessageSquare, Sparkles } from "lucide-react";
 import { AssignEmployeeDialog } from "./AssignEmployeeDialog";
+import { AutoAssignDialog } from "./AutoAssignDialog";
 import { SwapRequestDialog } from "./SwapRequestDialog";
 import { ScheduleNotesDialog } from "./ScheduleNotesDialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +21,7 @@ interface ShiftDetailsDrawerProps {
 
 export function ShiftDetailsDrawer({ shift, open, onOpenChange }: ShiftDetailsDrawerProps) {
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [autoAssignDialogOpen, setAutoAssignDialogOpen] = useState(false);
   const [swapDialogOpen, setSwapDialogOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   const { isAdmin } = useUserRole();
@@ -104,10 +106,16 @@ export function ShiftDetailsDrawer({ shift, open, onOpenChange }: ShiftDetailsDr
           <div className="p-6 pt-0 space-y-3">
             {!shift.employee_id ? (
               isAdmin() ? (
-                <Button className="w-full" onClick={() => setAssignDialogOpen(true)}>
-                  <Users className="w-4 h-4 mr-2" />
-                  Assign Employee
-                </Button>
+                <>
+                  <Button className="w-full" onClick={() => setAutoAssignDialogOpen(true)}>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    AI Auto-Assign
+                  </Button>
+                  <Button className="w-full" variant="outline" onClick={() => setAssignDialogOpen(true)}>
+                    <Users className="w-4 h-4 mr-2" />
+                    Manually Assign Employee
+                  </Button>
+                </>
               ) : (
                 <Button className="w-full" variant="outline" onClick={() => setSwapDialogOpen(true)}>
                   <RefreshCw className="w-4 h-4 mr-2" />
@@ -152,6 +160,12 @@ export function ShiftDetailsDrawer({ shift, open, onOpenChange }: ShiftDetailsDr
         open={assignDialogOpen}
         onOpenChange={setAssignDialogOpen}
         shift={shift}
+      />
+
+      <AutoAssignDialog
+        open={autoAssignDialogOpen}
+        onOpenChange={setAutoAssignDialogOpen}
+        shiftId={shift.id}
       />
 
       {shift.assignment_id && (
