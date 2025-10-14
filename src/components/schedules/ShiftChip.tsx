@@ -40,19 +40,22 @@ export function ShiftChip({ shift, isOpen }: ShiftChipProps) {
         )}
         onClick={() => setDetailsOpen(true)}
       >
-      <div className="flex items-center justify-between gap-1 mb-1">
-        <div className="flex items-center gap-1">
-          <Clock className="w-3 h-3" />
-          <span className="font-medium">
-            {startTime}–{endTime}
-          </span>
+        {shift.name && (
+          <div className="font-semibold text-xs mb-1 truncate">{shift.name}</div>
+        )}
+        <div className="flex items-center justify-between gap-1 mb-1">
+          <div className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            <span className="font-medium">
+              {startTime}–{endTime}
+            </span>
+          </div>
+          {conflicts.length > 0 && <ConflictIndicator conflicts={conflicts} />}
         </div>
-        {conflicts.length > 0 && <ConflictIndicator conflicts={conflicts} />}
-      </div>
 
-      {shift.position_name && (
-        <div className="text-muted-foreground truncate">{shift.position_name}</div>
-      )}
+        {shift.position_name && (
+          <div className="text-muted-foreground truncate">{shift.position_name}</div>
+        )}
 
       <div className="flex gap-1 mt-1 flex-wrap">
         {shift.status === "pending_swap" && (

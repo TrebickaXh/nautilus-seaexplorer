@@ -28,6 +28,7 @@ export function useScheduleData(startDate: Date, daysCount: number, departmentFi
           open_shift:open_shift_pool(id, bonus_cents, post_reason),
           claims:shift_claims(id, status)
         `)
+        .eq("is_template", false)
         .gte("start_at", startDate.toISOString())
         .lte("start_at", endDate.toISOString())
         .order("start_at", { ascending: true });
@@ -47,6 +48,7 @@ export function useScheduleData(startDate: Date, daysCount: number, departmentFi
 
         return {
           id: shift.id,
+          name: shift.name,
           start_at: shift.start_at,
           end_at: shift.end_at,
           department_id: shift.department_id,
