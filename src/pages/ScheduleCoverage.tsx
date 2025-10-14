@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, TrendingUp, Users, AlertTriangle, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { OvertimeTracker } from "@/components/schedules/OvertimeTracker";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format, addWeeks, startOfWeek, endOfWeek } from "date-fns";
@@ -400,6 +401,9 @@ export default function ScheduleCoverage() {
               )}
             </div>
           </Card>
+
+          {/* Overtime Tracker */}
+          <OvertimeTracker weekStart={weekStart} />
 
           {/* Alerts */}
           {stats && stats.understaffed > 0 && (

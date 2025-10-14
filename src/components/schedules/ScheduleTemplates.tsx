@@ -18,12 +18,14 @@ interface ScheduleTemplate {
 }
 
 interface ScheduleTemplatesProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   currentWeekStart: Date;
   currentWeekEnd: Date;
   currentShifts: any[];
 }
 
-export function ScheduleTemplates({ currentWeekStart, currentWeekEnd, currentShifts }: ScheduleTemplatesProps) {
+export function ScheduleTemplates({ open, onOpenChange, currentWeekStart, currentWeekEnd, currentShifts }: ScheduleTemplatesProps) {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
@@ -79,45 +81,7 @@ export function ScheduleTemplates({ currentWeekStart, currentWeekEnd, currentShi
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Save className="w-5 h-5" />
-          Schedule Templates
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Button onClick={() => setSaveDialogOpen(true)} className="w-full">
-          <Save className="w-4 h-4 mr-2" />
-          Save Current Week as Template
-        </Button>
-
-        {isLoading ? (
-          <div className="text-center py-4 text-muted-foreground text-sm">Loading templates...</div>
-        ) : templates.length === 0 ? (
-          <div className="py-4 text-center text-muted-foreground text-sm">
-            No templates saved yet. Save your current schedule to reuse it later.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {templates.map((template) => (
-              <div key={template.id} className="p-3 border rounded-lg">
-                <div className="font-medium text-sm">{template.name}</div>
-                <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
-                <div className="flex gap-2 mt-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Upload className="w-3 h-3 mr-1" />
-                    Apply
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
+    <>
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -154,7 +118,48 @@ export function ScheduleTemplates({ currentWeekStart, currentWeekEnd, currentShi
           </div>
         </DialogContent>
       </Dialog>
-      </CardContent>
-    </Card>
+
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Schedule Templates</span>
+              <Button onClick={() => setSaveDialogOpen(true)} size="sm">
+                <Save className="h-4 w-4 mr-2" />
+                Save Current Week
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 max-h-[60vh] overflow-auto">
+            {isLoading ? (
+              <div className="text-center py-4 text-muted-foreground text-sm">Loading templates...</div>
+            ) : templates.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                No templates saved yet. Save your current schedule to reuse it later.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {templates.map((template) => (
+                  <div key={template.id} className="p-3 border rounded-lg">
+                    <div className="font-medium text-sm">{template.name}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
+                    <div className="flex gap-2 mt-2">
+                      <Button variant="outline" size="sm" className="flex-1">
+                        <Upload className="w-3 h-3 mr-1" />
+                        Apply
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -7,8 +7,6 @@ import { TimeOffPanel } from "@/components/schedules/TimeOffPanel";
 import { SwapRequestsPanel } from "@/components/schedules/SwapRequestsPanel";
 import { ClaimsPanel } from "@/components/schedules/ClaimsPanel";
 import { ScheduleStats } from "@/components/schedules/ScheduleStats";
-import { OvertimeTracker } from "@/components/schedules/OvertimeTracker";
-import { ScheduleTemplates } from "@/components/schedules/ScheduleTemplates";
 import { ShiftTemplatesDialog } from "@/components/schedules/ShiftTemplatesDialog";
 import { ShiftDialog } from "@/components/schedules/ShiftDialog";
 import { BulkShiftDialog } from "@/components/schedules/BulkShiftDialog";
@@ -19,9 +17,10 @@ import { ScheduleFilters } from "@/components/schedules/ScheduleFilters";
 import { ExportScheduleDialog } from "@/components/schedules/ExportScheduleDialog";
 import { RequestTimeOffDialog } from "@/components/schedules/RequestTimeOffDialog";
 import { PublishScheduleDialog } from "@/components/schedules/PublishScheduleDialog";
+import { ScheduleTemplates } from "@/components/schedules/ScheduleTemplates";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock, Download, CalendarOff, Send, Users, Settings } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock, Download, CalendarOff, Send, Users, Settings, Save } from "lucide-react";
 import { addDays, startOfWeek, endOfWeek, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,6 +49,7 @@ export default function Schedules() {
   const [showConflicts, setShowConflicts] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [shiftTemplatesOpen, setShiftTemplatesOpen] = useState(false);
+  const [scheduleTemplatesOpen, setScheduleTemplatesOpen] = useState(false);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
@@ -142,6 +142,10 @@ export default function Schedules() {
                   <Button onClick={() => setGenerateTemplatesOpen(true)} variant="outline">
                     <Calendar className="w-4 h-4 mr-2" />
                     Generate from Templates
+                  </Button>
+                  <Button onClick={() => setScheduleTemplatesOpen(true)} variant="outline">
+                    <Save className="w-4 h-4 mr-2" />
+                    Schedule Templates
                   </Button>
                   <Button onClick={() => setBulkAssignOpen(true)} variant="outline">
                     <Users className="w-4 h-4 mr-2" />
@@ -256,20 +260,9 @@ export default function Schedules() {
           </div>
         </div>
 
-        {/* Stats & Overtime */}
-        <div className="p-4 space-y-4">
+        {/* Stats */}
+        <div className="p-4">
           <ScheduleStats shifts={filteredShifts} employees={filteredEmployees} />
-          
-          <div className="grid gap-4 lg:grid-cols-2">
-            <OvertimeTracker weekStart={weekStart} />
-            {isAdminRole && (
-              <ScheduleTemplates 
-                currentWeekStart={weekStart}
-                currentWeekEnd={weekEnd}
-                currentShifts={filteredShifts}
-              />
-            )}
-          </div>
         </div>
 
         {/* Calendar Grid */}
@@ -368,6 +361,14 @@ export default function Schedules() {
       <ShiftTemplatesDialog
         open={shiftTemplatesOpen}
         onOpenChange={setShiftTemplatesOpen}
+      />
+
+      <ScheduleTemplates
+        open={scheduleTemplatesOpen}
+        onOpenChange={setScheduleTemplatesOpen}
+        currentWeekStart={weekStart}
+        currentWeekEnd={weekEnd}
+        currentShifts={filteredShifts}
       />
     </div>
   );
