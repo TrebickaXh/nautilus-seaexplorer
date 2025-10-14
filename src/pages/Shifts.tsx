@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -42,8 +43,6 @@ interface Shift {
 export default function Shifts() {
   const navigate = useNavigate();
   const { isAdmin, loading: roleLoading } = useUserRole();
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | undefined>();
   const [selectedShifts, setSelectedShifts] = useState<Set<string>>(new Set());
@@ -55,44 +54,43 @@ export default function Shifts() {
     }
   }, [roleLoading, isAdmin, navigate]);
 
-  useEffect(() => {
-    loadShifts();
-  }, []);
+  const { data: shifts = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ['shifts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select(`
+          *,
+          departments(
+            name,
+            locations(name)
+          )
+        `)
+        .is('archived_at', null)
+        .order('start_time', { ascending: true });
 
-  const loadShifts = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('shifts')
-      .select(`
-        *,
-        departments(
-          name,
-          locations(name)
-        )
-      `)
-      .is('archived_at', null)
-      .order('start_time', { ascending: true });
+      if (error) throw error;
 
-    if (error) {
-      toast.error('Failed to load shifts');
-      setLoading(false);
-      return;
-    }
+      // Get user counts in a single aggregated query
+      const shiftIds = (data || []).map(s => s.id);
+      const { data: counts } = await supabase
+        .from('user_shifts')
+        .select('shift_id')
+        .in('shift_id', shiftIds);
 
-    // Get user counts for each shift
-    const shiftsWithCounts = await Promise.all(
-      (data || []).map(async (shift) => {
-        const { count } = await supabase
-          .from('user_shifts')
-          .select('*', { count: 'exact', head: true })
-          .eq('shift_id', shift.id);
-        return { ...shift, user_count: count || 0 };
-      })
-    );
+      const countMap = (counts || []).reduce((acc, { shift_id }) => {
+        acc[shift_id] = (acc[shift_id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
 
-    setShifts(shiftsWithCounts);
-    setLoading(false);
-  };
+      return (data || []).map(shift => ({
+        ...shift,
+        user_count: countMap[shift.id] || 0
+      }));
+    },
+    staleTime: 30000,
+    placeholderData: (previousData) => previousData,
+  });
 
   const handleDelete = async (id: string) => {
     if (!confirm('Archive this shift? Users will be unassigned from it.')) return;
@@ -106,7 +104,7 @@ export default function Shifts() {
       toast.error(error.message);
     } else {
       toast.success('Shift archived');
-      loadShifts();
+      refetch();
     }
   };
 
@@ -122,7 +120,7 @@ export default function Shifts() {
       toast.success(`${selectedShifts.size} shifts archived`);
       setSelectedShifts(new Set());
       setBulkDeleteOpen(false);
-      loadShifts();
+      refetch();
     }
   };
 
@@ -162,16 +160,18 @@ export default function Shifts() {
     return days.sort().map(d => dayNames[d]).join(', ');
   };
 
-  const groupedShifts = shifts.reduce((acc, shift) => {
-    const locationName = shift.departments?.locations?.name || 'Unknown Location';
-    const deptName = shift.departments?.name || 'Unknown Department';
-    const key = `${locationName} → ${deptName}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(shift);
-    return acc;
-  }, {} as Record<string, Shift[]>);
+  const groupedShifts = useMemo(() => {
+    return shifts.reduce((acc, shift) => {
+      const locationName = shift.departments?.locations?.name || 'Unknown Location';
+      const deptName = shift.departments?.name || 'Unknown Department';
+      const key = `${locationName} → ${deptName}`;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(shift);
+      return acc;
+    }, {} as Record<string, Shift[]>);
+  }, [shifts]);
 
   if (roleLoading || loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -291,7 +291,7 @@ export default function Shifts() {
             </DialogHeader>
             <ShiftForm
               shiftId={editingId}
-              onSuccess={() => { setDialogOpen(false); loadShifts(); }}
+              onSuccess={() => { setDialogOpen(false); refetch(); }}
               onCancel={() => setDialogOpen(false)}
             />
           </DialogContent>
