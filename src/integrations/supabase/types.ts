@@ -962,6 +962,7 @@ export type Database = {
           end_at: string | null
           end_time: string
           id: string
+          is_template: boolean | null
           location_id: string
           name: string
           notes: string | null
@@ -969,6 +970,7 @@ export type Database = {
           start_at: string | null
           start_time: string
           status: Database["public"]["Enums"]["shift_status"] | null
+          template_shift_id: string | null
         }
         Insert: {
           archived_at?: string | null
@@ -979,6 +981,7 @@ export type Database = {
           end_at?: string | null
           end_time: string
           id?: string
+          is_template?: boolean | null
           location_id: string
           name: string
           notes?: string | null
@@ -986,6 +989,7 @@ export type Database = {
           start_at?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["shift_status"] | null
+          template_shift_id?: string | null
         }
         Update: {
           archived_at?: string | null
@@ -996,6 +1000,7 @@ export type Database = {
           end_at?: string | null
           end_time?: string
           id?: string
+          is_template?: boolean | null
           location_id?: string
           name?: string
           notes?: string | null
@@ -1003,6 +1008,7 @@ export type Database = {
           start_at?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["shift_status"] | null
+          template_shift_id?: string | null
         }
         Relationships: [
           {
@@ -1017,6 +1023,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_template_shift_id_fkey"
+            columns: ["template_shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
         ]

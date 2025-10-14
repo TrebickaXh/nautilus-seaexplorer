@@ -12,6 +12,7 @@ import { ScheduleTemplates } from "@/components/schedules/ScheduleTemplates";
 import { ShiftDialog } from "@/components/schedules/ShiftDialog";
 import { BulkShiftDialog } from "@/components/schedules/BulkShiftDialog";
 import { BulkAssignmentWizard } from "@/components/schedules/BulkAssignmentWizard";
+import { GenerateFromTemplatesDialog } from "@/components/schedules/GenerateFromTemplatesDialog";
 import { CopyWeekDialog } from "@/components/schedules/CopyWeekDialog";
 import { ScheduleFilters } from "@/components/schedules/ScheduleFilters";
 import { ExportScheduleDialog } from "@/components/schedules/ExportScheduleDialog";
@@ -38,6 +39,7 @@ export default function Schedules() {
   const [createShiftOpen, setCreateShiftOpen] = useState(false);
   const [bulkShiftOpen, setBulkShiftOpen] = useState(false);
   const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
+  const [generateTemplatesOpen, setGenerateTemplatesOpen] = useState(false);
   const [copyWeekOpen, setCopyWeekOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
@@ -130,6 +132,10 @@ export default function Schedules() {
                   <Button onClick={() => setBulkShiftOpen(true)} variant="outline">
                     <CalendarClock className="w-4 h-4 mr-2" />
                     Bulk Create
+                  </Button>
+                  <Button onClick={() => setGenerateTemplatesOpen(true)} variant="outline">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Generate from Templates
                   </Button>
                   <Button onClick={() => setBulkAssignOpen(true)} variant="outline">
                     <Users className="w-4 h-4 mr-2" />
@@ -345,6 +351,12 @@ export default function Schedules() {
         onOpenChange={setBulkAssignOpen}
         shifts={filteredShifts}
         employees={filteredEmployees}
+      />
+
+      <GenerateFromTemplatesDialog
+        open={generateTemplatesOpen}
+        onOpenChange={setGenerateTemplatesOpen}
+        onSuccess={() => window.location.reload()}
       />
     </div>
   );
