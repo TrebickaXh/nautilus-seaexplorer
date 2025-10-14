@@ -9,7 +9,12 @@ interface ConflictIndicatorProps {
   }[];
 }
 
-export function ConflictIndicator({ conflicts }: ConflictIndicatorProps) {
+interface ConflictIndicatorWithActionsProps extends ConflictIndicatorProps {
+  onResolve?: () => void;
+  showActions?: boolean;
+}
+
+export function ConflictIndicator({ conflicts, onResolve, showActions = false }: ConflictIndicatorWithActionsProps) {
   if (!conflicts || conflicts.length === 0) return null;
 
   const hasError = conflicts.some((c) => c.type === "overlap" || c.type === "rest_violation");
@@ -22,6 +27,12 @@ export function ConflictIndicator({ conflicts }: ConflictIndicatorProps) {
           <Badge
             variant={hasError ? "destructive" : "secondary"}
             className="gap-1 cursor-help"
+            onClick={(e) => {
+              if (showActions && onResolve) {
+                e.stopPropagation();
+                onResolve();
+              }
+            }}
           >
             <AlertTriangle className="w-3 h-3" />
             {conflicts.length} {conflicts.length === 1 ? "Issue" : "Issues"}
@@ -46,6 +57,19 @@ export function ConflictIndicator({ conflicts }: ConflictIndicatorProps) {
                 </div>
               );
             })}
+            {showActions && onResolve && (
+              <div className="pt-2 border-t mt-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onResolve();
+                  }}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Click to resolve →
+                </button>
+              </div>
+            )}
           </div>
         </TooltipContent>
       </Tooltip>

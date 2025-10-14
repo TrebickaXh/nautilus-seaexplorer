@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { evaluateAssignment } from "@/lib/rulesEngine";
-import { AlertCircle, CheckCircle } from "lucide-react";
+import { evaluateAssignment, RuleResult } from "@/lib/rulesEngine";
+import { AlertCircle, CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface AssignEmployeeDialogProps {
   shift: any;
@@ -16,6 +18,7 @@ interface AssignEmployeeDialogProps {
 
 export function AssignEmployeeDialog({ shift, open, onOpenChange }: AssignEmployeeDialogProps) {
   const queryClient = useQueryClient();
+  const [validationResults, setValidationResults] = useState<Record<string, RuleResult>>({});
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["available-employees", shift?.department_id],
@@ -33,6 +36,22 @@ export function AssignEmployeeDialog({ shift, open, onOpenChange }: AssignEmploy
         .eq("active", true);
       
       if (error) throw error;
+
+      // Pre-validate all employees
+      const validations: Record<string, RuleResult> = {};
+      for (const emp of data) {
+        const result = await evaluateAssignment({
+          employeeId: emp.id,
+          shiftId: shift.id,
+          departmentId: shift.department_id,
+          startAt: shift.start_at,
+          endAt: shift.end_at,
+          requiredSkills: shift.required_skills || [],
+        });
+        validations[emp.id] = result;
+      }
+      setValidationResults(validations);
+      
       return data;
     },
     enabled: open && !!shift?.department_id,
@@ -106,47 +125,70 @@ export function AssignEmployeeDialog({ shift, open, onOpenChange }: AssignEmploy
           ) : (
             <div className="space-y-2">
               {employees.map((employee: any) => {
-                const hasRequiredSkills = (shift.required_skills || []).every((skill: string) =>
-                  (employee.skills || []).includes(skill)
-                );
+                const validation = validationResults[employee.id];
+                const hasConflicts = validation && (validation.conflicts?.length || 0) > 0;
+                const isBlocked = validation && !validation.eligible;
 
                 return (
                   <div
                     key={employee.id}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
+                    className={`p-3 border rounded-lg ${
+                      isBlocked ? "opacity-60 bg-destructive/5" : "hover:bg-muted/50"
+                    }`}
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{employee.display_name}</span>
-                        {employee.positions?.name && (
-                          <Badge variant="outline">{employee.positions.name}</Badge>
-                        )}
-                      </div>
-                      
-                      {shift.required_skills?.length > 0 && (
-                        <div className="flex items-center gap-2 mt-1 text-sm">
-                          {hasRequiredSkills ? (
-                            <>
-                              <CheckCircle className="w-4 h-4 text-green-500" />
-                              <span className="text-muted-foreground">Has required skills</span>
-                            </>
-                          ) : (
-                            <>
-                              <AlertCircle className="w-4 h-4 text-amber-500" />
-                              <span className="text-muted-foreground">Missing skills</span>
-                            </>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{employee.display_name}</span>
+                          {employee.positions?.name && (
+                            <Badge variant="outline">{employee.positions.name}</Badge>
                           )}
                         </div>
-                      )}
-                    </div>
 
-                    <Button
-                      onClick={() => assignMutation.mutate(employee.id)}
-                      disabled={assignMutation.isPending}
-                      size="sm"
-                    >
-                      Assign
-                    </Button>
+                        {/* Validation Status */}
+                        {validation && (
+                          <div className="space-y-1">
+                            {/* Blocks */}
+                            {validation.blocks.length > 0 && (
+                              <div className="flex items-start gap-2 text-sm text-destructive">
+                                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span>{validation.blocks[0]}</span>
+                              </div>
+                            )}
+
+                            {/* Warnings */}
+                            {validation.warnings.length > 0 && !isBlocked && (
+                              <div className="flex items-start gap-2 text-sm text-amber-600">
+                                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span>
+                                  {validation.warnings.includes("OVERTIME_FORECAST") 
+                                    ? `${validation.metrics.projectedWeeklyHours}h weekly (${validation.metrics.projectedOvertimeHours}h OT)`
+                                    : validation.warnings[0]
+                                  }
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Success */}
+                            {!hasConflicts && !isBlocked && (
+                              <div className="flex items-center gap-2 text-sm text-green-600">
+                                <CheckCircle className="w-4 h-4" />
+                                <span>No conflicts</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <Button
+                        onClick={() => assignMutation.mutate(employee.id)}
+                        disabled={assignMutation.isPending || isBlocked}
+                        size="sm"
+                        variant={validation?.warnings.length > 0 ? "outline" : "default"}
+                      >
+                        {isBlocked ? "Blocked" : "Assign"}
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

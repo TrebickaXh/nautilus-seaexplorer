@@ -6,6 +6,7 @@ import { ApprovalsPanel } from "@/components/schedules/ApprovalsPanel";
 import { TimeOffPanel } from "@/components/schedules/TimeOffPanel";
 import { SwapRequestsPanel } from "@/components/schedules/SwapRequestsPanel";
 import { ClaimsPanel } from "@/components/schedules/ClaimsPanel";
+import { ConflictResolutionPanel } from "@/components/schedules/ConflictResolutionPanel";
 import { ScheduleStats } from "@/components/schedules/ScheduleStats";
 import { ShiftTemplatesDialog } from "@/components/schedules/ShiftTemplatesDialog";
 import { ShiftDialog } from "@/components/schedules/ShiftDialog";
@@ -18,7 +19,7 @@ import { RequestTimeOffDialog } from "@/components/schedules/RequestTimeOffDialo
 import { PublishScheduleDialog } from "@/components/schedules/PublishScheduleDialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock, Download, CalendarOff, Send, Users, Settings } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, CalendarClock, Download, CalendarOff, Send, Users, Settings, AlertTriangle } from "lucide-react";
 import { addDays, startOfWeek, endOfWeek, format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +47,7 @@ export default function Schedules() {
   const [showConflicts, setShowConflicts] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [shiftTemplatesOpen, setShiftTemplatesOpen] = useState(false);
+  const [conflictsPanelOpen, setConflictsPanelOpen] = useState(false);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
@@ -146,6 +148,14 @@ export default function Schedules() {
                   <Button onClick={() => setPublishOpen(true)} variant="default">
                     <Send className="w-4 h-4 mr-2" />
                     Publish
+                  </Button>
+                  <Button 
+                    onClick={() => setConflictsPanelOpen(true)} 
+                    variant="outline"
+                    className="border-amber-500 text-amber-600 hover:bg-amber-50"
+                  >
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    Resolve Conflicts
                   </Button>
                 </>
               )}
@@ -343,6 +353,13 @@ export default function Schedules() {
       <ShiftTemplatesDialog
         open={shiftTemplatesOpen}
         onOpenChange={setShiftTemplatesOpen}
+      />
+
+      <ConflictResolutionPanel
+        open={conflictsPanelOpen}
+        onOpenChange={setConflictsPanelOpen}
+        shifts={filteredShifts}
+        employees={filteredEmployees}
       />
     </div>
   );
