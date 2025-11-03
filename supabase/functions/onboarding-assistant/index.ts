@@ -442,28 +442,7 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
     });
   }
 
-  // Auto-fill 24-hour coverage by creating gap shifts
-  // This creates shifts for any time periods not covered by user-defined shifts
-  const allDays = config.operatingDays || [0, 1, 2, 3, 4, 5, 6];
-  const timeSlots = createdShifts.map(s => ({ start: s.start, end: s.end }));
-  
-  // Simple gap detection: if no overnight shift (22:00-06:00) exists, create one
-  const hasNightShift = timeSlots.some(s => s.start >= "22:00" || s.end <= "06:00");
-  if (!hasNightShift && Object.keys(departmentMap).length > 0) {
-    const firstDept = Object.values(departmentMap)[0];
-    const firstLoc = Object.values(locationMap)[0];
-    
-    await supabase
-      .from("shifts")
-      .insert({
-        location_id: firstLoc,
-        department_id: firstDept,
-        name: "Night (Auto-created)",
-        start_time: "22:00",
-        end_time: "06:00",
-        days_of_week: allDays
-      });
-  }
+  // Note: No auto-fill of shifts - users define what they need
 
   // Create team member invitations and assignments
   const userByEmail = new Map<string, string>();
@@ -638,6 +617,28 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
           steps: task.steps || []
         }
       });
+  }
+
+  // Materialize task instances from the routines we just created
+  try {
+    console.log("Materializing task instances from routines...");
+    const materializeResponse = await fetch(`${supabaseUrl}/functions/v1/materialize-tasks-v2`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`
+      }
+    });
+    
+    if (materializeResponse.ok) {
+      const materializeResult = await materializeResponse.json();
+      console.log("Task materialization result:", materializeResult);
+    } else {
+      const errorText = await materializeResponse.text();
+      console.error("Failed to materialize tasks:", errorText);
+    }
+  } catch (materializeError) {
+    console.error("Error calling materialize-tasks-v2:", materializeError);
   }
 
   console.log("Organization setup complete!");
