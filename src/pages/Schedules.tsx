@@ -141,14 +141,6 @@ export default function Schedules() {
                     <Send className="w-4 h-4 mr-2" />
                     Publish
                   </Button>
-                  <Button 
-                    onClick={() => setConflictsPanelOpen(true)} 
-                    variant="outline"
-                    className="border-amber-500 text-amber-600 hover:bg-amber-50"
-                  >
-                    <AlertTriangle className="w-4 h-4 mr-2" />
-                    Resolve Conflicts
-                  </Button>
                 </>
               )}
               <Button onClick={() => setExportOpen(true)} variant="outline">
