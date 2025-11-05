@@ -6,6 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Hash PIN using SHA-256
+async function hashPin(pin: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 interface InviteUserRequest {
   email: string;
   displayName: string;
@@ -15,6 +24,7 @@ interface InviteUserRequest {
   employeeId?: string;
   shiftType?: string;
   orgId: string;
+  pin?: string;
 }
 
 serve(async (req) => {
@@ -43,6 +53,7 @@ serve(async (req) => {
       employeeId,
       shiftType,
       orgId,
+      pin,
     }: InviteUserRequest = await req.json();
 
     // Auto-generate employee ID if not provided
@@ -102,6 +113,25 @@ serve(async (req) => {
         .from("profiles")
         .update({ shift_type: shiftType })
         .eq("id", userData.user.id);
+    }
+
+    // Hash and store PIN if provided and valid
+    if (pin && userData.user) {
+      if (/^\d{4,6}$/.test(pin)) {
+        const pinHash = await hashPin(pin);
+        await supabaseAdmin
+          .from("profiles")
+          .update({ 
+            pin_hash: pinHash,
+            pin_attempts: 0,
+            pin_locked_until: null
+          })
+          .eq("id", userData.user.id);
+        
+        console.log(`PIN set for user ${userData.user.id}`);
+      } else {
+        console.warn(`Invalid PIN format for ${email}, skipping PIN setup`);
+      }
     }
 
     return new Response(
