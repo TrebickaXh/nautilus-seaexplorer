@@ -7,8 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, X, Calendar } from 'lucide-react';
+import { Plus, X, Calendar, Info } from 'lucide-react';
 import { z } from 'zod';
 import { CronBuilder } from './CronBuilder';
 
@@ -296,6 +297,16 @@ export const TaskRoutineForm = ({ template, onSuccess, onCancel }: TaskRoutineFo
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Warning for editing existing routines */}
+      {template?.id && (
+        <Alert className="bg-muted/50 border-muted-foreground/20">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Changes will only affect tasks generated going forward. Existing task instances will keep their current values (time, areas, criticality, etc.).
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div>
         <Label htmlFor="title">Title *</Label>
         <Input

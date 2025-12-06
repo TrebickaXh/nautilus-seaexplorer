@@ -213,6 +213,53 @@ export type Database = {
           },
         ]
       }
+      labor_rules: {
+        Row: {
+          created_at: string
+          id: string
+          jurisdiction: string
+          max_hours_day: number
+          max_hours_week: number
+          meal_break: Json | null
+          min_rest_hours: number
+          minors_rules: Json | null
+          org_id: string
+          union_rules: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          jurisdiction?: string
+          max_hours_day?: number
+          max_hours_week?: number
+          meal_break?: Json | null
+          min_rest_hours?: number
+          minors_rules?: Json | null
+          org_id: string
+          union_rules?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          jurisdiction?: string
+          max_hours_day?: number
+          max_hours_week?: number
+          meal_break?: Json | null
+          min_rest_hours?: number
+          minors_rules?: Json | null
+          org_id?: string
+          union_rules?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labor_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
           address: string | null
@@ -284,6 +331,58 @@ export type Database = {
         }
         Relationships: []
       }
+      open_shift_pool: {
+        Row: {
+          bonus_cents: number | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          post_reason: string | null
+          posted_by_employee_id: string | null
+          shift_id: string
+        }
+        Insert: {
+          bonus_cents?: number | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          post_reason?: string | null
+          posted_by_employee_id?: string | null
+          shift_id: string
+        }
+        Update: {
+          bonus_cents?: number | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          post_reason?: string | null
+          posted_by_employee_id?: string | null
+          shift_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "open_shift_pool_posted_by_employee_id_fkey"
+            columns: ["posted_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "open_shift_pool_posted_by_employee_id_fkey"
+            columns: ["posted_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "open_shift_pool_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: true
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           archived_at: string | null
@@ -311,9 +410,51 @@ export type Database = {
         }
         Relationships: []
       }
+      positions: {
+        Row: {
+          archived_at: string | null
+          base_rate_cents: number | null
+          created_at: string
+          id: string
+          min_age: number | null
+          name: string
+          org_id: string
+          required_skills: string[] | null
+        }
+        Insert: {
+          archived_at?: string | null
+          base_rate_cents?: number | null
+          created_at?: string
+          id?: string
+          min_age?: number | null
+          name: string
+          org_id: string
+          required_skills?: string[] | null
+        }
+        Update: {
+          archived_at?: string | null
+          base_rate_cents?: number | null
+          created_at?: string
+          id?: string
+          min_age?: number | null
+          name?: string
+          org_id?: string
+          required_skills?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active: boolean
+          availability_rules: Json | null
           created_at: string
           department: string | null
           display_name: string
@@ -326,17 +467,23 @@ export type Database = {
           notes: string | null
           notification_preferences: Json | null
           org_id: string
+          overtime_rule_id: string | null
+          pay_rate_cents: number | null
           phone: string | null
           pin_attempts: number | null
           pin_hash: string | null
           pin_locked_until: string | null
+          position_id: string | null
           profile_photo_url: string | null
+          seniority_rank: number | null
           shift_type: string | null
+          skills: string[] | null
           timezone: string | null
           updated_at: string | null
         }
         Insert: {
           active?: boolean
+          availability_rules?: Json | null
           created_at?: string
           department?: string | null
           display_name: string
@@ -349,17 +496,23 @@ export type Database = {
           notes?: string | null
           notification_preferences?: Json | null
           org_id: string
+          overtime_rule_id?: string | null
+          pay_rate_cents?: number | null
           phone?: string | null
           pin_attempts?: number | null
           pin_hash?: string | null
           pin_locked_until?: string | null
+          position_id?: string | null
           profile_photo_url?: string | null
+          seniority_rank?: number | null
           shift_type?: string | null
+          skills?: string[] | null
           timezone?: string | null
           updated_at?: string | null
         }
         Update: {
           active?: boolean
+          availability_rules?: Json | null
           created_at?: string
           department?: string | null
           display_name?: string
@@ -372,18 +525,181 @@ export type Database = {
           notes?: string | null
           notification_preferences?: Json | null
           org_id?: string
+          overtime_rule_id?: string | null
+          pay_rate_cents?: number | null
           phone?: string | null
           pin_attempts?: number | null
           pin_hash?: string | null
           pin_locked_until?: string | null
+          position_id?: string | null
           profile_photo_url?: string | null
+          seniority_rank?: number | null
           shift_type?: string | null
+          skills?: string[] | null
           timezone?: string | null
           updated_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_assignments: {
+        Row: {
+          assignment_method: string | null
+          assignment_score: number | null
+          created_at: string
+          employee_id: string
+          id: string
+          metadata: Json | null
+          shift_id: string
+          status: Database["public"]["Enums"]["assignment_status"]
+          updated_at: string
+        }
+        Insert: {
+          assignment_method?: string | null
+          assignment_score?: number | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          metadata?: Json | null
+          shift_id: string
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string
+        }
+        Update: {
+          assignment_method?: string | null
+          assignment_score?: number | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          metadata?: Json | null
+          shift_id?: string
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_assignments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_assignments_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_notes: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          note: string
+          shift_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          note: string
+          shift_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          note?: string
+          shift_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_notes_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_templates: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          org_id: string
+          template_data: Json
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          org_id: string
+          template_data?: Json
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          template_data?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_templates_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -457,6 +773,78 @@ export type Database = {
             columns: ["routine_id"]
             isOneToOne: false
             referencedRelation: "task_routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_claims: {
+        Row: {
+          claimant_employee_id: string
+          created_at: string
+          id: string
+          priority_score: number | null
+          reviewed_at: string | null
+          reviewed_by_user_id: string | null
+          rules_result: Json | null
+          shift_id: string
+          status: Database["public"]["Enums"]["claim_status"]
+        }
+        Insert: {
+          claimant_employee_id: string
+          created_at?: string
+          id?: string
+          priority_score?: number | null
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          rules_result?: Json | null
+          shift_id: string
+          status?: Database["public"]["Enums"]["claim_status"]
+        }
+        Update: {
+          claimant_employee_id?: string
+          created_at?: string
+          id?: string
+          priority_score?: number | null
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          rules_result?: Json | null
+          shift_id?: string
+          status?: Database["public"]["Enums"]["claim_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_claims_claimant_employee_id_fkey"
+            columns: ["claimant_employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_claims_claimant_employee_id_fkey"
+            columns: ["claimant_employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_claims_reviewed_by_user_id_fkey"
+            columns: ["reviewed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_claims_reviewed_by_user_id_fkey"
+            columns: ["reviewed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_claims_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
         ]
@@ -568,35 +956,59 @@ export type Database = {
         Row: {
           archived_at: string | null
           created_at: string
+          created_by: string | null
           days_of_week: number[]
           department_id: string | null
+          end_at: string | null
           end_time: string
           id: string
+          is_template: boolean | null
           location_id: string
           name: string
+          notes: string | null
+          required_skills: string[] | null
+          start_at: string | null
           start_time: string
+          status: Database["public"]["Enums"]["shift_status"] | null
+          template_shift_id: string | null
         }
         Insert: {
           archived_at?: string | null
           created_at?: string
+          created_by?: string | null
           days_of_week?: number[]
           department_id?: string | null
+          end_at?: string | null
           end_time: string
           id?: string
+          is_template?: boolean | null
           location_id: string
           name: string
+          notes?: string | null
+          required_skills?: string[] | null
+          start_at?: string | null
           start_time: string
+          status?: Database["public"]["Enums"]["shift_status"] | null
+          template_shift_id?: string | null
         }
         Update: {
           archived_at?: string | null
           created_at?: string
+          created_by?: string | null
           days_of_week?: number[]
           department_id?: string | null
+          end_at?: string | null
           end_time?: string
           id?: string
+          is_template?: boolean | null
           location_id?: string
           name?: string
+          notes?: string | null
+          required_skills?: string[] | null
+          start_at?: string | null
           start_time?: string
+          status?: Database["public"]["Enums"]["shift_status"] | null
+          template_shift_id?: string | null
         }
         Relationships: [
           {
@@ -611,6 +1023,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_template_shift_id_fkey"
+            columns: ["template_shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
             referencedColumns: ["id"]
           },
         ]
@@ -683,6 +1102,81 @@ export type Database = {
             columns: ["proposed_template_id"]
             isOneToOne: false
             referencedRelation: "task_routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      swap_requests: {
+        Row: {
+          created_at: string
+          from_assignment_id: string
+          id: string
+          manager_id: string | null
+          reason: string | null
+          rules_result: Json | null
+          status: Database["public"]["Enums"]["swap_status"]
+          to_employee_id: string | null
+          type: Database["public"]["Enums"]["swap_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          from_assignment_id: string
+          id?: string
+          manager_id?: string | null
+          reason?: string | null
+          rules_result?: Json | null
+          status?: Database["public"]["Enums"]["swap_status"]
+          to_employee_id?: string | null
+          type?: Database["public"]["Enums"]["swap_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          from_assignment_id?: string
+          id?: string
+          manager_id?: string | null
+          reason?: string | null
+          rules_result?: Json | null
+          status?: Database["public"]["Enums"]["swap_status"]
+          to_employee_id?: string | null
+          type?: Database["public"]["Enums"]["swap_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "swap_requests_from_assignment_id_fkey"
+            columns: ["from_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "swap_requests_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "swap_requests_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "swap_requests_to_employee_id_fkey"
+            columns: ["to_employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "swap_requests_to_employee_id_fkey"
+            columns: ["to_employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -880,6 +1374,74 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_off_requests: {
+        Row: {
+          approved_at: string | null
+          approved_by_user_id: string | null
+          created_at: string
+          employee_id: string
+          end_date: string
+          id: string
+          reason: string | null
+          start_date: string
+          status: string
+          type: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by_user_id?: string | null
+          created_at?: string
+          employee_id: string
+          end_date: string
+          id?: string
+          reason?: string | null
+          start_date: string
+          status?: string
+          type: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by_user_id?: string | null
+          created_at?: string
+          employee_id?: string
+          end_date?: string
+          id?: string
+          reason?: string | null
+          start_date?: string
+          status?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_off_requests_approved_by_user_id_fkey"
+            columns: ["approved_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_requests_approved_by_user_id_fkey"
+            columns: ["approved_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -1094,14 +1656,8 @@ export type Database = {
         }
         Returns: number
       }
-      check_password_strength: {
-        Args: { password: string }
-        Returns: boolean
-      }
-      get_user_org_id: {
-        Args: { _user_id: string }
-        Returns: string
-      }
+      check_password_strength: { Args: { password: string }; Returns: boolean }
+      get_user_org_id: { Args: { _user_id: string }; Returns: string }
       get_user_primary_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1113,25 +1669,38 @@ export type Database = {
         }
         Returns: boolean
       }
-      update_task_urgency: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      update_user_last_login: {
-        Args: { user_id: string }
-        Returns: undefined
-      }
-      validate_pin_format: {
-        Args: { pin_text: string }
-        Returns: boolean
-      }
+      update_task_urgency: { Args: never; Returns: undefined }
+      update_user_last_login: { Args: { user_id: string }; Returns: undefined }
+      validate_pin_format: { Args: { pin_text: string }; Returns: boolean }
     }
     Enums: {
       app_role: "org_admin" | "location_manager" | "crew"
+      assignment_status:
+        | "assigned"
+        | "posted"
+        | "dropped"
+        | "swap_pending"
+        | "approved"
+        | "declined"
+      claim_status:
+        | "waiting"
+        | "manager_review"
+        | "accepted"
+        | "rejected"
+        | "auto_approved"
       proof_type: "none" | "photo" | "note" | "dual"
       recurrence_type: "daily" | "weekly" | "monthly" | "custom_weeks"
       schedule_type: "cron" | "window" | "oneoff"
+      shift_status:
+        | "draft"
+        | "scheduled"
+        | "open"
+        | "pending_swap"
+        | "approved"
+        | "canceled"
       suggestion_status: "proposed" | "accepted" | "dismissed"
+      swap_status: "pending" | "approved" | "rejected" | "canceled"
+      swap_type: "direct" | "market"
       task_creation_source: "routine" | "oneoff"
       task_outcome:
         | "completed"
@@ -1268,10 +1837,35 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["org_admin", "location_manager", "crew"],
+      assignment_status: [
+        "assigned",
+        "posted",
+        "dropped",
+        "swap_pending",
+        "approved",
+        "declined",
+      ],
+      claim_status: [
+        "waiting",
+        "manager_review",
+        "accepted",
+        "rejected",
+        "auto_approved",
+      ],
       proof_type: ["none", "photo", "note", "dual"],
       recurrence_type: ["daily", "weekly", "monthly", "custom_weeks"],
       schedule_type: ["cron", "window", "oneoff"],
+      shift_status: [
+        "draft",
+        "scheduled",
+        "open",
+        "pending_swap",
+        "approved",
+        "canceled",
+      ],
       suggestion_status: ["proposed", "accepted", "dismissed"],
+      swap_status: ["pending", "approved", "rejected", "canceled"],
+      swap_type: ["direct", "market"],
       task_creation_source: ["routine", "oneoff"],
       task_outcome: [
         "completed",

@@ -9,11 +9,14 @@ const corsHeaders = {
 /**
  * Auto-deferral service
  * Runs at/after shift end to defer incomplete tasks
+ * Uses org timezone for accurate time calculations
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const correlationId = crypto.randomUUID();
 
   try {
     const supabase = createClient(
@@ -21,13 +24,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Starting auto-deferral process...');
+    console.log(`[${correlationId}] Starting auto-deferral process...`);
 
     const now = new Date();
-    const today = now.toISOString().split('T')[0]; // YYYY-MM-DD
     let totalDeferred = 0;
+    let totalErrors = 0;
 
-    // Find all shifts that have ended today
+    // Find all active shifts (FIX: was incorrectly querying NOT archived_at IS null)
     const { data: shifts, error: shiftError } = await supabase
       .from('shifts')
       .select(`
@@ -38,31 +41,60 @@ serve(async (req) => {
         location_id,
         days_of_week
       `)
-      .not('archived_at', 'is', null);
+      .is('archived_at', null);
 
     if (shiftError) {
-      console.error('Error fetching shifts:', shiftError);
+      console.error(`[${correlationId}] Error fetching shifts:`, shiftError);
+      
+      await supabase.from('edge_function_logs').insert({
+        function_name: 'defer-tasks',
+        level: 'error',
+        message: 'Failed to fetch shifts',
+        payload: { error: shiftError.message },
+        correlation_id: correlationId,
+      });
+      
       throw shiftError;
     }
 
+    console.log(`[${correlationId}] Found ${shifts?.length || 0} active shifts to check`);
+
     for (const shift of shifts || []) {
-      // Check if shift applies to today
-      const dayOfWeek = now.getDay();
+      // Fetch location to get org_id, then fetch org timezone
+      const { data: locationData } = await supabase
+        .from('locations')
+        .select('org_id')
+        .eq('id', shift.location_id)
+        .single();
+      
+      let orgTimezone = 'UTC';
+      if (locationData?.org_id) {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('timezone')
+          .eq('id', locationData.org_id)
+          .single();
+        orgTimezone = orgData?.timezone || 'UTC';
+      }
+      
+      // Get current day of week in org timezone
+      const dayOfWeek = getDayOfWeekInTimezone(now, orgTimezone);
       if (!shift.days_of_week.includes(dayOfWeek)) {
         continue;
       }
 
+      // Get current time in org timezone
+      const currentTime = getCurrentTimeInTimezone(now, orgTimezone);
+      
       // Parse end_time (HH:MM:SS format)
-      const [endHours, endMinutes] = shift.end_time.split(':').map(Number);
-      const shiftEndToday = new Date(today);
-      shiftEndToday.setHours(endHours, endMinutes, 0, 0);
+      const endTime = shift.end_time.slice(0, 5); // Get HH:MM
 
-      // Only process if shift has ended
-      if (now < shiftEndToday) {
+      // Only process if shift has ended (comparing in org timezone)
+      if (currentTime < endTime) {
         continue;
       }
 
-      console.log(`Processing shift ${shift.name} (ended at ${shift.end_time})`);
+      console.log(`[${correlationId}] Processing shift ${shift.name} (ended at ${shift.end_time} in ${orgTimezone})`);
 
       // Find incomplete tasks for this shift that are overdue
       const { data: incompleteTasks, error: taskError } = await supabase
@@ -82,19 +114,20 @@ serve(async (req) => {
         .lte('due_at', now.toISOString());
 
       if (taskError) {
-        console.error(`Error fetching tasks for shift ${shift.id}:`, taskError);
+        console.error(`[${correlationId}] Error fetching tasks for shift ${shift.id}:`, taskError);
+        totalErrors++;
         continue;
       }
 
-      console.log(`Found ${incompleteTasks?.length || 0} incomplete tasks for shift ${shift.name}`);
+      console.log(`[${correlationId}] Found ${incompleteTasks?.length || 0} incomplete tasks for shift ${shift.name}`);
 
       // Defer each task
       for (const task of incompleteTasks || []) {
         // Find next occurrence of this shift
-        const nextShiftDate = findNextShiftOccurrence(shift, now);
+        const nextShiftDate = findNextShiftOccurrence(shift, now, orgTimezone);
         
         if (!task.routine_id) {
-          console.log(`Task ${task.id} is one-off, skipping auto-deferral`);
+          console.log(`[${correlationId}] Task ${task.id} is one-off, skipping auto-deferral`);
           continue;
         }
 
@@ -105,37 +138,23 @@ serve(async (req) => {
           .eq('id', task.routine_id)
           .single();
 
-        if (!routine?.recurrence_v2?.time_of_day) {
-          console.log(`Task ${task.id} routine missing time_of_day`);
+        if (!routine?.recurrence_v2?.time_of_day && !routine?.recurrence_v2?.time_slots?.[0]) {
+          console.log(`[${correlationId}] Task ${task.id} routine missing time_of_day`);
           continue;
         }
 
-        const [hours, minutes] = routine.recurrence_v2.time_of_day.split(':').map(Number);
-        const newDueAt = new Date(nextShiftDate);
-        newDueAt.setHours(hours, minutes, 0, 0);
+        const timeOfDay = routine.recurrence_v2.time_of_day || routine.recurrence_v2.time_slots?.[0];
+        const [hours, minutes] = timeOfDay.split(':').map(Number);
+        
+        // Create new due_at in org timezone
+        const newDueAt = createDateInTimezone(nextShiftDate, 0, hours, minutes, orgTimezone);
 
-        // Create completion record for deferral
-        const { error: completionError } = await supabase
-          .from('completions')
-          .insert({
-            task_instance_id: task.id,
-            user_id: null, // System action
-            outcome: 'deferred',
-            outcome_reason: 'auto: shift ended',
-            defer_settings: {
-              auto: true,
-              original_due_at: task.due_at,
-              new_due_at: newDueAt.toISOString(),
-              deferred_at: now.toISOString(),
-            }
-          });
-
-        if (completionError) {
-          console.error(`Error creating completion for task ${task.id}:`, completionError);
-          continue;
-        }
-
-        // Update task instance
+        // Create completion record for deferral (system action - use service role)
+        // Note: completions.user_id is required, but for system actions we need to handle this
+        // For now, we'll skip creating a completion record for auto-deferrals
+        // and just update the task instance
+        
+        // Update task instance with new due_at
         const { error: updateError } = await supabase
           .from('task_instances')
           .update({
@@ -145,21 +164,35 @@ serve(async (req) => {
           .eq('id', task.id);
 
         if (updateError) {
-          console.error(`Error updating task ${task.id}:`, updateError);
+          console.error(`[${correlationId}] Error updating task ${task.id}:`, updateError);
+          totalErrors++;
           continue;
         }
 
         totalDeferred++;
-        console.log(`Deferred task ${task.id} to ${newDueAt.toISOString()}`);
+        console.log(`[${correlationId}] Deferred task ${task.id} to ${newDueAt.toISOString()}`);
       }
     }
 
-    console.log(`Auto-deferral complete: ${totalDeferred} tasks deferred`);
+    console.log(`[${correlationId}] Auto-deferral complete: ${totalDeferred} tasks deferred, ${totalErrors} errors`);
+
+    // Log success
+    if (totalDeferred > 0 || totalErrors > 0) {
+      await supabase.from('edge_function_logs').insert({
+        function_name: 'defer-tasks',
+        level: totalErrors > 0 ? 'warn' : 'info',
+        message: 'Auto-deferral completed',
+        payload: { deferred: totalDeferred, errors: totalErrors },
+        correlation_id: correlationId,
+      });
+    }
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        deferred: totalDeferred
+        deferred: totalDeferred,
+        errors: totalErrors,
+        correlation_id: correlationId
       }),
       { 
         status: 200,
@@ -168,9 +201,15 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('Auto-deferral error:', error);
+    console.error(`[${correlationId}] Auto-deferral error:`, error);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: error.message,
+        code: 'DEFERRAL_FAILED',
+        correlation_id: correlationId
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -180,15 +219,15 @@ serve(async (req) => {
 });
 
 /**
- * Find next occurrence of a shift (next valid day)
+ * Find next occurrence of a shift (next valid day) in org timezone
  */
-function findNextShiftOccurrence(shift: any, fromDate: Date): Date {
+function findNextShiftOccurrence(shift: any, fromDate: Date, timezone: string): Date {
   const daysOfWeek = shift.days_of_week || [];
   let checkDate = new Date(fromDate);
   checkDate.setDate(checkDate.getDate() + 1); // Start from tomorrow
 
   for (let i = 0; i < 14; i++) { // Check up to 2 weeks ahead
-    const dayOfWeek = checkDate.getDay();
+    const dayOfWeek = getDayOfWeekInTimezone(checkDate, timezone);
     if (daysOfWeek.includes(dayOfWeek)) {
       return checkDate;
     }
@@ -199,4 +238,65 @@ function findNextShiftOccurrence(shift: any, fromDate: Date): Date {
   const tomorrow = new Date(fromDate);
   tomorrow.setDate(tomorrow.getDate() + 1);
   return tomorrow;
+}
+
+/**
+ * Get day of week in a specific timezone (0 = Sunday, 6 = Saturday)
+ */
+function getDayOfWeekInTimezone(date: Date, timezone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'short',
+  });
+  const dayStr = formatter.format(date);
+  const dayMap: Record<string, number> = {
+    'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+  };
+  return dayMap[dayStr] ?? 0;
+}
+
+/**
+ * Get current time (HH:MM) in a specific timezone
+ */
+function getCurrentTimeInTimezone(date: Date, timezone: string): string {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return formatter.format(date);
+}
+
+/**
+ * Create a date at a specific time in the given timezone
+ */
+function createDateInTimezone(
+  baseDate: Date,
+  daysOffset: number,
+  hours: number,
+  minutes: number,
+  timezone: string
+): Date {
+  const targetDate = new Date(baseDate);
+  targetDate.setDate(targetDate.getDate() + daysOffset);
+  
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const localDateStr = formatter.format(targetDate);
+  
+  const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+  const fullDateTimeStr = `${localDateStr}T${timeStr}`;
+  
+  const tempDate = new Date(fullDateTimeStr + 'Z');
+  
+  const utcDate = new Date(tempDate.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const tzDate = new Date(tempDate.toLocaleString('en-US', { timeZone: timezone }));
+  const offsetMs = utcDate.getTime() - tzDate.getTime();
+  
+  return new Date(tempDate.getTime() - offsetMs);
 }

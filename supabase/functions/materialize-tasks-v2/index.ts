@@ -9,28 +9,30 @@ const corsHeaders = {
 /**
  * New materializer that reads from task_routines.recurrence_v2
  * Generates one task_instance per area per due time
+ * Uses org timezone for accurate date calculations
  */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const correlationId = crypto.randomUUID();
+  
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Starting task materialization v2...');
+    console.log(`[${correlationId}] Starting task materialization v2...`);
 
-    // Get system timezone from org (default UTC)
-    const systemTz = Deno.env.get('SYSTEM_TZ') || 'UTC';
     const now = new Date();
     
     // Generate tasks for next 14 days
     const daysAhead = 14;
     let totalCreated = 0;
     let totalSkipped = 0;
+    let totalErrors = 0;
 
     // Fetch active routines with recurrence_v2
     const { data: routines, error: routineError } = await supabase
@@ -56,24 +58,43 @@ serve(async (req) => {
       .eq('is_deprecated', false);
 
     if (routineError) {
-      console.error('Error fetching routines:', routineError);
+      console.error(`[${correlationId}] Error fetching routines:`, routineError);
+      
+      // Log to edge_function_logs
+      await supabase.from('edge_function_logs').insert({
+        function_name: 'materialize-tasks-v2',
+        level: 'error',
+        message: 'Failed to fetch routines',
+        payload: { error: routineError.message },
+        correlation_id: correlationId,
+      });
+      
       throw routineError;
     }
 
-    console.log(`Found ${routines?.length || 0} active routines with recurrence`);
+    console.log(`[${correlationId}] Found ${routines?.length || 0} active routines with recurrence`);
 
     for (const routine of routines || []) {
       if (!routine.recurrence_v2 || !routine.area_ids || routine.area_ids.length === 0) {
-        console.log(`Skipping routine ${routine.id}: missing recurrence or areas`);
+        console.log(`[${correlationId}] Skipping routine ${routine.id}: missing recurrence or areas`);
         continue;
       }
 
       const recurrence = routine.recurrence_v2;
       
-      // Generate due times for the next N days
-      const dueSlots = generateDueSlots(recurrence, now, daysAhead, systemTz);
+      // Fetch org timezone separately
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('timezone')
+        .eq('id', routine.org_id)
+        .single();
       
-      console.log(`Routine ${routine.id}: generated ${dueSlots.length} due slots for ${routine.area_ids.length} areas`);
+      const orgTimezone = orgData?.timezone || 'UTC';
+      
+      // Generate due times using org timezone
+      const dueSlots = generateDueSlots(recurrence, now, daysAhead, orgTimezone);
+      
+      console.log(`[${correlationId}] Routine ${routine.id}: generated ${dueSlots.length} due slots for ${routine.area_ids.length} areas (TZ: ${orgTimezone})`);
 
       // For each due slot, create one instance per area
       for (const dueAt of dueSlots) {
@@ -83,6 +104,7 @@ serve(async (req) => {
             .from('task_instances')
             .insert({
               routine_id: routine.id,
+              org_id: routine.org_id,
               location_id: routine.location_id,
               department_id: routine.department_id,
               shift_id: routine.shift_id,
@@ -90,7 +112,7 @@ serve(async (req) => {
               due_at: dueAt,
               created_from: 'routine',
               status: 'pending',
-              // Denormalized snapshot data
+              // Denormalized snapshot data - changes to routine only affect NEW instances
               denormalized_data: {
                 title: routine.title,
                 description: routine.description,
@@ -108,7 +130,8 @@ serve(async (req) => {
             if (insertError.code === '23505') {
               totalSkipped++;
             } else {
-              console.error(`Error inserting instance for routine ${routine.id}:`, insertError);
+              console.error(`[${correlationId}] Error inserting instance for routine ${routine.id}:`, insertError);
+              totalErrors++;
             }
           } else {
             totalCreated++;
@@ -117,14 +140,30 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Materialization complete: ${totalCreated} created, ${totalSkipped} skipped (duplicates)`);
+    console.log(`[${correlationId}] Materialization complete: ${totalCreated} created, ${totalSkipped} skipped (duplicates), ${totalErrors} errors`);
+
+    // Log success summary
+    await supabase.from('edge_function_logs').insert({
+      function_name: 'materialize-tasks-v2',
+      level: 'info',
+      message: 'Materialization completed',
+      payload: { 
+        created: totalCreated, 
+        skipped: totalSkipped, 
+        errors: totalErrors,
+        routines_processed: routines?.length || 0
+      },
+      correlation_id: correlationId,
+    });
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         created: totalCreated,
         skipped: totalSkipped,
-        routines_processed: routines?.length || 0
+        errors: totalErrors,
+        routines_processed: routines?.length || 0,
+        correlation_id: correlationId
       }),
       { 
         status: 200,
@@ -133,9 +172,15 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('Materialization error:', error);
+    console.error(`[${correlationId}] Materialization error:`, error);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        success: false,
+        error: error.message,
+        code: 'MATERIALIZATION_FAILED',
+        correlation_id: correlationId
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -146,7 +191,7 @@ serve(async (req) => {
 
 /**
  * Generate due timestamps based on recurrence rules
- * Supports both time_of_day (legacy) and time_slots (new format from onboarding)
+ * Uses org timezone for accurate date/time calculations
  */
 function generateDueSlots(
   recurrence: any,
@@ -161,10 +206,8 @@ function generateDueSlots(
   const timeSlots: string[] = [];
   
   if (recurrence.time_slots && Array.isArray(recurrence.time_slots)) {
-    // New format: array of time slots
     timeSlots.push(...recurrence.time_slots);
   } else if (recurrence.time_of_day) {
-    // Legacy format: single time_of_day
     timeSlots.push(recurrence.time_of_day);
   } else {
     console.error('Missing time_of_day or time_slots in recurrence');
@@ -177,91 +220,74 @@ function generateDueSlots(
 
     switch (type) {
     case 'daily': {
-      // Every day at specified time
       for (let i = 0; i < daysAhead; i++) {
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + i);
-        date.setHours(hours, minutes, 0, 0);
+        const dueAt = createDateInTimezone(startDate, i, hours, minutes, timezone);
         
         // Check start_date and end_date if provided
-        if (recurrence.start_date && date < new Date(recurrence.start_date)) continue;
-        if (recurrence.end_date && date > new Date(recurrence.end_date)) break;
+        if (recurrence.start_date && dueAt < new Date(recurrence.start_date)) continue;
+        if (recurrence.end_date && dueAt > new Date(recurrence.end_date)) break;
         
-        slots.push(date.toISOString());
+        slots.push(dueAt.toISOString());
       }
       break;
     }
 
     case 'weekly': {
-      // Specific days of week
-      const daysOfWeek = recurrence.days_of_week || []; // [0=Sun, 1=Mon, ..., 6=Sat]
+      const daysOfWeek = recurrence.days_of_week || [];
       
       for (let i = 0; i < daysAhead; i++) {
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + i);
+        const dueAt = createDateInTimezone(startDate, i, hours, minutes, timezone);
+        const dayOfWeek = getDayOfWeekInTimezone(dueAt, timezone);
         
-        const dayOfWeek = date.getDay();
         if (daysOfWeek.includes(dayOfWeek)) {
-          date.setHours(hours, minutes, 0, 0);
+          if (recurrence.start_date && dueAt < new Date(recurrence.start_date)) continue;
+          if (recurrence.end_date && dueAt > new Date(recurrence.end_date)) break;
           
-          if (recurrence.start_date && date < new Date(recurrence.start_date)) continue;
-          if (recurrence.end_date && date > new Date(recurrence.end_date)) break;
-          
-          slots.push(date.toISOString());
+          slots.push(dueAt.toISOString());
         }
       }
       break;
     }
 
     case 'custom_weeks': {
-      // Every N weeks on specific days
       const intervalWeeks = recurrence.interval_weeks || 2;
       const daysOfWeek = recurrence.days_of_week || [];
       const referenceDate = recurrence.start_date ? new Date(recurrence.start_date) : startDate;
       
       for (let i = 0; i < daysAhead; i++) {
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + i);
-        
-        const weeksDiff = Math.floor((date.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-        const dayOfWeek = date.getDay();
+        const dueAt = createDateInTimezone(startDate, i, hours, minutes, timezone);
+        const weeksDiff = Math.floor((dueAt.getTime() - referenceDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
+        const dayOfWeek = getDayOfWeekInTimezone(dueAt, timezone);
         
         if (weeksDiff % intervalWeeks === 0 && daysOfWeek.includes(dayOfWeek)) {
-          date.setHours(hours, minutes, 0, 0);
+          if (recurrence.end_date && dueAt > new Date(recurrence.end_date)) break;
           
-          if (recurrence.end_date && date > new Date(recurrence.end_date)) break;
-          
-          slots.push(date.toISOString());
+          slots.push(dueAt.toISOString());
         }
       }
       break;
     }
 
     case 'monthly': {
-      // Specific day of month
       const dayOfMonth = recurrence.day_of_month || 1;
       
       for (let i = 0; i < daysAhead; i++) {
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + i);
+        const dueAt = createDateInTimezone(startDate, i, hours, minutes, timezone);
+        const dateInTz = getDateInTimezone(dueAt, timezone);
         
-        if (date.getDate() === dayOfMonth) {
-          date.setHours(hours, minutes, 0, 0);
+        if (dateInTz === dayOfMonth) {
+          if (recurrence.start_date && dueAt < new Date(recurrence.start_date)) continue;
+          if (recurrence.end_date && dueAt > new Date(recurrence.end_date)) break;
           
-          if (recurrence.start_date && date < new Date(recurrence.start_date)) continue;
-          if (recurrence.end_date && date > new Date(recurrence.end_date)) break;
-          
-          slots.push(date.toISOString());
+          slots.push(dueAt.toISOString());
         }
       }
       break;
     }
 
     case 'oneoff': {
-      // Single occurrence - should not be in routines, but handle gracefully
-      const date = new Date(startDate);
-      date.setHours(hours, minutes, 0, 0);
-      slots.push(date.toISOString());
+      const dueAt = createDateInTimezone(startDate, 0, hours, minutes, timezone);
+      slots.push(dueAt.toISOString());
       break;
     }
 
@@ -271,4 +297,69 @@ function generateDueSlots(
   }
 
   return slots;
+}
+
+/**
+ * Create a date at a specific time in the given timezone
+ */
+function createDateInTimezone(
+  baseDate: Date,
+  daysOffset: number,
+  hours: number,
+  minutes: number,
+  timezone: string
+): Date {
+  // Get the date string in the target timezone
+  const targetDate = new Date(baseDate);
+  targetDate.setDate(targetDate.getDate() + daysOffset);
+  
+  // Format to get the local date in the timezone
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const localDateStr = formatter.format(targetDate);
+  
+  // Create the full datetime string
+  const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+  const fullDateTimeStr = `${localDateStr}T${timeStr}`;
+  
+  // Parse as if it's in UTC first
+  const tempDate = new Date(fullDateTimeStr + 'Z');
+  
+  // Calculate the offset for the target timezone
+  const utcDate = new Date(tempDate.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const tzDate = new Date(tempDate.toLocaleString('en-US', { timeZone: timezone }));
+  const offsetMs = utcDate.getTime() - tzDate.getTime();
+  
+  // Apply the offset to get the correct UTC time
+  return new Date(tempDate.getTime() - offsetMs);
+}
+
+/**
+ * Get day of week in a specific timezone (0 = Sunday, 6 = Saturday)
+ */
+function getDayOfWeekInTimezone(date: Date, timezone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'short',
+  });
+  const dayStr = formatter.format(date);
+  const dayMap: Record<string, number> = {
+    'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+  };
+  return dayMap[dayStr] ?? 0;
+}
+
+/**
+ * Get day of month in a specific timezone
+ */
+function getDateInTimezone(date: Date, timezone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    day: 'numeric',
+  });
+  return parseInt(formatter.format(date), 10);
 }
