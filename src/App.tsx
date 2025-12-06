@@ -16,11 +16,6 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Kiosk from "./pages/Kiosk";
 import Reports from "./pages/Reports";
-import Schedules from "./pages/Schedules";
-import MySchedule from "./pages/MySchedule";
-import EmployeeAvailability from "./pages/EmployeeAvailability";
-import EmployeeScheduleView from "./pages/EmployeeScheduleView";
-import ScheduleCoverage from "./pages/ScheduleCoverage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,11 +39,6 @@ const App = () => (
           <Route path="/users" element={<AppLayout><Users /></AppLayout>} />
           <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
           <Route path="/reports" element={<AppLayout><Reports /></AppLayout>} />
-          <Route path="/schedules" element={<AppLayout><Schedules /></AppLayout>} />
-          <Route path="/my-schedule" element={<AppLayout><MySchedule /></AppLayout>} />
-          <Route path="/employee-schedule" element={<AppLayout><EmployeeScheduleView /></AppLayout>} />
-          <Route path="/employee-availability" element={<AppLayout><EmployeeAvailability /></AppLayout>} />
-          <Route path="/schedule-coverage" element={<AppLayout><ScheduleCoverage /></AppLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

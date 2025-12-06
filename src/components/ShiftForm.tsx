@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
@@ -100,10 +100,12 @@ export function ShiftForm({ shiftId, departmentId, locationId, onSuccess, onCanc
     }
   };
 
-  const handleDaysChange = (values: string[]) => {
+  const handleDayToggle = (dayIndex: number) => {
     setFormData(prev => ({
       ...prev,
-      days_of_week: values.map(Number).sort(),
+      days_of_week: prev.days_of_week.includes(dayIndex)
+        ? prev.days_of_week.filter(d => d !== dayIndex)
+        : [...prev.days_of_week, dayIndex].sort(),
     }));
   };
 
@@ -237,22 +239,23 @@ export function ShiftForm({ shiftId, departmentId, locationId, onSuccess, onCanc
 
       <div>
         <Label>Days of Week</Label>
-        <ToggleGroup
-          type="multiple"
-          value={formData.days_of_week.map(String)}
-          onValueChange={handleDaysChange}
-          className="flex flex-wrap gap-2 mt-2 justify-start"
-        >
+        <div className="grid grid-cols-2 gap-2 mt-2">
           {dayLabels.map((day, index) => (
-            <ToggleGroupItem
-              key={index}
-              value={String(index)}
-              className="flex-1 min-w-[100px]"
-            >
-              {day.substring(0, 3)}
-            </ToggleGroupItem>
+            <div key={index} className="flex items-center space-x-2">
+              <Checkbox
+                id={`day-${index}`}
+                checked={formData.days_of_week.includes(index)}
+                onCheckedChange={() => handleDayToggle(index)}
+              />
+              <label
+                htmlFor={`day-${index}`}
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {day}
+              </label>
+            </div>
           ))}
-        </ToggleGroup>
+        </div>
       </div>
 
       <div className="flex justify-end gap-2">

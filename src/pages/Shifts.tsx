@@ -1,27 +1,15 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
-import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ShiftForm } from '@/components/ShiftForm';
 import { ArrowLeft, Plus, Edit, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 interface Shift {
   id: string;
@@ -43,10 +31,10 @@ interface Shift {
 export default function Shifts() {
   const navigate = useNavigate();
   const { isAdmin, loading: roleLoading } = useUserRole();
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | undefined>();
-  const [selectedShifts, setSelectedShifts] = useState<Set<string>>(new Set());
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin()) {
@@ -54,43 +42,44 @@ export default function Shifts() {
     }
   }, [roleLoading, isAdmin, navigate]);
 
-  const { data: shifts = [], isLoading: loading, refetch } = useQuery({
-    queryKey: ['shifts'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('shifts')
-        .select(`
-          *,
-          departments(
-            name,
-            locations(name)
-          )
-        `)
-        .is('archived_at', null)
-        .order('start_time', { ascending: true });
+  useEffect(() => {
+    loadShifts();
+  }, []);
 
-      if (error) throw error;
+  const loadShifts = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('shifts')
+      .select(`
+        *,
+        departments(
+          name,
+          locations(name)
+        )
+      `)
+      .is('archived_at', null)
+      .order('start_time', { ascending: true });
 
-      // Get user counts in a single aggregated query
-      const shiftIds = (data || []).map(s => s.id);
-      const { data: counts } = await supabase
-        .from('user_shifts')
-        .select('shift_id')
-        .in('shift_id', shiftIds);
+    if (error) {
+      toast.error('Failed to load shifts');
+      setLoading(false);
+      return;
+    }
 
-      const countMap = (counts || []).reduce((acc, { shift_id }) => {
-        acc[shift_id] = (acc[shift_id] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+    // Get user counts for each shift
+    const shiftsWithCounts = await Promise.all(
+      (data || []).map(async (shift) => {
+        const { count } = await supabase
+          .from('user_shifts')
+          .select('*', { count: 'exact', head: true })
+          .eq('shift_id', shift.id);
+        return { ...shift, user_count: count || 0 };
+      })
+    );
 
-      return (data || []).map(shift => ({
-        ...shift,
-        user_count: countMap[shift.id] || 0
-      }));
-    },
-    staleTime: 30000,
-    placeholderData: (previousData) => previousData,
-  });
+    setShifts(shiftsWithCounts);
+    setLoading(false);
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Archive this shift? Users will be unassigned from it.')) return;
@@ -104,47 +93,8 @@ export default function Shifts() {
       toast.error(error.message);
     } else {
       toast.success('Shift archived');
-      refetch();
+      loadShifts();
     }
-  };
-
-  const handleBulkDelete = async () => {
-    const { error } = await supabase
-      .from('shifts')
-      .update({ archived_at: new Date().toISOString() })
-      .in('id', Array.from(selectedShifts));
-
-    if (error) {
-      toast.error('Failed to archive shifts');
-    } else {
-      toast.success(`${selectedShifts.size} shifts archived`);
-      setSelectedShifts(new Set());
-      setBulkDeleteOpen(false);
-      refetch();
-    }
-  };
-
-  const toggleShiftSelection = (shiftId: string) => {
-    const newSelection = new Set(selectedShifts);
-    if (newSelection.has(shiftId)) {
-      newSelection.delete(shiftId);
-    } else {
-      newSelection.add(shiftId);
-    }
-    setSelectedShifts(newSelection);
-  };
-
-  const toggleAllShifts = (deptShifts: Shift[]) => {
-    const deptShiftIds = deptShifts.map(s => s.id);
-    const allSelected = deptShiftIds.every(id => selectedShifts.has(id));
-    
-    const newSelection = new Set(selectedShifts);
-    if (allSelected) {
-      deptShiftIds.forEach(id => newSelection.delete(id));
-    } else {
-      deptShiftIds.forEach(id => newSelection.add(id));
-    }
-    setSelectedShifts(newSelection);
   };
 
   const formatTime = (time: string) => {
@@ -160,18 +110,16 @@ export default function Shifts() {
     return days.sort().map(d => dayNames[d]).join(', ');
   };
 
-  const groupedShifts = useMemo(() => {
-    return shifts.reduce((acc, shift) => {
-      const locationName = shift.departments?.locations?.name || 'Unknown Location';
-      const deptName = shift.departments?.name || 'Unknown Department';
-      const key = `${locationName} → ${deptName}`;
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(shift);
-      return acc;
-    }, {} as Record<string, Shift[]>);
-  }, [shifts]);
+  const groupedShifts = shifts.reduce((acc, shift) => {
+    const locationName = shift.departments?.locations?.name || 'Unknown Location';
+    const deptName = shift.departments?.name || 'Unknown Department';
+    const key = `${locationName} → ${deptName}`;
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(shift);
+    return acc;
+  }, {} as Record<string, Shift[]>);
 
   if (roleLoading || loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -186,22 +134,11 @@ export default function Shifts() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-3xl font-bold">Shift Management</h1>
-            {selectedShifts.size > 0 && (
-              <Badge variant="secondary">{selectedShifts.size} selected</Badge>
-            )}
           </div>
-          <div className="flex gap-2">
-            {selectedShifts.size > 0 && (
-              <Button variant="destructive" onClick={() => setBulkDeleteOpen(true)}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Selected ({selectedShifts.size})
-              </Button>
-            )}
-            <Button onClick={() => { setEditingId(undefined); setDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Shift
-            </Button>
-          </div>
+          <Button onClick={() => { setEditingId(undefined); setDialogOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Shift
+          </Button>
         </div>
 
         <div className="space-y-6">
@@ -209,10 +146,6 @@ export default function Shifts() {
             <Card key={deptName}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Checkbox
-                    checked={deptShifts.every(s => selectedShifts.has(s.id))}
-                    onCheckedChange={() => toggleAllShifts(deptShifts)}
-                  />
                   {deptName}
                   <Badge variant="secondary">{deptShifts.length} shifts</Badge>
                 </CardTitle>
@@ -221,7 +154,6 @@ export default function Shifts() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12"></TableHead>
                       <TableHead>Shift Name</TableHead>
                       <TableHead>Time</TableHead>
                       <TableHead>Days</TableHead>
@@ -232,12 +164,6 @@ export default function Shifts() {
                   <TableBody>
                     {deptShifts.map(shift => (
                       <TableRow key={shift.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedShifts.has(shift.id)}
-                            onCheckedChange={() => toggleShiftSelection(shift.id)}
-                          />
-                        </TableCell>
                         <TableCell className="font-medium">{shift.name}</TableCell>
                         <TableCell>
                           {formatTime(shift.start_time)} - {formatTime(shift.end_time)}
@@ -291,28 +217,11 @@ export default function Shifts() {
             </DialogHeader>
             <ShiftForm
               shiftId={editingId}
-              onSuccess={() => { setDialogOpen(false); refetch(); }}
+              onSuccess={() => { setDialogOpen(false); loadShifts(); }}
               onCancel={() => setDialogOpen(false)}
             />
           </DialogContent>
         </Dialog>
-
-        <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Archive {selectedShifts.size} shifts?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will archive the selected shifts and unassign all users from them. This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                Archive Shifts
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </div>
   );
