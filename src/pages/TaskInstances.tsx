@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useOrgTimezone, getStartOfDayInTimezone, getEndOfDayInTimezone } from '@/hooks/useOrgTimezone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,13 +13,14 @@ import { SkipTaskDialog } from '@/components/SkipTaskDialog';
 import { CompleteTaskDialog } from '@/components/CompleteTaskDialog';
 import { OneOffTaskDialog } from '@/components/OneOffTaskDialog';
 import { ArrowLeft, Plus, RefreshCw, LayoutGrid, List } from 'lucide-react';
-import { addDays, format } from 'date-fns';
+import { addDays } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function TaskInstances() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isAdmin, loading: roleLoading } = useUserRole();
+  const { timezone: orgTimezone } = useOrgTimezone();
   const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState(() => {
@@ -58,7 +60,7 @@ export default function TaskInstances() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [statusFilter, timeRangeFilter]);
+  }, [statusFilter, timeRangeFilter, orgTimezone]);
 
   const loadTasks = async () => {
     setLoading(true);
@@ -75,22 +77,24 @@ export default function TaskInstances() {
       `)
       .limit(500); // Add limit to prevent loading too much data
 
-    // Apply time range filter
+    // Apply time range filter using org timezone
     const now = new Date();
     switch (timeRangeFilter) {
       case 'overdue':
         query = query.lt('due_at', now.toISOString()).eq('status', 'pending');
         break;
-      case 'today':
-        const startOfToday = new Date(now.setHours(0, 0, 0, 0));
-        const endOfToday = new Date(now.setHours(23, 59, 59, 999));
+      case 'today': {
+        // Use org timezone for "today" calculation
+        const startOfToday = getStartOfDayInTimezone(now, orgTimezone);
+        const endOfToday = getEndOfDayInTimezone(now, orgTimezone);
         query = query.gte('due_at', startOfToday.toISOString()).lte('due_at', endOfToday.toISOString());
         break;
+      }
       case 'next_7_days':
-        query = query.gte('due_at', new Date().toISOString()).lte('due_at', addDays(new Date(), 7).toISOString());
+        query = query.gte('due_at', now.toISOString()).lte('due_at', addDays(now, 7).toISOString());
         break;
       case 'next_30_days':
-        query = query.gte('due_at', new Date().toISOString()).lte('due_at', addDays(new Date(), 30).toISOString());
+        query = query.gte('due_at', now.toISOString()).lte('due_at', addDays(now, 30).toISOString());
         break;
       case 'all':
         // No date filter, but still apply limit

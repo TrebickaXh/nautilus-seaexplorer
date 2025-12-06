@@ -13,6 +13,7 @@ import { Wifi, WifiOff, ArrowLeft, CheckCircle2, Clock, CalendarIcon, Filter, Bu
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useOrgTimezone, getStartOfDayInTimezone, getEndOfDayInTimezone, getCurrentTimeInTimezone, getDayOfWeekInTimezone } from '@/hooks/useOrgTimezone';
 
 interface Shift {
   id: string;
@@ -57,6 +58,7 @@ interface TeamMember {
 
 export default function Kiosk() {
   const navigate = useNavigate();
+  const { timezone: orgTimezone, loading: tzLoading } = useOrgTimezone();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [activeShifts, setActiveShifts] = useState<Shift[]>([]);
   const [allShifts, setAllShifts] = useState<Shift[]>([]);
@@ -84,13 +86,16 @@ export default function Kiosk() {
     };
   }, []);
 
+  // Load initial data when org timezone is available
   useEffect(() => {
-    Promise.all([
-      loadActiveShifts(),
-      loadAllShifts(),
-      loadDepartments()
-    ]);
-  }, []);
+    if (!tzLoading) {
+      Promise.all([
+        loadActiveShifts(),
+        loadAllShifts(),
+        loadDepartments()
+      ]);
+    }
+  }, [tzLoading, orgTimezone]);
 
   useEffect(() => {
     if (activeShifts.length > 0) {
@@ -123,8 +128,9 @@ export default function Kiosk() {
     setLoading(true);
     try {
       const now = new Date();
-      const currentDay = now.getDay();
-      const currentTime = now.toTimeString().slice(0, 5);
+      // Use org timezone for day of week and current time
+      const currentDay = getDayOfWeekInTimezone(now, orgTimezone);
+      const currentTime = getCurrentTimeInTimezone(orgTimezone);
 
       const { data: shifts, error } = await supabase
         .from('shifts')
@@ -134,13 +140,13 @@ export default function Kiosk() {
 
       if (error) throw error;
 
-      // Find ALL active shifts (not just the first one)
+      // Find ALL active shifts based on org timezone
       const currentActiveShifts = shifts?.filter((shift: Shift) => {
-        const isTimeInRange = currentTime >= shift.start_time && currentTime <= shift.end_time;
+        const isTimeInRange = currentTime >= shift.start_time.slice(0, 5) && currentTime <= shift.end_time.slice(0, 5);
         return isTimeInRange;
       }) || [];
 
-      console.log(`Found ${currentActiveShifts.length} active shifts:`, currentActiveShifts.map(s => s.name));
+      console.log(`Found ${currentActiveShifts.length} active shifts (TZ: ${orgTimezone}):`, currentActiveShifts.map(s => s.name));
       setActiveShifts(currentActiveShifts);
     } catch (error: any) {
       toast.error('Failed to load active shifts');
@@ -183,11 +189,9 @@ export default function Kiosk() {
 
   const loadTasks = async () => {
     try {
-      // Build date range for selected date
-      const startOfDay = new Date(selectedDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(selectedDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      // Build date range for selected date using org timezone
+      const startOfDay = getStartOfDayInTimezone(selectedDate, orgTimezone);
+      const endOfDay = getEndOfDayInTimezone(selectedDate, orgTimezone);
 
       let query = supabase
         .from('task_instances')
@@ -354,7 +358,7 @@ export default function Kiosk() {
     return 'bg-green-500';
   };
 
-  if (loading) {
+  if (loading || tzLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
