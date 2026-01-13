@@ -73,9 +73,9 @@ export default function Users() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get current user's org_id
+      // Get current user's org_id (use profiles table directly)
       const { data: profile } = await supabase
-        .from('profiles_safe')
+        .from('profiles')
         .select('org_id')
         .eq('id', user.id)
         .single();
@@ -83,9 +83,9 @@ export default function Users() {
       if (!profile) return;
       setOrgId(profile.org_id);
 
-      // Get all users in the same org with their roles
+      // Get all users in the same org with their roles (use profiles table directly)
       const { data, error } = await supabase
-        .from('profiles_safe')
+        .from('profiles')
         .select(`
           id,
           display_name,
