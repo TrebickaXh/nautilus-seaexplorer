@@ -1542,18 +1542,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      calculate_urgency_score:
-        | {
-            Args: {
-              _criticality: number
-              _due_at: string
-              _now?: string
-              _window_end: string
-              _window_start: string
-            }
-            Returns: number
-          }
-        | { Args: { criticality?: string; due_at: string }; Returns: number }
+      calculate_urgency_score: {
+        Args: {
+          _criticality: number
+          _due_at: string
+          _now?: string
+          _window_end: string
+          _window_start: string
+        }
+        Returns: number
+      }
       check_password_strength: { Args: { password: string }; Returns: boolean }
       get_org_timezone: { Args: { _org_id: string }; Returns: string }
       get_user_org_id:
