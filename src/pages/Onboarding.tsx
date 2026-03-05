@@ -4,12 +4,26 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Send, Sparkles, CheckCircle2 } from "lucide-react";
+import { Send, Sparkles, CheckCircle2, Building2, MapPin, Users2, Clock, ListTodo, FileText, Bell, ClipboardCheck, Settings2, Shield } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_MESSAGES_PER_MINUTE = 10;
+
+const STEPS = [
+  { label: "Company", icon: Building2 },
+  { label: "Locations", icon: MapPin },
+  { label: "Departments", icon: Settings2 },
+  { label: "Shifts", icon: Clock },
+  { label: "Team", icon: Users2 },
+  { label: "Routines", icon: ListTodo },
+  { label: "One-offs", icon: FileText },
+  { label: "Rules", icon: Shield },
+  { label: "Alerts", icon: Bell },
+  { label: "Review", icon: ClipboardCheck },
+];
 
 interface Message {
   role: "assistant" | "user";
@@ -20,6 +34,7 @@ export default function Onboarding() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messageTimestamps = useRef<number[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -189,6 +204,23 @@ export default function Onboarding() {
         content: data.response
       }]);
 
+      // Detect current step from AI response
+      if (data.currentStep) {
+        setCurrentStep(data.currentStep);
+      } else {
+        // Heuristic step detection from response content
+        const response = data.response.toLowerCase();
+        if (response.includes("step 10") || response.includes("review") || response.includes("confirm")) setCurrentStep(10);
+        else if (response.includes("step 9") || response.includes("notification") || response.includes("report")) setCurrentStep(9);
+        else if (response.includes("step 8") || response.includes("task rule") || response.includes("incomplete")) setCurrentStep(8);
+        else if (response.includes("step 7") || response.includes("one-off") || response.includes("one-time")) setCurrentStep(7);
+        else if (response.includes("step 6") || response.includes("routine") || response.includes("task")) setCurrentStep(6);
+        else if (response.includes("step 5") || response.includes("team member") || response.includes("invite")) setCurrentStep(5);
+        else if (response.includes("step 4") || response.includes("shift")) setCurrentStep(4);
+        else if (response.includes("step 3") || response.includes("department")) setCurrentStep(3);
+        else if (response.includes("step 2") || response.includes("location")) setCurrentStep(2);
+      }
+
       // Check if onboarding is complete
       if (data.complete) {
         toast.success("Onboarding complete! Setting up your organization...");
@@ -292,18 +324,39 @@ export default function Onboarding() {
           </div>
         </Card>
 
-        <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-success" />
-            <span>Organization setup</span>
+        {/* Step Progress */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>Step {currentStep} of 10</span>
+            <span>{Math.round((currentStep / 10) * 100)}% complete</span>
           </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-muted-foreground/50" />
-            <span>Locations & areas</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-muted-foreground/50" />
-            <span>Task routines</span>
+          <Progress value={(currentStep / 10) * 100} className="h-2" />
+          <div className="flex items-center justify-between gap-1 overflow-x-auto pb-2">
+            {STEPS.map((step, idx) => {
+              const StepIcon = step.icon;
+              const stepNum = idx + 1;
+              const isComplete = stepNum < currentStep;
+              const isCurrent = stepNum === currentStep;
+              return (
+                <div
+                  key={step.label}
+                  className={`flex flex-col items-center gap-1 min-w-[60px] ${
+                    isCurrent ? "text-primary" : isComplete ? "text-success" : "text-muted-foreground/40"
+                  }`}
+                >
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${
+                    isCurrent ? "bg-primary/10 ring-2 ring-primary" : isComplete ? "bg-success/10" : "bg-muted/50"
+                  }`}>
+                    {isComplete ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      <StepIcon className="w-3.5 h-3.5" />
+                    )}
+                  </div>
+                  <span className="text-[10px] font-medium">{step.label}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

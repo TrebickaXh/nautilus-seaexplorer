@@ -236,7 +236,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-3-flash-preview",
         messages,
       }),
     });
@@ -448,8 +448,9 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
   const timeSlots = createdShifts.map(s => ({ start: s.start, end: s.end }));
   
   // Simple gap detection: if no overnight shift (22:00-06:00) exists, create one
-  const hasNightShift = timeSlots.some(s => s.start >= "22:00" || s.end <= "06:00");
-  if (!hasNightShift && Object.keys(departmentMap).length > 0) {
+  // A night shift is one that starts at or after 22:00 AND ends at or before 06:00
+  const hasNightShift = timeSlots.some(s => s.start >= "22:00" && s.end <= "06:00");
+  if (!hasNightShift && Object.keys(departmentMap).length > 0 && timeSlots.length > 0) {
     const firstDept = Object.values(departmentMap)[0];
     const firstLoc = Object.values(locationMap)[0];
     
@@ -473,7 +474,14 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
     
     // Get department IDs for this member
     const memberDeptIds = (member.departments || [])
-      .map((deptName: string) => departmentMap[deptName])
+      .map((deptName: string) => {
+        if (departmentMap[deptName]) return departmentMap[deptName];
+        const lower = deptName.toLowerCase().trim();
+        for (const [k, v] of Object.entries(departmentMap)) {
+          if (k.toLowerCase().trim() === lower) return v;
+        }
+        return undefined;
+      })
       .filter(Boolean);
     
     const primaryDeptId = memberDeptIds[0] || null;
@@ -526,7 +534,14 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
 
       // Assign ALL shifts
       const memberShiftIds = (member.shifts || [])
-        .map((shiftName: string) => shiftMap[shiftName])
+        .map((shiftName: string) => {
+          if (shiftMap[shiftName]) return shiftMap[shiftName];
+          const lower = shiftName.toLowerCase().trim();
+          for (const [k, v] of Object.entries(shiftMap)) {
+            if (k.toLowerCase().trim() === lower) return v;
+          }
+          return undefined;
+        })
         .filter(Boolean);
       
       if (memberShiftIds.length > 0) {
@@ -558,11 +573,23 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
   console.log('Available locations:', Object.keys(locationMap));
   console.log('Available areas:', Object.keys(areaMap));
   
+  // Helper for case-insensitive map lookup
+  const findInMap = (map: Record<string, string>, key: string | undefined): string | undefined => {
+    if (!key) return undefined;
+    if (map[key]) return map[key];
+    // Case-insensitive fallback
+    const lowerKey = key.toLowerCase().trim();
+    for (const [k, v] of Object.entries(map)) {
+      if (k.toLowerCase().trim() === lowerKey) return v;
+    }
+    return undefined;
+  };
+
   for (const routine of config.taskRoutines || []) {
-    const departmentId = departmentMap[routine.departmentName];
-    const shiftId = shiftMap[routine.shiftName];
-    const locationId = locationMap[routine.locationName];
-    const areaIds = (routine.areaNames || []).map((n: string) => areaMap[n]).filter(Boolean);
+    const departmentId = findInMap(departmentMap, routine.departmentName);
+    const shiftId = findInMap(shiftMap, routine.shiftName);
+    const locationId = findInMap(locationMap, routine.locationName);
+    const areaIds = (routine.areaNames || []).map((n: string) => findInMap(areaMap, n)).filter(Boolean);
 
     console.log(`Routine "${routine.title}": dept=${routine.departmentName} (${departmentId ? 'found' : 'MISSING'}), loc=${routine.locationName} (${locationId ? 'found' : 'MISSING'}), areas=${routine.areaNames?.join(', ')} (matched ${areaIds.length})`);
 
@@ -609,10 +636,10 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
 
   // Create one-off tasks with required_proof
   for (const task of config.oneOffTasks || []) {
-    const departmentId = departmentMap[task.departmentName];
-    const shiftId = shiftMap[task.shiftName];
-    const locationId = locationMap[task.locationName];
-    const areaId = areaMap[task.areaName];
+    const departmentId = findInMap(departmentMap, task.departmentName);
+    const shiftId = findInMap(shiftMap, task.shiftName);
+    const locationId = findInMap(locationMap, task.locationName);
+    const areaId = findInMap(areaMap, task.areaName);
 
     if (!departmentId || !locationId || !areaId) continue;
 

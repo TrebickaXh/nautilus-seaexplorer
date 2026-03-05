@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PageSkeleton } from '@/components/PageSkeleton';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -122,7 +123,7 @@ export default function TaskRoutines() {
   };
 
   if (roleLoading || loading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return <PageSkeleton />;
   }
 
   if (!isAdmin()) {

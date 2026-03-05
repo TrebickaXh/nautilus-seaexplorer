@@ -44,7 +44,7 @@ const managementItems = [
 ];
 
 const systemItems = [
-  { title: 'Settings', url: '/settings', icon: Settings, roles: ['crew', 'location_manager', 'org_admin'] },
+  { title: 'Settings', url: '/settings', icon: Settings, roles: ['org_admin'] },
 ];
 
 export function AppSidebar() {

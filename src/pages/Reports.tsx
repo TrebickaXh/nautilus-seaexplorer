@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { PageSkeleton } from '@/components/PageSkeleton';
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,28 +39,12 @@ export default function Reports() {
 
   // Filter shifts based on selected department
   const availableShifts = useMemo(() => {
-    console.log('🔍 Filtering shifts:', {
-      selectedDepartmentId,
-      totalShifts: shifts.length,
-      shiftsWithDeptId: shifts.filter((s: any) => s.department_id).length,
-      shiftsWithoutDeptId: shifts.filter((s: any) => !s.department_id).length,
-      sampleShift: shifts[0]
-    });
-    
     if (selectedDepartmentId === 'all') {
       return shifts;
     }
-    
-    const filtered = shifts.filter((shift: any) => 
+    return shifts.filter((shift: any) => 
       shift.department_id === selectedDepartmentId || shift.department_id === null
     );
-    
-    console.log('📊 Filtered result:', {
-      availableCount: filtered.length,
-      filtered: filtered.map((s: any) => ({ name: s.name, dept_id: s.department_id }))
-    });
-    
-    return filtered;
   }, [shifts, selectedDepartmentId]);
 
   // Reset shift selection when department changes if current shift is not available
@@ -143,7 +128,7 @@ export default function Reports() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading reports...</div>;
+    return <PageSkeleton />;
   }
 
   return (

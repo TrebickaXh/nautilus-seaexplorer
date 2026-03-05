@@ -61,7 +61,7 @@ export default function Auth() {
         toast.success("Welcome back!");
         navigate("/");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
@@ -72,8 +72,15 @@ export default function Auth() {
         });
 
         if (error) throw error;
-        toast.success("Account created! Redirecting to onboarding...");
-        navigate("/onboarding");
+        
+        // Check if email confirmation is required
+        if (signUpData.user && !signUpData.session) {
+          toast.success("Account created! Please check your email to verify your account before signing in.");
+          setIsLogin(true);
+        } else {
+          toast.success("Account created! Redirecting to onboarding...");
+          navigate("/onboarding");
+        }
       }
     } catch (error: any) {
       toast.error(error.message);
