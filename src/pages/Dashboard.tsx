@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DashboardSkeleton } from "@/components/PageSkeleton";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,26 @@ export default function Dashboard() {
       loadDashboardData();
     }
   }, [user, profile]);
+
+  // Separate realtime subscription with proper cleanup
+  useEffect(() => {
+    if (!profile?.org_id) return;
+    
+    const channel = supabase
+      .channel('dashboard-task-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'task_instances'
+      }, () => {
+        loadDashboardData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.org_id]);
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -194,20 +215,6 @@ export default function Dashboard() {
       setChronicOverdue(chronicList);
       setExceptions(skippedData || []);
 
-      const channel = supabase
-        .channel('task-updates')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'task_instances'
-        }, () => {
-          loadDashboardData();
-        })
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -221,7 +228,7 @@ export default function Dashboard() {
   };
 
   if (roleLoading || loading || !user || !profile) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return <DashboardSkeleton />;
   }
 
   return (
@@ -350,9 +357,9 @@ export default function Dashboard() {
                   <ListTodo className="w-4 h-4 mr-2" />
                   View All Tasks
                 </Button>
-                <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/schedules")}>
+                <Button className="w-full justify-start" variant="outline" onClick={() => navigate("/shifts")}>
                   <Calendar className="w-4 h-4 mr-2" />
-                  Manage Schedules
+                  Manage Shifts
                 </Button>
                 {(primaryRole === 'org_admin' || primaryRole === 'location_manager') && (
                   <>

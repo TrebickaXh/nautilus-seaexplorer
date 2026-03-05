@@ -15,6 +15,7 @@ interface InviteUserRequest {
   employeeId?: string;
   shiftType?: string;
   orgId: string;
+  pin?: string;
 }
 
 serve(async (req) => {
@@ -43,7 +44,13 @@ serve(async (req) => {
       employeeId,
       shiftType,
       orgId,
+      pin,
     }: InviteUserRequest = await req.json();
+
+    // Generate a random password for invited users (they'll use PIN for kiosk)
+    const randomPassword = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+      .map(b => String.fromCharCode(33 + (b % 94)))
+      .join('');
 
     // Auto-generate employee ID if not provided
     let finalEmployeeId = employeeId;
@@ -59,7 +66,8 @@ serve(async (req) => {
     // Create user without sending email
     const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      email_confirm: true, // Auto-confirm email
+      password: randomPassword,
+      email_confirm: true,
       user_metadata: {
         display_name: displayName,
         org_id: orgId,
@@ -101,6 +109,20 @@ serve(async (req) => {
       await supabaseAdmin
         .from("profiles")
         .update({ shift_type: shiftType })
+        .eq("id", userData.user.id);
+    }
+
+    // Set PIN if provided
+    if (pin && userData.user) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(pin);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const pinHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      await supabaseAdmin
+        .from("profiles")
+        .update({ pin_hash: pinHash })
         .eq("id", userData.user.id);
     }
 
