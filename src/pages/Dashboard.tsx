@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { DashboardSkeleton } from "@/components/PageSkeleton";
+import SetupChecklist from "@/components/SetupChecklist";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -235,6 +236,9 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <main className="container mx-auto px-4 py-8">
         <div className="grid gap-6">
+          {/* Setup Checklist — only visible for new orgs */}
+          {profile?.org_id && <SetupChecklist orgId={profile.org_id} />}
+
           {/* Stats Overview */}
           <div className="grid md:grid-cols-4 gap-4">
             <Card className="shadow-md hover:shadow-ocean transition-smooth">
