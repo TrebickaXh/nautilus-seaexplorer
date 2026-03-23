@@ -277,10 +277,16 @@ export default function Users() {
                 </p>
               </div>
             </div>
-            <Button onClick={() => setInviteDialogOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Invite User
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setBulkInviteOpen(true)}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Bulk Import
+              </Button>
+              <Button onClick={() => setInviteDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Invite User
+              </Button>
+            </div>
           </div>
         </div>
       </header>
