@@ -27,6 +27,7 @@ import NeedsAttentionSection from "@/components/dashboard/NeedsAttentionSection"
 import CrewDashboard from "@/components/dashboard/CrewDashboard";
 import YesterdayHandoffCard from "@/components/dashboard/YesterdayHandoffCard";
 import LocationFilter from "@/components/dashboard/LocationFilter";
+import MorningBriefing from "@/components/dashboard/MorningBriefing";
 import {
   ListTodo,
   Calendar,
@@ -36,6 +37,7 @@ import {
   Clock,
   FileText,
   MapPin,
+  Rocket,
 } from "lucide-react";
 
 // ── Shared sections ─────────────────────────────────────────────
@@ -229,9 +231,9 @@ export default function Dashboard() {
   const { data: exceptions } = useExceptions(primaryRole !== "crew" ? orgId : undefined);
   const { data: urgentTasks } = useUrgentTasks(primaryRole !== "crew" ? orgId : undefined, timezone);
 
-  // Manager-specific
+  // Yesterday handoff — used by manager view AND morning briefing
   const { data: handoff } = useYesterdayHandoff(
-    primaryRole === "location_manager" ? orgId : undefined,
+    primaryRole !== "crew" ? orgId : undefined,
     timezone,
     effectiveLocationId
   );
@@ -274,6 +276,17 @@ export default function Dashboard() {
     completedToday: 0, pendingTasks: 0, totalToday: 0, sparkline: [],
   };
 
+  const isEmptyOrg = s.totalToday === 0 && (recentCompletions ?? []).length === 0;
+
+  // Briefing data assembled from hooks
+  const briefingData = {
+    yesterdayRate: handoff?.completionRate ?? 0,
+    skippedTasks: handoff?.skippedTasks ?? [],
+    chronicLate: (chronicOverdue ?? []).map((c: any) => ({ title: c.title, lateCount: c.lateCount })),
+    pendingCount: s.pendingTasks,
+    activeShifts: 0,
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <main className="container mx-auto px-4 py-8">
@@ -290,42 +303,72 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Morning Briefing — admin/manager only */}
+          {!isEmptyOrg && <MorningBriefing briefingData={briefingData} />}
+
           {orgId && <SetupChecklist orgId={orgId} />}
 
           {/* Hero Section */}
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <TodayHealthCard
-                completionRate={s.completionRate}
-                completedToday={s.completedToday}
-                pendingTasks={s.pendingTasks}
-                overdueTasks={s.overdueTasks}
-                sparkline={s.sparkline}
-              />
+          {isEmptyOrg ? (
+            /* Empty state for brand-new orgs */
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="md:col-span-2">
+                <Card className="shadow-ocean">
+                  <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                    <Rocket className="w-12 h-12 text-primary mb-4" />
+                    <h2 className="text-xl font-semibold mb-2">No activity yet</h2>
+                    <p className="text-muted-foreground mb-6 max-w-sm">
+                      Complete your first task on the kiosk to see your stats here
+                    </p>
+                    <Button onClick={() => navigate("/kiosk")}>
+                      Open Kiosk →
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+              <div>
+                {orgId && <ShiftInProgressCard orgId={orgId} timezone={timezone} />}
+              </div>
             </div>
-            <div>
-              {orgId && <ShiftInProgressCard orgId={orgId} timezone={timezone} />}
+          ) : (
+            <>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <TodayHealthCard
+                    completionRate={s.completionRate}
+                    completedToday={s.completedToday}
+                    pendingTasks={s.pendingTasks}
+                    overdueTasks={s.overdueTasks}
+                    sparkline={s.sparkline}
+                  />
+                </div>
+                <div>
+                  {orgId && <ShiftInProgressCard orgId={orgId} timezone={timezone} />}
+                </div>
+              </div>
+
+              {/* Needs Attention */}
+              {orgId && <NeedsAttentionSection tasks={urgentTasks ?? []} orgId={orgId} />}
+            </>
+          )}
+
+          {/* Main Content — hide if empty org */}
+          {!isEmptyOrg && (
+            <div className="grid md:grid-cols-3 gap-6">
+              <RecentCompletionsCard completions={recentCompletions ?? []} />
+              <QuickActionsCard primaryRole={primaryRole} />
             </div>
-          </div>
-
-          {/* Needs Attention */}
-          {orgId && <NeedsAttentionSection tasks={urgentTasks ?? []} orgId={orgId} />}
-
-          {/* Main Content */}
-          <div className="grid md:grid-cols-3 gap-6">
-            <RecentCompletionsCard completions={recentCompletions ?? []} />
-            <QuickActionsCard primaryRole={primaryRole} />
-          </div>
+          )}
 
           {/* Bottom Row — role-specific */}
-          {primaryRole === "org_admin" && (
+          {primaryRole === "org_admin" && !isEmptyOrg && (
             <div className="grid md:grid-cols-2 gap-6">
               <ChronicOverdueCard chronic={chronicOverdue ?? []} />
               <ExceptionsCard exceptions={exceptions ?? []} />
             </div>
           )}
 
-          {primaryRole === "location_manager" && (
+          {primaryRole === "location_manager" && !isEmptyOrg && (
             <div className="grid md:grid-cols-2 gap-6">
               <YesterdayHandoffCard data={handoff} />
               <ExceptionsCard exceptions={exceptions ?? []} />
