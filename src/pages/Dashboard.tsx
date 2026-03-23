@@ -434,7 +434,7 @@ export default function Dashboard() {
                       <div key={task.id} className="flex items-start gap-3 p-3 border rounded-lg">
                         <AlertCircle className="w-5 h-5 text-warning mt-0.5 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{task.task_templates?.title}</p>
+                          <p className="font-medium truncate">{task.task_routines?.title}</p>
                           <p className="text-sm text-muted-foreground">{task.locations?.name}</p>
                           {task.completions && task.completions[0]?.note && (
                             <p className="text-sm text-muted-foreground italic mt-1">
