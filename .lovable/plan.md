@@ -1,38 +1,36 @@
 
+Audit result (what is currently broken):
+1) Signup is failing intermittently because confirmation emails are still being sent and hitting a backend email rate limit (`/signup` returning 429 `email rate limit exceeded` in auth logs).
+2) New signup records confirm this: latest user is created with `email_confirmed_at = null`, so email confirmation is still active.
+3) `src/pages/Auth.tsx` uses one strict schema for both signup and login. That means login can be blocked by signup-only password rules (bad UX and false failures).
+4) Error handling currently shows raw backend errors, which makes failures confusing.
 
-# Clean Up Unused Database Tables
+Implementation plan:
+1) Align auth mode with your request (“disable email confirmation for now”):
+   - Update Lovable Cloud auth setting so new users are auto-confirmed during testing.
+   - Re-verify by checking a fresh signup creates a session immediately (no confirmation email flow).
+2) Fix frontend validation separation in `src/pages/Auth.tsx`:
+   - Create `loginSchema` (email + non-empty password only).
+   - Keep strict `signupSchema` for registration.
+3) Improve signup reliability UX:
+   - Map common auth errors to friendly messages (`rate limit`, `already registered`, `invalid email`).
+   - Keep password requirements visible during signup and add a compact “all requirements met” state before submit.
+4) Tighten post-signup behavior:
+   - If session exists → navigate to onboarding.
+   - If session does not exist (fallback mode) → clear explanation + next-step CTA.
+5) Regression-check the full auth flow:
+   - Signup with valid password (new email)
+   - Immediate login
+   - Forgot password + reset page
+   - Repeat signup attempts to confirm no more rate-limit blocker in normal usage
 
-Remove 10 orphaned tables that have no application code references and are not part of any active feature.
+Technical details (files/settings to touch):
+- `src/pages/Auth.tsx` (schema split, error mapping, clearer success/error flow)
+- Optional helper: `src/lib/authErrors.ts` (centralized auth error-to-message mapping)
+- Lovable Cloud auth setting: temporary auto-confirm for testing (no DB migration required)
 
-## Tables to Drop
-
-| Table | Rows | Reason |
-|---|---|---|
-| `labor_rules` | 0 | No code references |
-| `positions` | 0 | No code references |
-| `schedule_notes` | 0 | No code references |
-| `schedule_templates` | 0 | No code references |
-| `shift_claims` | 0 | No code references |
-| `swap_requests` | 0 | No code references |
-| `time_off_requests` | 0 | No code references |
-| `suggestions` | 0 | No code references |
-| `schedule_assignments` | 179 | No code references |
-| `open_shift_pool` | 301 | No code references |
-
-## Also Clean Up
-
-- Drop associated custom enum types that are only used by these tables: `assignment_status`, `claim_status`, `swap_type`, `swap_status`, `suggestion_status`
-- Drop the `trg_check_shift_department` database function if it's only used by triggers on these tables
-
-## Implementation
-
-Single database migration that:
-1. Drops all 10 tables (with `CASCADE` to remove RLS policies and foreign key references automatically)
-2. Drops orphaned enum types
-3. No code changes needed since nothing references these tables
-
-## What We Keep
-
-- `audit_events` and `edge_function_logs` — written to by edge functions, useful for debugging
-- `shift_reports` — part of the reporting schema, may be wired up later
-
+Done criteria:
+- New users can register in one attempt without verification-email dependency.
+- Login is no longer blocked by signup-only password constraints.
+- Errors are actionable and human-readable.
+- End-to-end signup/login/reset path works reliably in preview.
