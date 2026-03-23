@@ -49,6 +49,7 @@ function PasswordRequirements({ password }: { password: string }) {
   );
 }
 
+export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
