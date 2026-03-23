@@ -24,8 +24,8 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
   const [displayName, setDisplayName] = useState('');
   const [pin, setPin] = useState('');
 
-  const requiresPhoto = taskTemplate?.required_proof === 'photo' || taskTemplate?.required_proof === 'photo_and_note';
-  const requiresNote = taskTemplate?.required_proof === 'note' || taskTemplate?.required_proof === 'photo_and_note';
+  const requiresPhoto = taskTemplate?.required_proof === 'photo' || taskTemplate?.required_proof === 'dual';
+  const requiresNote = taskTemplate?.required_proof === 'note' || taskTemplate?.required_proof === 'dual';
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -200,10 +200,11 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
             </div>
           </div>
 
-          {/* Photo Upload */}
+          {/* Photo Upload — only show when photo proof is needed */}
+          {(requiresPhoto) && (
           <div className="space-y-2">
             <Label htmlFor="photo">
-              Photo {requiresPhoto && <span className="text-destructive">*</span>}
+              Photo <span className="text-destructive">*</span>
             </Label>
             
             {photoPreview ? (
@@ -257,11 +258,13 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
               </div>
             )}
           </div>
+          )}
 
-          {/* Notes */}
+          {/* Notes — only show when note proof is needed */}
+          {(requiresNote) && (
           <div className="space-y-2">
             <Label htmlFor="note">
-              Notes {requiresNote && <span className="text-destructive">*</span>}
+              Notes <span className="text-destructive">*</span>
             </Label>
             <Textarea
               id="note"
@@ -275,6 +278,7 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
               {note.length}/1000
             </p>
           </div>
+          )}
         </div>
 
         <DialogFooter className="gap-2">
