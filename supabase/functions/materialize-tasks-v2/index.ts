@@ -75,8 +75,8 @@ serve(async (req) => {
     console.log(`[${correlationId}] Found ${routines?.length || 0} active routines with recurrence`);
 
     for (const routine of routines || []) {
-      if (!routine.recurrence_v2 || !routine.area_ids || routine.area_ids.length === 0) {
-        console.log(`[${correlationId}] Skipping routine ${routine.id}: missing recurrence or areas`);
+      if (!routine.recurrence_v2) {
+        console.log(`[${correlationId}] Skipping routine ${routine.id}: missing recurrence`);
         continue;
       }
 
@@ -91,15 +91,19 @@ serve(async (req) => {
       
       const orgTimezone = orgData?.timezone || 'UTC';
       
+      // area_ids is optional — if empty, create one instance with area_id = null
+      const areaList = (routine.area_ids && routine.area_ids.length > 0)
+        ? routine.area_ids
+        : [null];
+      
       // Generate due times using org timezone
       const dueSlots = generateDueSlots(recurrence, now, daysAhead, orgTimezone);
       
-      console.log(`[${correlationId}] Routine ${routine.id}: generated ${dueSlots.length} due slots for ${routine.area_ids.length} areas (TZ: ${orgTimezone})`);
+      console.log(`[${correlationId}] Routine ${routine.id}: generated ${dueSlots.length} due slots for ${areaList.length} area(s) (TZ: ${orgTimezone})`);
 
-      // For each due slot, create one instance per area
+      // For each due slot, create one instance per area (or one with null area)
       for (const dueAt of dueSlots) {
-        for (const areaId of routine.area_ids) {
-          // Insert with ON CONFLICT DO NOTHING (idempotency via unique index)
+        for (const areaId of areaList) {
           const { error: insertError } = await supabase
             .from('task_instances')
             .insert({
@@ -112,7 +116,6 @@ serve(async (req) => {
               due_at: dueAt,
               created_from: 'routine',
               status: 'pending',
-              // Denormalized snapshot data - changes to routine only affect NEW instances
               denormalized_data: {
                 title: routine.title,
                 description: routine.description,
@@ -126,7 +129,6 @@ serve(async (req) => {
             .maybeSingle();
 
           if (insertError) {
-            // Check if it's a duplicate (unique constraint violation)
             if (insertError.code === '23505') {
               totalSkipped++;
             } else {
