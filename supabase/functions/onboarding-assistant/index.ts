@@ -447,9 +447,9 @@ async function setupOrganization(supabase: any, sessionId: string, config: any) 
   const allDays = config.operatingDays || [0, 1, 2, 3, 4, 5, 6];
   const timeSlots = createdShifts.map(s => ({ start: s.start, end: s.end }));
   
-  // Simple gap detection: if no overnight shift (22:00-06:00) exists, create one
-  // A night shift is one that starts at or after 22:00 AND ends at or before 06:00
-  const hasNightShift = timeSlots.some(s => s.start >= "22:00" && s.end <= "06:00");
+  // Simple gap detection: if no overnight shift exists, create one
+  // A night shift either starts late (>= 22:00) OR ends early (<= 06:00)
+  const hasNightShift = timeSlots.some(s => s.start >= "22:00" || s.end <= "06:00");
   if (!hasNightShift && Object.keys(departmentMap).length > 0 && timeSlots.length > 0) {
     const firstDept = Object.values(departmentMap)[0];
     const firstLoc = Object.values(locationMap)[0];
