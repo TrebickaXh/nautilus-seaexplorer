@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useRef, useCallback } from 'react';
+import { getStartOfDayInTimezone, getEndOfDayInTimezone, getCurrentTimeInTimezone } from '@/hooks/useOrgTimezone';
 
 const DASHBOARD_STALE_TIME = 60 * 1000; // 1 minute
 const DEBOUNCE_MS = 1500;
