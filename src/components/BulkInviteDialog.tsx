@@ -44,7 +44,9 @@ function downloadTemplate() {
   const a = document.createElement("a");
   a.href = url;
   a.download = "team_invite_template.csv";
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
