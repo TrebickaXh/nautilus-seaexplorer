@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 import { Download, TrendingUp, Clock, AlertCircle, Calendar } from "lucide-react";
 import { format } from "date-fns";
-import { useReportData, useShifts, useDepartments } from "@/hooks/useReportData";
+import { useReportData, useShifts, useDepartments, useLocations } from "@/hooks/useReportData";
 import {
   calculateOnTimeMetrics,
   calculateCompletionMetrics,
