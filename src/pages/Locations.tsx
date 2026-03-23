@@ -7,9 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LocationForm } from '@/components/LocationForm';
 import { DepartmentForm } from '@/components/DepartmentForm';
-import { ArrowLeft, Plus, MapPin, Edit, Trash2, Archive, Grid3x3 } from 'lucide-react';
+import { ArrowLeft, Plus, MapPin, Edit, Trash2, Archive, Grid3x3, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import {
   Collapsible,
   CollapsibleContent,
@@ -29,6 +38,13 @@ export default function Locations() {
   const [selectedLocationForArea, setSelectedLocationForArea] = useState<string>('');
   const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
 
+  // Zone (area) form state
+  const [zoneFormOpen, setZoneFormOpen] = useState(false);
+  const [zoneLocationId, setZoneLocationId] = useState<string>('');
+  const [editingZone, setEditingZone] = useState<any>(null);
+  const [zoneName, setZoneName] = useState('');
+  const [zoneSaving, setZoneSaving] = useState(false);
+
   useEffect(() => {
     if (!roleLoading && !isAdmin()) {
       navigate('/dashboard');
@@ -42,6 +58,7 @@ export default function Locations() {
       .channel('locations-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' }, loadLocations)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, loadLocations)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'areas' }, loadLocations)
       .subscribe();
 
     return () => {
@@ -56,7 +73,8 @@ export default function Locations() {
       .from('locations')
       .select(`
         *,
-        departments(*)
+        departments(*),
+        areas(*)
       `)
       .is('archived_at', null)
       .order('name');
@@ -64,7 +82,12 @@ export default function Locations() {
     if (error) {
       toast.error(error.message);
     } else {
-      setLocations(data || []);
+      const filtered = (data || []).map(loc => ({
+        ...loc,
+        departments: (loc.departments || []).filter((d: any) => !d.archived_at),
+        areas: (loc.areas || []).filter((a: any) => !a.archived_at),
+      }));
+      setLocations(filtered);
     }
 
     setLoading(false);
@@ -115,6 +138,58 @@ export default function Locations() {
       toast.error(error.message);
     } else {
       toast.success('Department deleted');
+      loadLocations();
+    }
+  };
+
+  // Zone (area) handlers
+  const openZoneForm = (locationId: string, zone?: any) => {
+    setZoneLocationId(locationId);
+    setEditingZone(zone || null);
+    setZoneName(zone?.name || '');
+    setZoneFormOpen(true);
+  };
+
+  const handleSaveZone = async () => {
+    if (!zoneName.trim()) {
+      toast.error('Area name is required');
+      return;
+    }
+    setZoneSaving(true);
+    try {
+      if (editingZone) {
+        const { error } = await supabase
+          .from('areas')
+          .update({ name: zoneName.trim() })
+          .eq('id', editingZone.id);
+        if (error) throw error;
+        toast.success('Area updated');
+      } else {
+        const { error } = await supabase
+          .from('areas')
+          .insert({ location_id: zoneLocationId, name: zoneName.trim() });
+        if (error) throw error;
+        toast.success('Area created');
+      }
+      setZoneFormOpen(false);
+      loadLocations();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setZoneSaving(false);
+    }
+  };
+
+  const handleArchiveZone = async (zoneId: string) => {
+    if (!confirm('Archive this area? It will be hidden from active use.')) return;
+    const { error } = await supabase
+      .from('areas')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('id', zoneId);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success('Area archived');
       loadLocations();
     }
   };
@@ -189,7 +264,7 @@ export default function Locations() {
                           <div>
                             <CardTitle>{location.name}</CardTitle>
                             <CardDescription>
-                              {location.departments?.length || 0} departments
+                              {location.departments?.length || 0} departments · {location.areas?.length || 0} areas
                               {location.latitude && location.longitude && (
                                 <span className="ml-2">
                                   • {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
@@ -219,54 +294,108 @@ export default function Locations() {
                     </div>
 
                     <CollapsibleContent>
-                      <CardContent className="pt-4">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="font-semibold flex items-center gap-2">
-                            <Grid3x3 className="h-4 w-4" />
-                            Departments within {location.name}
-                          </h4>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleAddArea(location.id)}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Department
-                          </Button>
+                      <CardContent className="pt-4 space-y-6">
+                        {/* Departments Section */}
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-semibold flex items-center gap-2">
+                              <Grid3x3 className="h-4 w-4" />
+                              Departments
+                            </h4>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleAddArea(location.id)}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Department
+                            </Button>
+                          </div>
+
+                          {location.departments && location.departments.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {location.departments.map((dept: any) => (
+                                <div
+                                  key={dept.id}
+                                  className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                                >
+                                  <span className="font-medium">{dept.name}</span>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleEditArea(dept, location.id)}
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteArea(dept.id)}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-6">
+                              No departments yet. Add departments to organize tasks within this location.
+                            </p>
+                          )}
                         </div>
 
-                        {location.departments && location.departments.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {location.departments.map((area: any) => (
-                              <div
-                                key={area.id}
-                                className="flex items-center justify-between p-3 rounded-lg border bg-card"
-                              >
-                                <span className="font-medium">{area.name}</span>
-                                <div className="flex gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEditArea(area, location.id)}
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteArea(area.id)}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
+                        {/* Areas (Zones) Section */}
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-semibold flex items-center gap-2">
+                              <Layers className="h-4 w-4" />
+                              Areas
+                            </h4>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openZoneForm(location.id)}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Area
+                            </Button>
                           </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground text-center py-6">
-                            No departments yet. Add departments to organize tasks within this location.
-                          </p>
-                        )}
+
+                          {location.areas && location.areas.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {location.areas.map((zone: any) => (
+                                <div
+                                  key={zone.id}
+                                  className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                                >
+                                  <span className="font-medium">{zone.name}</span>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openZoneForm(location.id, zone)}
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleArchiveZone(zone.id)}
+                                    >
+                                      <Archive className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-6">
+                              No areas yet. Add areas like "Kitchen", "Lobby", or "Bar" to assign tasks to specific zones.
+                            </p>
+                          )}
+                        </div>
                       </CardContent>
                     </CollapsibleContent>
                   </Collapsible>
@@ -296,6 +425,36 @@ export default function Locations() {
           }}
           onCancel={() => setAreaFormOpen(false)}
         />
+
+        {/* Area (Zone) Form Dialog */}
+        <Dialog open={zoneFormOpen} onOpenChange={setZoneFormOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{editingZone ? 'Edit Area' : 'Add Area'}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="zone-name">Area Name</Label>
+                <Input
+                  id="zone-name"
+                  value={zoneName}
+                  onChange={(e) => setZoneName(e.target.value)}
+                  placeholder='e.g. "Kitchen", "Lobby", "Bar"'
+                  disabled={zoneSaving}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setZoneFormOpen(false)} disabled={zoneSaving}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveZone} disabled={zoneSaving || !zoneName.trim()}>
+                {editingZone ? 'Save' : 'Create'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
