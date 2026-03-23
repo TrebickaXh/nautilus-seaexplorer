@@ -31,6 +31,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
           <Route path="/kiosk" element={<Kiosk />} />
           <Route path="/task-routines" element={<AppLayout><TaskRoutines /></AppLayout>} />
