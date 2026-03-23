@@ -10,7 +10,7 @@ import OnboardingStep1 from "@/components/onboarding/OnboardingStep1";
 import OnboardingStep2, { Step2Data } from "@/components/onboarding/OnboardingStep2";
 import OnboardingStep3, { CustomTask } from "@/components/onboarding/OnboardingStep3";
 import OnboardingChatBubble from "@/components/onboarding/OnboardingChatBubble";
-import { Industry, INDUSTRY_TASKS, TaskTemplate } from "@/lib/industryTemplates";
+import { Industry, INDUSTRY_TASKS } from "@/lib/industryTemplates";
 
 const PLACEHOLDER_ORG_ID = "00000000-0000-0000-0000-000000000000";
 
