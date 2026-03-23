@@ -21,7 +21,7 @@ const Index = () => {
         .eq("id", user.id)
         .single();
       
-      if (profile?.org_id) {
+      if (profile?.org_id && profile.org_id !== '00000000-0000-0000-0000-000000000000') {
         navigate("/dashboard");
       } else {
         navigate("/onboarding");
