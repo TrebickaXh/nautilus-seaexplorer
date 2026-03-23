@@ -517,18 +517,24 @@ export default function Kiosk() {
               </div>
               
               <div className="space-y-1 mb-2">
-                {task.departments?.name && (
+                {task.areas?.name ? (
+                  <>
+                    {task.departments?.name && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Building2 className="h-3 w-3" />
+                        <span>{task.departments.name}</span>
+                      </div>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      {task.areas.name}
+                    </p>
+                  </>
+                ) : task.departments?.name ? (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Building2 className="h-3 w-3" />
                     <span>{task.departments.name}</span>
                   </div>
-                )}
-                
-                {task.areas?.name && (
-                  <p className="text-sm text-muted-foreground">
-                    {task.areas.name}
-                  </p>
-                )}
+                ) : null}
               </div>
               
               <p className="text-sm text-muted-foreground">
