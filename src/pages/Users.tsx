@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InviteUserDialog } from '@/components/InviteUserDialog';
+import { BulkInviteDialog } from '@/components/BulkInviteDialog';
 import { SetPinDialog } from '@/components/SetPinDialog';
 import { UserDepartmentAssignment } from '@/components/UserDepartmentAssignment';
 import { UserShiftAssignment } from '@/components/UserShiftAssignment';

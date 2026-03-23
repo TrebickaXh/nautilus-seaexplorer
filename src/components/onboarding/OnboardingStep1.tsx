@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Building2, ArrowRight, Check, ChevronsUpDown } from "lucide-react";
-import { Industry, INDUSTRY_OPTIONS, TIMEZONE_OPTIONS } from "@/lib/industryTemplates";
+import { Industry, INDUSTRY_OPTIONS, TIMEZONE_GROUPS } from "@/lib/industryTemplates";
 import { cn } from "@/lib/utils";
 
 interface Step1Data {
@@ -32,7 +32,14 @@ export default function OnboardingStep1({ data, onChange, onNext }: Props) {
     if (isValid) onNext();
   };
 
-  const selectedTzLabel = TIMEZONE_OPTIONS.find((tz) => tz.value === data.timezone)?.label;
+  // Find selected timezone label from grouped structure
+  const selectedTzLabel = (() => {
+    for (const group of TIMEZONE_GROUPS) {
+      const found = group.options.find((o) => o.value === data.timezone);
+      if (found) return `(GMT ${group.offset}) ${found.label}`;
+    }
+    return undefined;
+  })();
 
   return (
     <div className="space-y-8">
@@ -76,29 +83,31 @@ export default function OnboardingStep1({ data, onChange, onNext }: Props) {
             </PopoverTrigger>
             <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
               <Command>
-                <CommandInput placeholder="Search timezone…" />
+                <CommandInput placeholder="Search city or GMT offset…" />
                 <CommandList>
                   <CommandEmpty>No timezone found.</CommandEmpty>
-                  <CommandGroup>
-                    {TIMEZONE_OPTIONS.map((tz) => (
-                      <CommandItem
-                        key={tz.value}
-                        value={tz.label}
-                        onSelect={() => {
-                          onChange({ ...data, timezone: tz.value });
-                          setTzOpen(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            data.timezone === tz.value ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {tz.label}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
+                  {TIMEZONE_GROUPS.map((group) => (
+                    <CommandGroup key={group.offset} heading={`GMT ${group.offset}`}>
+                      {group.options.map((tz) => (
+                        <CommandItem
+                          key={tz.value}
+                          value={`${group.group} ${tz.label} ${tz.value}`}
+                          onSelect={() => {
+                            onChange({ ...data, timezone: tz.value });
+                            setTzOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              data.timezone === tz.value ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {tz.label}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  ))}
                 </CommandList>
               </Command>
             </PopoverContent>
