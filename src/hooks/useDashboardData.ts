@@ -422,7 +422,7 @@ export function useYesterdayHandoff(orgId: string | undefined, timezone: string 
 
 // ── Debounced Realtime Invalidation ─────────────────────────────
 
-
+export function useDashboardRealtime(orgId: string | undefined) {
   const queryClient = useQueryClient();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
