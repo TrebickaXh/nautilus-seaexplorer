@@ -421,6 +421,13 @@ export default function Users() {
         orgId={orgId}
       />
 
+      <BulkInviteDialog
+        open={bulkInviteOpen}
+        onClose={() => setBulkInviteOpen(false)}
+        onSuccess={loadUsers}
+        orgId={orgId}
+      />
+
       {selectedUser && (
         <>
           <SetPinDialog
