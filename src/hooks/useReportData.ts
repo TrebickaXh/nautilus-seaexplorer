@@ -5,6 +5,7 @@ import type { TaskInstance } from '@/lib/reportUtils';
 
 export interface ReportFilters {
   dateRange: string;
+  locationId: string;
   shiftId: string;
   departmentId: string;
 }
@@ -31,6 +32,11 @@ export function useReportData(filters: ReportFilters) {
         .gte('due_at', startDate.toISOString())
         .in('status', ['done', 'skipped', 'pending']);
 
+      // Apply location filter
+      if (filters.locationId !== 'all') {
+        query = query.eq('location_id', filters.locationId);
+      }
+
       // Apply shift filter
       if (filters.shiftId !== 'all') {
         query = query.eq('shift_id', filters.shiftId);
@@ -50,6 +56,27 @@ export function useReportData(filters: ReportFilters) {
     staleTime: 2 * 60 * 1000, // Consider data fresh for 2 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     refetchOnWindowFocus: false, // Don't refetch when user returns to window
+  });
+}
+
+/**
+ * Fetch locations with caching
+ */
+export function useLocations() {
+  return useQuery({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('locations')
+        .select('id, name')
+        .is('archived_at', null)
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 }
 
