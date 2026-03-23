@@ -113,7 +113,13 @@ export default function Onboarding() {
           est_minutes: t.estMinutes,
           criticality: t.criticality,
           required_proof: t.requiredProof,
-          recurrence_v2: t.recurrence_v2,
+          recurrence_v2: {
+            ...t.recurrence_v2,
+            time_slots: (t.recurrence_v2 as any).time_slots || [step2.shiftStart],
+            ...(t.recurrence_v2.type === "weekly" && !t.recurrence_v2.days_of_week
+              ? { days_of_week: step2.shiftDays }
+              : {}),
+          },
         })),
         ...customTasks.map((t) => ({
           title: t.title,

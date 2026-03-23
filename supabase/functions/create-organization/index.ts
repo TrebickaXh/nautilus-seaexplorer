@@ -178,22 +178,22 @@ serve(async (req) => {
         console.error(`Setup failed, cleaning up org ${createdOrgId}:`, innerError.message);
 
         // Reset profile back to placeholder
-        await supabase.from('profiles').update({ org_id: PLACEHOLDER }).eq('id', userId).catch(() => {});
+        try { await supabase.from('profiles').update({ org_id: PLACEHOLDER }).eq('id', userId); } catch (_) {}
         // Remove role assignment
-        await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', 'org_admin').catch(() => {});
-        // Delete task_routines, shifts, departments, locations for this org
-        await supabase.from('task_routines').delete().eq('org_id', createdOrgId).catch(() => {});
-        // Shifts/departments are linked via locations — get location ids first
+        try { await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', 'org_admin'); } catch (_) {}
+        // Delete task_routines
+        try { await supabase.from('task_routines').delete().eq('org_id', createdOrgId); } catch (_) {}
+        // Shifts/departments are linked via locations
         const { data: locs } = await supabase.from('locations').select('id').eq('org_id', createdOrgId);
         if (locs) {
           for (const loc of locs) {
-            await supabase.from('shifts').delete().eq('location_id', loc.id).catch(() => {});
-            await supabase.from('departments').delete().eq('location_id', loc.id).catch(() => {});
+            try { await supabase.from('shifts').delete().eq('location_id', loc.id); } catch (_) {}
+            try { await supabase.from('departments').delete().eq('location_id', loc.id); } catch (_) {}
           }
         }
-        await supabase.from('locations').delete().eq('org_id', createdOrgId).catch(() => {});
+        try { await supabase.from('locations').delete().eq('org_id', createdOrgId); } catch (_) {}
         // Finally delete the org
-        await supabase.from('organizations').delete().eq('id', createdOrgId).catch(() => {});
+        try { await supabase.from('organizations').delete().eq('id', createdOrgId); } catch (_) {}
       }
 
       throw innerError;
