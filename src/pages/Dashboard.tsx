@@ -13,6 +13,7 @@ import {
   useChronicOverdue,
   useExceptions,
   useDashboardRealtime,
+  useUrgentTasks,
 } from "@/hooks/useDashboardData";
 import TodayHealthCard from "@/components/dashboard/TodayHealthCard";
 import ShiftInProgressCard from "@/components/dashboard/ShiftInProgressCard";
