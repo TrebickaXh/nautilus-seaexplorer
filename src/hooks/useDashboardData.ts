@@ -220,7 +220,42 @@ export function useExceptions(orgId: string | undefined) {
   });
 }
 
-// ── Debounced Realtime Invalidation ─────────────────────────────
+export function useUrgentTasks(orgId: string | undefined, timezone: string = 'UTC') {
+  return useQuery({
+    queryKey: ['dashboard', orgId, 'urgent-tasks', timezone],
+    queryFn: async () => {
+      const now = new Date();
+      const todayStart = getStartOfDayInTimezone(now, timezone);
+      const todayEnd = getEndOfDayInTimezone(now, timezone);
+
+      const { data, error } = await supabase
+        .from('task_instances')
+        .select(`
+          id, due_at, urgency_score, window_end, status,
+          department_id, area_id, shift_id,
+          denormalized_data,
+          task_routines!routine_id(title, required_proof),
+          departments(name),
+          areas(name),
+          locations(name)
+        `)
+        .eq('org_id', orgId!)
+        .eq('status', 'pending')
+        .gte('due_at', todayStart.toISOString())
+        .lte('due_at', todayEnd.toISOString())
+        .order('urgency_score', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orgId,
+    staleTime: 30_000, // 30s — urgent tasks need fresher data
+    refetchOnWindowFocus: true,
+  });
+}
+
+
 
 export function useDashboardRealtime(orgId: string | undefined) {
   const queryClient = useQueryClient();
