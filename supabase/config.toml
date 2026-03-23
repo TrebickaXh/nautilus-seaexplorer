@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.invite-user]
 verify_jwt = true
+
+[functions.create-organization]
+verify_jwt = true
