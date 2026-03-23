@@ -132,7 +132,7 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
                 id="shiftStart"
                 type="time"
                 value={data.shiftStart}
-                onChange={(e) => onChange({ ...data, shiftStart: e.target.value })}
+                onChange={(e) => handleFieldChange("shiftStart", e.target.value)}
               />
             </div>
             <div className="space-y-2">
