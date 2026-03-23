@@ -85,6 +85,9 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Needs Attention */}
+          {orgId && <NeedsAttentionSection tasks={urgentTasks ?? []} orgId={orgId} />}
+
           {/* Main Content Area */}
           <div className="grid md:grid-cols-3 gap-6">
             <Card className="md:col-span-2 shadow-ocean">
