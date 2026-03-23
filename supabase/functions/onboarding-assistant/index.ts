@@ -188,7 +188,7 @@ serve(async (req) => {
   }
 
   try {
-    const { sessionId, message, conversationHistory, restart } = await req.json();
+    const { sessionId, message, conversationHistory, restart, helpMode } = await req.json();
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -218,7 +218,40 @@ serve(async (req) => {
       );
     }
 
-    // Build messages for AI
+    // Handle help mode — lightweight Q&A without session tracking
+    if (helpMode) {
+      const helpSystemPrompt = `You are a friendly setup assistant for Nautilus, a task management platform. The user is going through a 3-step onboarding wizard (Company Basics → Structure → Tasks). Answer questions about the setup process, explain concepts like shifts, departments, task routines, and recurrence. Keep answers short (2-3 sentences). Do not try to collect data — the form handles that.`;
+
+      const helpMessages = [
+        { role: "system", content: helpSystemPrompt },
+        ...conversationHistory.map((msg: any) => ({ role: msg.role, content: msg.content })),
+        { role: "user", content: message }
+      ];
+
+      const helpResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${lovableApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: helpMessages,
+        }),
+      });
+
+      if (!helpResponse.ok) {
+        throw new Error(`AI request failed: ${helpResponse.statusText}`);
+      }
+
+      const helpData = await helpResponse.json();
+      return new Response(
+        JSON.stringify({ response: helpData.choices[0].message.content, complete: false }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Build messages for AI (legacy full onboarding flow)
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...conversationHistory.map((msg: any) => ({
