@@ -168,7 +168,59 @@ export default function Settings() {
         </CardContent>
       </Card>
 
+      {/* Generate Tasks Now */}
+      <GenerateTasksCard orgId={organization?.id} toast={toast} />
+
       <ScheduleMigrationTool />
     </div>
+  );
+}
+
+function GenerateTasksCard({ orgId, toast }: { orgId?: string; toast: ReturnType<typeof useToast>['toast'] }) {
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleGenerate = async () => {
+    if (!orgId) return;
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('materialize-tasks-v2', {
+        body: { org_id: orgId },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Tasks generated',
+        description: `${data.created} task instances created, ${data.skipped} duplicates skipped.${data.errors > 0 ? ` ${data.errors} errors occurred.` : ''}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Generation failed',
+        description: err.message || 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Zap className="h-5 w-5 text-primary" />
+          Generate Tasks
+        </CardTitle>
+        <CardDescription>
+          Manually generate task instances from your active routines. Use this after creating new routines or to populate tasks for testing.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button onClick={handleGenerate} disabled={isGenerating}>
+          {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Generate Tasks Now
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
