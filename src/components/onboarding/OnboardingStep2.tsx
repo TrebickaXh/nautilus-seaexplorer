@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,9 @@ interface Props {
 }
 
 export default function OnboardingStep2({ data, industry, onChange, onNext, onBack }: Props) {
+  const [attempted, setAttempted] = useState(false);
   const hasUserEdited = useRef(false);
 
-  // Apply industry defaults whenever industry changes, unless user has manually edited
   useEffect(() => {
     if (hasUserEdited.current) return;
     const defaults = INDUSTRY_DEFAULTS[industry];
@@ -73,6 +73,11 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
     data.shiftEnd &&
     data.shiftDays.length > 0;
 
+  const handleContinue = () => {
+    setAttempted(true);
+    if (isValid) onNext();
+  };
+
   return (
     <div className="space-y-8">
       <div className="text-center space-y-2">
@@ -96,6 +101,9 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
             onChange={(e) => handleFieldChange("locationName", e.target.value)}
             maxLength={100}
           />
+          {attempted && !data.locationName.trim() && (
+            <p className="text-xs text-destructive">This field is required</p>
+          )}
         </div>
 
         {/* Department */}
@@ -108,6 +116,9 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
             onChange={(e) => handleFieldChange("departmentName", e.target.value)}
             maxLength={100}
           />
+          {attempted && !data.departmentName.trim() && (
+            <p className="text-xs text-destructive">This field is required</p>
+          )}
         </div>
 
         {/* Shift */}
@@ -123,6 +134,9 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
               onChange={(e) => handleFieldChange("shiftName", e.target.value)}
               maxLength={60}
             />
+            {attempted && !data.shiftName.trim() && (
+              <p className="text-xs text-destructive">This field is required</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -134,6 +148,9 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
                 value={data.shiftStart}
                 onChange={(e) => handleFieldChange("shiftStart", e.target.value)}
               />
+              {attempted && !data.shiftStart && (
+                <p className="text-xs text-destructive">This field is required</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="shiftEnd" className="text-sm">End Time</Label>
@@ -143,6 +160,9 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
                 value={data.shiftEnd}
                 onChange={(e) => handleFieldChange("shiftEnd", e.target.value)}
               />
+              {attempted && !data.shiftEnd && (
+                <p className="text-xs text-destructive">This field is required</p>
+              )}
             </div>
           </div>
 
@@ -165,6 +185,9 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
                 </button>
               ))}
             </div>
+            {attempted && data.shiftDays.length === 0 && (
+              <p className="text-xs text-destructive">Select at least one day</p>
+            )}
           </div>
         </div>
 
@@ -177,7 +200,7 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
-          <Button onClick={onNext} disabled={!isValid} className="flex-1" size="lg">
+          <Button onClick={handleContinue} disabled={false} className="flex-1" size="lg">
             Continue
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>

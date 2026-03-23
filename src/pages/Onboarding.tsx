@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Anchor, CheckCircle2 } from "lucide-react";
-import { useEffect } from "react";
 
 import OnboardingStep1 from "@/components/onboarding/OnboardingStep1";
 import OnboardingStep2, { Step2Data } from "@/components/onboarding/OnboardingStep2";
@@ -13,35 +12,60 @@ import OnboardingChatBubble from "@/components/onboarding/OnboardingChatBubble";
 import { Industry, INDUSTRY_TASKS } from "@/lib/industryTemplates";
 
 const PLACEHOLDER_ORG_ID = "00000000-0000-0000-0000-000000000000";
-
+const STORAGE_KEY = "nautilus_onboarding_state";
 const STEP_LABELS = ["Company Basics", "Your Structure", "Your First Tasks"];
+
+interface OnboardingState {
+  step: number;
+  step1: { orgName: string; timezone: string; industry: Industry };
+  step2: Step2Data;
+  selectedTemplateIds: string[];
+  customTasks: CustomTask[];
+}
+
+function loadSavedState(): OnboardingState | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as OnboardingState;
+  } catch {
+    return null;
+  }
+}
+
+function clearSavedState() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+const DEFAULT_STEP1 = { orgName: "", timezone: "", industry: "" as Industry };
+const DEFAULT_STEP2: Step2Data = {
+  locationName: "",
+  departmentName: "",
+  shiftName: "",
+  shiftStart: "",
+  shiftEnd: "",
+  shiftDays: [],
+};
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const saved = loadSavedState();
+
+  const [step, setStep] = useState(saved?.step || 1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // Step 1
-  const [step1, setStep1] = useState({
-    orgName: "",
-    timezone: "",
-    industry: "" as Industry,
-  });
+  const [step1, setStep1] = useState(saved?.step1 || DEFAULT_STEP1);
+  const [step2, setStep2] = useState<Step2Data>(saved?.step2 || DEFAULT_STEP2);
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>(saved?.selectedTemplateIds || []);
+  const [customTasks, setCustomTasks] = useState<CustomTask[]>(saved?.customTasks || []);
 
-  // Step 2
-  const [step2, setStep2] = useState<Step2Data>({
-    locationName: "",
-    departmentName: "",
-    shiftName: "",
-    shiftStart: "",
-    shiftEnd: "",
-    shiftDays: [],
-  });
-
-  // Step 3
-  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
-  const [customTasks, setCustomTasks] = useState<CustomTask[]>([]);
+  // Persist state to localStorage on every change
+  useEffect(() => {
+    if (initialLoading) return;
+    const state: OnboardingState = { step, step1, step2, selectedTemplateIds, customTasks };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [step, step1, step2, selectedTemplateIds, customTasks, initialLoading]);
 
   useEffect(() => {
     checkExistingOrg();
@@ -60,6 +84,7 @@ export default function Onboarding() {
       .single();
 
     if (profile && profile.org_id && profile.org_id !== PLACEHOLDER_ORG_ID) {
+      clearSavedState();
       navigate("/dashboard");
       return;
     }
@@ -75,7 +100,6 @@ export default function Onboarding() {
   const handleFinish = async () => {
     setIsSubmitting(true);
     try {
-      // Build task routine payloads
       const templates = INDUSTRY_TASKS[step1.industry] || [];
       const selectedTemplates = templates.filter((t) =>
         selectedTemplateIds.includes(t.id)
@@ -97,7 +121,7 @@ export default function Onboarding() {
           steps: [],
           est_minutes: t.estMinutes,
           criticality: t.criticality,
-          required_proof: "none",
+          required_proof: t.requiredProof,
           recurrence_v2: {
             type: t.frequency === "daily" ? "daily" : "weekly",
             time_slots: [step2.shiftStart],
@@ -106,7 +130,6 @@ export default function Onboarding() {
         })),
       ];
 
-      // Call the edge function (service role, idempotent, with rollback)
       const { data, error } = await supabase.functions.invoke("create-organization", {
         body: {
           orgName: step1.orgName,
@@ -125,7 +148,9 @@ export default function Onboarding() {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Setup failed");
 
-      // Trigger materialization (separate, non-blocking)
+      // Clear saved state on success
+      clearSavedState();
+
       try {
         await supabase.functions.invoke("materialize-tasks-v2");
       } catch (matError) {
@@ -153,7 +178,6 @@ export default function Onboarding() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4">
       <div className="max-w-4xl mx-auto py-8 space-y-8">
-        {/* Header */}
         <div className="text-center space-y-1">
           <div className="inline-flex items-center gap-2">
             <Anchor className="w-6 h-6 text-primary" />
@@ -161,7 +185,6 @@ export default function Onboarding() {
           </div>
         </div>
 
-        {/* Step indicator */}
         <div className="max-w-md mx-auto space-y-3">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Step {step} of 3</span>
@@ -198,7 +221,6 @@ export default function Onboarding() {
           </div>
         </div>
 
-        {/* Step content */}
         <div className="bg-card rounded-2xl border p-6 sm:p-8 shadow-sm">
           {step === 1 && (
             <OnboardingStep1
@@ -232,9 +254,7 @@ export default function Onboarding() {
         </div>
       </div>
 
-      {/* Optional AI help bubble */}
       <OnboardingChatBubble />
     </div>
   );
 }
-
