@@ -33,13 +33,13 @@ interface Props {
 }
 
 export default function OnboardingStep2({ data, industry, onChange, onNext, onBack }: Props) {
-  const appliedDefaults = useRef(false);
+  const hasUserEdited = useRef(false);
 
-  // Apply industry defaults once when entering step 2
+  // Apply industry defaults whenever industry changes, unless user has manually edited
   useEffect(() => {
-    if (appliedDefaults.current) return;
+    if (hasUserEdited.current) return;
     const defaults = INDUSTRY_DEFAULTS[industry];
-    if (defaults && !data.departmentName && !data.shiftName) {
+    if (defaults) {
       onChange({
         ...data,
         departmentName: defaults.department,
@@ -49,8 +49,14 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
         shiftDays: defaults.shiftDays,
       });
     }
-    appliedDefaults.current = true;
   }, [industry]);
+
+  const handleFieldChange = (field: keyof Step2Data, value: string) => {
+    if (field === "departmentName" || field === "shiftName") {
+      hasUserEdited.current = true;
+    }
+    onChange({ ...data, [field]: value });
+  };
 
   const toggleDay = (day: number) => {
     const next = data.shiftDays.includes(day)
@@ -87,7 +93,7 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
             id="locationName"
             placeholder="e.g. Downtown Branch"
             value={data.locationName}
-            onChange={(e) => onChange({ ...data, locationName: e.target.value })}
+            onChange={(e) => handleFieldChange("locationName", e.target.value)}
             maxLength={100}
           />
         </div>
@@ -99,7 +105,7 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
             id="departmentName"
             placeholder="e.g. Kitchen, Front of House"
             value={data.departmentName}
-            onChange={(e) => onChange({ ...data, departmentName: e.target.value })}
+            onChange={(e) => handleFieldChange("departmentName", e.target.value)}
             maxLength={100}
           />
         </div>
@@ -114,7 +120,7 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
               id="shiftName"
               placeholder="e.g. Morning Shift"
               value={data.shiftName}
-              onChange={(e) => onChange({ ...data, shiftName: e.target.value })}
+              onChange={(e) => handleFieldChange("shiftName", e.target.value)}
               maxLength={60}
             />
           </div>
@@ -126,7 +132,7 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
                 id="shiftStart"
                 type="time"
                 value={data.shiftStart}
-                onChange={(e) => onChange({ ...data, shiftStart: e.target.value })}
+                onChange={(e) => handleFieldChange("shiftStart", e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -135,7 +141,7 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
                 id="shiftEnd"
                 type="time"
                 value={data.shiftEnd}
-                onChange={(e) => onChange({ ...data, shiftEnd: e.target.value })}
+                onChange={(e) => handleFieldChange("shiftEnd", e.target.value)}
               />
             </div>
           </div>
