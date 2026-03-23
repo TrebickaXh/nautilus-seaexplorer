@@ -233,6 +233,7 @@ export default function Auth() {
               </div>
             </form>
           )}
+        </CardContent>
       </Card>
     </div>
   );
