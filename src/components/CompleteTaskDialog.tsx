@@ -11,12 +11,13 @@ import { Input } from '@/components/ui/input';
 interface CompleteTaskDialogProps {
   taskId: string | null;
   taskTemplate: any;
+  selectedUserId?: string | null;
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSuccess }: CompleteTaskDialogProps) {
+export function CompleteTaskDialog({ taskId, taskTemplate, selectedUserId = null, open, onClose, onSuccess }: CompleteTaskDialogProps) {
   const [note, setNote] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -48,6 +49,22 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
     setPhotoPreview(null);
   };
 
+  const extractCompletionErrorMessage = async (invokeError: any) => {
+    try {
+      const errorBody = invokeError?.context ? await invokeError.context.json() : null;
+      if (errorBody?.error) return errorBody.error as string;
+    } catch (parseError) {
+      console.error('Failed to parse completion error response:', parseError);
+    }
+
+    const rawMessage = invokeError?.message as string | undefined;
+    if (rawMessage?.includes('non-2xx status code')) {
+      return 'Could not complete task. Please verify the team member and PIN, then try again.';
+    }
+
+    return rawMessage || 'Failed to complete task';
+  };
+
   const handleComplete = async () => {
     if (!taskId) return;
 
@@ -75,24 +92,13 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
     setUploading(true);
 
     try {
-      // Verify PIN
-      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('verify-pin', {
-        body: { pin },
-      });
-
-      if (verifyError || !verifyData?.success) {
-        toast.error('Invalid PIN. Please try again.');
-        setUploading(false);
-        return;
-      }
-
-      const userId = verifyData.user.id;
       let photoUrl = null;
 
       // Upload photo if provided
       if (photoFile) {
         const fileExt = photoFile.name.split('.').pop();
-        const fileName = `${userId}/${taskId}_${Date.now()}.${fileExt}`;
+        const photoOwnerId = selectedUserId || 'kiosk';
+        const fileName = `${photoOwnerId}/${taskId}_${Date.now()}.${fileExt}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('task-photos')
@@ -111,28 +117,27 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
         photoUrl = publicUrl;
       }
 
-      // Create completion record
-      const { error: completionError } = await supabase
-        .from('completions')
-        .insert({
+      const { data, error } = await supabase.functions.invoke('complete-task', {
+        body: {
           task_instance_id: taskId,
-          user_id: userId,
+          user_id: selectedUserId,
+          display_name: displayName.trim(),
+          pin,
+          outcome: 'completed',
           note: note.trim() || null,
-          photo_url: photoUrl
-        });
+          photo_url: photoUrl || null,
+        },
+      });
 
-      if (completionError) throw completionError;
+      if (error) {
+        toast.error(await extractCompletionErrorMessage(error));
+        return;
+      }
 
-      // Update task instance status
-      const { error: updateError } = await supabase
-        .from('task_instances')
-        .update({
-          status: 'done',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', taskId);
-
-      if (updateError) throw updateError;
+      if (!data?.success) {
+        toast.error(data?.error || 'Failed to complete task');
+        return;
+      }
 
       toast.success(`Task completed by ${displayName}!`);
       setNote('');
