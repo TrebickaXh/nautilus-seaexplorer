@@ -26,7 +26,7 @@ import { BulkInviteDialog } from '@/components/BulkInviteDialog';
 import { SetPinDialog } from '@/components/SetPinDialog';
 import { UserDepartmentAssignment } from '@/components/UserDepartmentAssignment';
 import { UserShiftAssignment } from '@/components/UserShiftAssignment';
-import { ArrowLeft, UserPlus, Shield, Users as UsersIcon, User, KeyRound, Building2, Clock } from 'lucide-react';
+import { ArrowLeft, UserPlus, Shield, Users as UsersIcon, User, KeyRound, Building2, Clock, FileSpreadsheet } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface UserProfile {
