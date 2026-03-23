@@ -41,6 +41,7 @@ export default function Dashboard() {
   const { data: recentCompletions } = useRecentCompletions(orgId);
   const { data: chronicOverdue } = useChronicOverdue(orgId);
   const { data: exceptions } = useExceptions(orgId);
+  const { data: urgentTasks } = useUrgentTasks(orgId, timezone);
 
   useDashboardRealtime(orgId);
 
