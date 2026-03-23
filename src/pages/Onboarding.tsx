@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Send, Sparkles, CheckCircle2, Building2, MapPin, Users2, Clock, ListTodo, FileText, Bell, ClipboardCheck, Settings2, Shield } from "lucide-react";
+import { Send, Sparkles, CheckCircle2, Building2, MapPin, Users2, Clock, ListTodo, FileText, Bell, ClipboardCheck, Settings2, Shield, AlertTriangle, RotateCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 const MAX_MESSAGE_LENGTH = 2000;
@@ -30,10 +30,14 @@ interface Message {
   content: string;
 }
 
+const PLACEHOLDER_ORG_ID = "00000000-0000-0000-0000-000000000000";
+
 export default function Onboarding() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [setupError, setSetupError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messageTimestamps = useRef<number[]>([]);
@@ -53,9 +57,22 @@ export default function Onboarding() {
   }, []);
 
   const loadOrCreateSession = async () => {
+    setInitialLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       navigate("/auth");
+      return;
+    }
+
+    // Check if user already has a real org — onboarding already complete
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("org_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profile && profile.org_id && profile.org_id !== PLACEHOLDER_ORG_ID) {
+      navigate("/dashboard");
       return;
     }
 
@@ -88,6 +105,7 @@ export default function Onboarding() {
       // Create new session
       await createOnboardingSession();
     }
+    setInitialLoading(false);
   };
 
   const createOnboardingSession = async () => {
@@ -118,27 +136,37 @@ export default function Onboarding() {
   };
 
   const handleRestart = async () => {
-    if (!sessionId) return;
     setLoading(true);
+    setSetupError(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("onboarding-assistant", {
-        body: {
-          sessionId,
-          message: "",
-          conversationHistory: [],
-          restart: true
-        }
-      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
 
-      if (error) throw error;
+      // Mark any existing sessions as abandoned
+      if (sessionId) {
+        await supabase
+          .from("onboarding_sessions")
+          .update({ status: "abandoned" })
+          .eq("id", sessionId);
+      }
 
-      setMessages([{
-        role: "assistant",
-        content: data.response
-      }]);
+      // Reset profile org_id to placeholder
+      await supabase
+        .from("profiles")
+        .update({ org_id: PLACEHOLDER_ORG_ID })
+        .eq("id", user.id);
+
+      // Create a fresh session
+      setSessionId(null);
+      setCurrentStep(1);
+      setMessages([]);
+      await createOnboardingSession();
       
-      toast.success("Onboarding restarted");
+      toast.success("Setup restarted from scratch");
     } catch (error: any) {
       toast.error(error.message || "Failed to restart onboarding");
     } finally {
@@ -223,19 +251,64 @@ export default function Onboarding() {
 
       // Check if onboarding is complete
       if (data.complete) {
-        toast.success("Onboarding complete! Setting up your organization...");
-        setTimeout(() => navigate("/dashboard"), 2000);
+        // Verify org was actually created before redirecting
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("org_id")
+            .eq("id", user.id)
+            .single();
+
+          if (profile && profile.org_id && profile.org_id !== PLACEHOLDER_ORG_ID) {
+            toast.success("Onboarding complete! Setting up your organization...");
+            setTimeout(() => navigate("/dashboard"), 2000);
+          } else {
+            setSetupError("Setup appeared to complete but your organization wasn't created. This can happen due to a network issue.");
+          }
+        }
       }
     } catch (error: any) {
-      toast.error(error.message || "Failed to process message");
+      console.error("Onboarding error:", error);
+      setSetupError(error.message || "Something went wrong during setup. You can try again or restart.");
     } finally {
       setLoading(false);
     }
   };
 
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4">
       <div className="max-w-4xl mx-auto py-8 space-y-6">
+        {/* Setup error banner */}
+        {setupError && (
+          <Card className="border-destructive bg-destructive/5 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-destructive mt-0.5 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <p className="text-sm font-medium text-destructive">Setup encountered an error</p>
+                <p className="text-sm text-muted-foreground">{setupError}</p>
+                <div className="flex gap-2 pt-1">
+                  <Button size="sm" onClick={() => { setSetupError(null); handleSend(); }} disabled={loading}>
+                    Try again
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleRestart} disabled={loading}>
+                    <RotateCcw className="w-3 h-3 mr-1" />
+                    Restart setup
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
             <Sparkles className="w-4 h-4" />
@@ -246,13 +319,15 @@ export default function Onboarding() {
             I'll guide you through 10 steps to set up your complete task management system.
           </p>
           {messages.length > 2 && (
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleRestart}
               disabled={loading}
+              className="text-muted-foreground"
             >
-              Restart Onboarding
+              <RotateCcw className="w-3 h-3 mr-1" />
+              Something went wrong? Restart setup
             </Button>
           )}
         </div>
