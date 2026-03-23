@@ -1115,40 +1115,181 @@ export const INDUSTRY_TASKS: Partial<Record<Industry, TaskTemplate[]>> = {
   ],
 };
 
-export const TIMEZONE_OPTIONS = [
-  { value: "Pacific/Honolulu", label: "Hawaii (HST)" },
-  { value: "America/Anchorage", label: "Alaska (AKST)" },
-  { value: "America/Los_Angeles", label: "Pacific (PST)" },
-  { value: "America/Denver", label: "Mountain (MST)" },
-  { value: "America/Chicago", label: "Central (CST)" },
-  { value: "America/New_York", label: "Eastern (EST)" },
-  { value: "America/Sao_Paulo", label: "São Paulo (BRT)" },
-  { value: "America/Argentina/Buenos_Aires", label: "Buenos Aires (ART)" },
-  { value: "Atlantic/Reykjavik", label: "Iceland (GMT)" },
-  { value: "Europe/London", label: "London (GMT)" },
-  { value: "Europe/Paris", label: "Paris (CET)" },
-  { value: "Europe/Berlin", label: "Berlin (CET)" },
-  { value: "Europe/Madrid", label: "Madrid (CET)" },
-  { value: "Europe/Rome", label: "Rome (CET)" },
-  { value: "Europe/Amsterdam", label: "Amsterdam (CET)" },
-  { value: "Europe/Zurich", label: "Zurich (CET)" },
-  { value: "Europe/Stockholm", label: "Stockholm (CET)" },
-  { value: "Europe/Helsinki", label: "Helsinki (EET)" },
-  { value: "Europe/Athens", label: "Athens (EET)" },
-  { value: "Europe/Istanbul", label: "Istanbul (TRT)" },
-  { value: "Europe/Moscow", label: "Moscow (MSK)" },
-  { value: "Asia/Dubai", label: "Dubai (GST)" },
-  { value: "Asia/Karachi", label: "Karachi (PKT)" },
-  { value: "Asia/Kolkata", label: "India (IST)" },
-  { value: "Asia/Dhaka", label: "Dhaka (BST)" },
-  { value: "Asia/Bangkok", label: "Bangkok (ICT)" },
-  { value: "Asia/Singapore", label: "Singapore (SGT)" },
-  { value: "Asia/Shanghai", label: "China (CST)" },
-  { value: "Asia/Hong_Kong", label: "Hong Kong (HKT)" },
-  { value: "Asia/Tokyo", label: "Tokyo (JST)" },
-  { value: "Asia/Seoul", label: "Seoul (KST)" },
-  { value: "Australia/Sydney", label: "Sydney (AEST)" },
-  { value: "Australia/Melbourne", label: "Melbourne (AEST)" },
-  { value: "Australia/Perth", label: "Perth (AWST)" },
-  { value: "Pacific/Auckland", label: "New Zealand (NZST)" },
+export interface TimezoneGroup {
+  group: string;
+  offset: string;
+  options: { value: string; label: string }[];
+}
+
+export const TIMEZONE_GROUPS: TimezoneGroup[] = [
+  {
+    group: "(GMT -10) Honolulu",
+    offset: "-10",
+    options: [
+      { value: "Pacific/Honolulu", label: "Honolulu" },
+    ],
+  },
+  {
+    group: "(GMT -9) Anchorage",
+    offset: "-9",
+    options: [
+      { value: "America/Anchorage", label: "Anchorage" },
+    ],
+  },
+  {
+    group: "(GMT -8) Los Angeles, Vancouver",
+    offset: "-8",
+    options: [
+      { value: "America/Los_Angeles", label: "Los Angeles" },
+      { value: "America/Vancouver", label: "Vancouver" },
+    ],
+  },
+  {
+    group: "(GMT -7) Denver, Phoenix",
+    offset: "-7",
+    options: [
+      { value: "America/Denver", label: "Denver" },
+      { value: "America/Phoenix", label: "Phoenix" },
+    ],
+  },
+  {
+    group: "(GMT -6) Chicago, Mexico City",
+    offset: "-6",
+    options: [
+      { value: "America/Chicago", label: "Chicago" },
+      { value: "America/Mexico_City", label: "Mexico City" },
+    ],
+  },
+  {
+    group: "(GMT -5) New York, Toronto, Bogotá",
+    offset: "-5",
+    options: [
+      { value: "America/New_York", label: "New York" },
+      { value: "America/Toronto", label: "Toronto" },
+      { value: "America/Bogota", label: "Bogotá" },
+    ],
+  },
+  {
+    group: "(GMT -3) São Paulo, Buenos Aires",
+    offset: "-3",
+    options: [
+      { value: "America/Sao_Paulo", label: "São Paulo" },
+      { value: "America/Argentina/Buenos_Aires", label: "Buenos Aires" },
+    ],
+  },
+  {
+    group: "(GMT +0) London, Lisbon, Reykjavik",
+    offset: "0",
+    options: [
+      { value: "Europe/London", label: "London" },
+      { value: "Europe/Lisbon", label: "Lisbon" },
+      { value: "Atlantic/Reykjavik", label: "Reykjavik" },
+    ],
+  },
+  {
+    group: "(GMT +1) Paris, Berlin, Rome, Madrid, Amsterdam",
+    offset: "+1",
+    options: [
+      { value: "Europe/Paris", label: "Paris" },
+      { value: "Europe/Berlin", label: "Berlin" },
+      { value: "Europe/Rome", label: "Rome" },
+      { value: "Europe/Madrid", label: "Madrid" },
+      { value: "Europe/Amsterdam", label: "Amsterdam" },
+      { value: "Europe/Zurich", label: "Zurich" },
+      { value: "Europe/Stockholm", label: "Stockholm" },
+    ],
+  },
+  {
+    group: "(GMT +2) Helsinki, Athens, Cairo, Johannesburg",
+    offset: "+2",
+    options: [
+      { value: "Europe/Helsinki", label: "Helsinki" },
+      { value: "Europe/Athens", label: "Athens" },
+      { value: "Africa/Cairo", label: "Cairo" },
+      { value: "Africa/Johannesburg", label: "Johannesburg" },
+    ],
+  },
+  {
+    group: "(GMT +3) Moscow, Istanbul, Nairobi",
+    offset: "+3",
+    options: [
+      { value: "Europe/Moscow", label: "Moscow" },
+      { value: "Europe/Istanbul", label: "Istanbul" },
+      { value: "Africa/Nairobi", label: "Nairobi" },
+    ],
+  },
+  {
+    group: "(GMT +4) Dubai",
+    offset: "+4",
+    options: [
+      { value: "Asia/Dubai", label: "Dubai" },
+    ],
+  },
+  {
+    group: "(GMT +5) Karachi",
+    offset: "+5",
+    options: [
+      { value: "Asia/Karachi", label: "Karachi" },
+    ],
+  },
+  {
+    group: "(GMT +5:30) Mumbai, Delhi",
+    offset: "+5:30",
+    options: [
+      { value: "Asia/Kolkata", label: "Mumbai / Delhi" },
+    ],
+  },
+  {
+    group: "(GMT +6) Dhaka",
+    offset: "+6",
+    options: [
+      { value: "Asia/Dhaka", label: "Dhaka" },
+    ],
+  },
+  {
+    group: "(GMT +7) Bangkok, Jakarta",
+    offset: "+7",
+    options: [
+      { value: "Asia/Bangkok", label: "Bangkok" },
+      { value: "Asia/Jakarta", label: "Jakarta" },
+    ],
+  },
+  {
+    group: "(GMT +8) Singapore, Shanghai, Hong Kong, Perth",
+    offset: "+8",
+    options: [
+      { value: "Asia/Singapore", label: "Singapore" },
+      { value: "Asia/Shanghai", label: "Shanghai" },
+      { value: "Asia/Hong_Kong", label: "Hong Kong" },
+      { value: "Australia/Perth", label: "Perth" },
+    ],
+  },
+  {
+    group: "(GMT +9) Tokyo, Seoul",
+    offset: "+9",
+    options: [
+      { value: "Asia/Tokyo", label: "Tokyo" },
+      { value: "Asia/Seoul", label: "Seoul" },
+    ],
+  },
+  {
+    group: "(GMT +10) Sydney, Melbourne",
+    offset: "+10",
+    options: [
+      { value: "Australia/Sydney", label: "Sydney" },
+      { value: "Australia/Melbourne", label: "Melbourne" },
+    ],
+  },
+  {
+    group: "(GMT +12) Auckland",
+    offset: "+12",
+    options: [
+      { value: "Pacific/Auckland", label: "Auckland" },
+    ],
+  },
 ];
+
+// Flat list for backward compatibility
+export const TIMEZONE_OPTIONS = TIMEZONE_GROUPS.flatMap((g) =>
+  g.options.map((o) => ({ value: o.value, label: `${g.group}` }))
+);

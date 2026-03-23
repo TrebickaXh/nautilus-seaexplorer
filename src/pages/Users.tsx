@@ -22,10 +22,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { InviteUserDialog } from '@/components/InviteUserDialog';
+import { BulkInviteDialog } from '@/components/BulkInviteDialog';
 import { SetPinDialog } from '@/components/SetPinDialog';
 import { UserDepartmentAssignment } from '@/components/UserDepartmentAssignment';
 import { UserShiftAssignment } from '@/components/UserShiftAssignment';
-import { ArrowLeft, UserPlus, Shield, Users as UsersIcon, User, KeyRound, Building2, Clock } from 'lucide-react';
+import { ArrowLeft, UserPlus, Shield, Users as UsersIcon, User, KeyRound, Building2, Clock, FileSpreadsheet } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface UserProfile {
@@ -50,6 +51,7 @@ export default function Users() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [bulkInviteOpen, setBulkInviteOpen] = useState(false);
   const [pinDialogOpen, setPinDialogOpen] = useState(false);
   const [deptDialogOpen, setDeptDialogOpen] = useState(false);
   const [shiftDialogOpen, setShiftDialogOpen] = useState(false);
@@ -275,10 +277,16 @@ export default function Users() {
                 </p>
               </div>
             </div>
-            <Button onClick={() => setInviteDialogOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Invite User
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setBulkInviteOpen(true)}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Bulk Import
+              </Button>
+              <Button onClick={() => setInviteDialogOpen(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Invite User
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -409,6 +417,13 @@ export default function Users() {
       <InviteUserDialog
         open={inviteDialogOpen}
         onClose={() => setInviteDialogOpen(false)}
+        onSuccess={loadUsers}
+        orgId={orgId}
+      />
+
+      <BulkInviteDialog
+        open={bulkInviteOpen}
+        onClose={() => setBulkInviteOpen(false)}
         onSuccess={loadUsers}
         orgId={orgId}
       />
