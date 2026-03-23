@@ -120,7 +120,7 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
               id="shiftName"
               placeholder="e.g. Morning Shift"
               value={data.shiftName}
-              onChange={(e) => onChange({ ...data, shiftName: e.target.value })}
+              onChange={(e) => handleFieldChange("shiftName", e.target.value)}
               maxLength={60}
             />
           </div>
