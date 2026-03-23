@@ -27,6 +27,7 @@ import NeedsAttentionSection from "@/components/dashboard/NeedsAttentionSection"
 import CrewDashboard from "@/components/dashboard/CrewDashboard";
 import YesterdayHandoffCard from "@/components/dashboard/YesterdayHandoffCard";
 import LocationFilter from "@/components/dashboard/LocationFilter";
+import MorningBriefing from "@/components/dashboard/MorningBriefing";
 import {
   ListTodo,
   Calendar,
@@ -36,6 +37,7 @@ import {
   Clock,
   FileText,
   MapPin,
+  Rocket,
 } from "lucide-react";
 
 // ── Shared sections ─────────────────────────────────────────────
