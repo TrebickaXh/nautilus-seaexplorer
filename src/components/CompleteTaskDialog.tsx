@@ -24,8 +24,8 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
   const [displayName, setDisplayName] = useState('');
   const [pin, setPin] = useState('');
 
-  const requiresPhoto = taskTemplate?.required_proof === 'photo' || taskTemplate?.required_proof === 'photo_and_note';
-  const requiresNote = taskTemplate?.required_proof === 'note' || taskTemplate?.required_proof === 'photo_and_note';
+  const requiresPhoto = taskTemplate?.required_proof === 'photo' || taskTemplate?.required_proof === 'dual';
+  const requiresNote = taskTemplate?.required_proof === 'note' || taskTemplate?.required_proof === 'dual';
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
