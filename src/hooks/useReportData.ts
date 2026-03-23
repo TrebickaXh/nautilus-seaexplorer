@@ -38,26 +38,6 @@ export function useReportData(filters: ReportFilters) {
       }
 
       // Apply shift filter
-/**
- * Fetch locations with caching
- */
-export function useLocations() {
-  return useQuery({
-    queryKey: ['locations'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('locations')
-        .select('id, name')
-        .is('archived_at', null)
-        .order('name');
-      
-      if (error) throw error;
-      return data;
-    },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
-  });
-}
       if (filters.shiftId !== 'all') {
         query = query.eq('shift_id', filters.shiftId);
       }
@@ -76,6 +56,27 @@ export function useLocations() {
     staleTime: 2 * 60 * 1000, // Consider data fresh for 2 minutes
     gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
     refetchOnWindowFocus: false, // Don't refetch when user returns to window
+  });
+}
+
+/**
+ * Fetch locations with caching
+ */
+export function useLocations() {
+  return useQuery({
+    queryKey: ['locations'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('locations')
+        .select('id, name')
+        .is('archived_at', null)
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 }
 
