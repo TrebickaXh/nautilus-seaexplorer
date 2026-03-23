@@ -17,6 +17,7 @@ import {
 } from "@/hooks/useDashboardData";
 import TodayHealthCard from "@/components/dashboard/TodayHealthCard";
 import ShiftInProgressCard from "@/components/dashboard/ShiftInProgressCard";
+import NeedsAttentionSection from "@/components/dashboard/NeedsAttentionSection";
 import {
   ListTodo,
   Calendar,
