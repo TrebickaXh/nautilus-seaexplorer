@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,24 +6,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Anchor, Waves, Check, X } from "lucide-react";
+import { Anchor, Waves, Check, X, CheckCircle2 } from "lucide-react";
 import { z } from "zod";
+import { friendlyAuthError } from "@/lib/authErrors";
 
-const authSchema = z.object({
+// --- Schemas ---------------------------------------------------
+
+const signupSchema = z.object({
   email: z.string().email("Invalid email address").max(255, "Email must be less than 255 characters"),
-  password: z.string()
+  password: z
+    .string()
     .min(12, "Password must be at least 12 characters")
     .max(72, "Password must be less than 72 characters")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
     .regex(/[0-9]/, "Password must contain at least one number")
     .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
-  displayName: z.string()
+  displayName: z
+    .string()
     .trim()
     .min(1, "Display name is required")
-    .max(100, "Display name must be less than 100 characters")
-    .optional(),
+    .max(100, "Display name must be less than 100 characters"),
 });
+
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+});
+
+// --- Password requirements UI ----------------------------------
 
 const passwordRules = [
   { test: (p: string) => p.length >= 12, label: "At least 12 characters" },
@@ -34,12 +45,26 @@ const passwordRules = [
 ];
 
 function PasswordRequirements({ password }: { password: string }) {
+  const allPassed = passwordRules.every((r) => r.test(password));
+
+  if (allPassed) {
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-success mt-2">
+        <CheckCircle2 className="w-3.5 h-3.5" />
+        All password requirements met
+      </p>
+    );
+  }
+
   return (
     <ul className="space-y-1 mt-2">
       {passwordRules.map((rule) => {
         const passed = rule.test(password);
         return (
-          <li key={rule.label} className={`flex items-center gap-1.5 text-xs ${passed ? "text-success" : "text-muted-foreground"}`}>
+          <li
+            key={rule.label}
+            className={`flex items-center gap-1.5 text-xs ${passed ? "text-success" : "text-muted-foreground"}`}
+          >
             {passed ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
             {rule.label}
           </li>
@@ -48,6 +73,8 @@ function PasswordRequirements({ password }: { password: string }) {
     </ul>
   );
 }
+
+// --- Main component --------------------------------------------
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -69,7 +96,7 @@ export default function Auth() {
       toast.success("Password reset email sent! Check your inbox.");
       setIsForgotPassword(false);
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(friendlyAuthError(error.message));
     } finally {
       setLoading(false);
     }
@@ -80,16 +107,21 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const validationData = isLogin 
-        ? { email, password }
-        : { email, password, displayName };
-      
-      const result = authSchema.safeParse(validationData);
-      if (!result.success) {
-        const firstError = result.error.errors[0];
-        toast.error(firstError.message);
-        setLoading(false);
-        return;
+      // Validate with the appropriate schema
+      if (isLogin) {
+        const result = loginSchema.safeParse({ email, password });
+        if (!result.success) {
+          toast.error(result.error.errors[0].message);
+          setLoading(false);
+          return;
+        }
+      } else {
+        const result = signupSchema.safeParse({ email, password, displayName });
+        if (!result.success) {
+          toast.error(result.error.errors[0].message);
+          setLoading(false);
+          return;
+        }
       }
 
       if (isLogin) {
@@ -111,16 +143,19 @@ export default function Auth() {
           },
         });
         if (error) throw error;
-        if (signUpData.user && !signUpData.session) {
-          toast.success("Account created! Please check your email to verify your account before signing in.");
-          setIsLogin(true);
-        } else {
+
+        if (signUpData.session) {
           toast.success("Account created! Redirecting to onboarding...");
           navigate("/onboarding");
+        } else if (signUpData.user && !signUpData.session) {
+          toast.success(
+            "Account created! Please check your email to verify your account before signing in."
+          );
+          setIsLogin(true);
         }
       }
     } catch (error: any) {
-      toast.error(error.message);
+      toast.error(friendlyAuthError(error.message));
     } finally {
       setLoading(false);
     }
@@ -164,11 +199,7 @@ export default function Auth() {
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? (
-                  <Waves className="w-4 h-4 animate-pulse" />
-                ) : (
-                  "Send Reset Link"
-                )}
+                {loading ? <Waves className="w-4 h-4 animate-pulse" /> : "Send Reset Link"}
               </Button>
 
               <div className="text-center">
@@ -220,9 +251,7 @@ export default function Auth() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
-                {!isLogin && password.length > 0 && (
-                  <PasswordRequirements password={password} />
-                )}
+                {!isLogin && password.length > 0 && <PasswordRequirements password={password} />}
               </div>
 
               {isLogin && (
