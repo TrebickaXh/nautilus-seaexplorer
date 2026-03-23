@@ -196,6 +196,9 @@ export default function Auth() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                {!isLogin && password.length > 0 && (
+                  <PasswordRequirements password={password} />
+                )}
               </div>
 
               {isLogin && (
