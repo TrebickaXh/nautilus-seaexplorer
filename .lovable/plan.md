@@ -1,36 +1,70 @@
 
-Audit result (what is currently broken):
-1) Signup is failing intermittently because confirmation emails are still being sent and hitting a backend email rate limit (`/signup` returning 429 `email rate limit exceeded` in auth logs).
-2) New signup records confirm this: latest user is created with `email_confirmed_at = null`, so email confirmation is still active.
-3) `src/pages/Auth.tsx` uses one strict schema for both signup and login. That means login can be blocked by signup-only password rules (bad UX and false failures).
-4) Error handling currently shows raw backend errors, which makes failures confusing.
 
-Implementation plan:
-1) Align auth mode with your request (“disable email confirmation for now”):
-   - Update Lovable Cloud auth setting so new users are auto-confirmed during testing.
-   - Re-verify by checking a fresh signup creates a session immediately (no confirmation email flow).
-2) Fix frontend validation separation in `src/pages/Auth.tsx`:
-   - Create `loginSchema` (email + non-empty password only).
-   - Keep strict `signupSchema` for registration.
-3) Improve signup reliability UX:
-   - Map common auth errors to friendly messages (`rate limit`, `already registered`, `invalid email`).
-   - Keep password requirements visible during signup and add a compact “all requirements met” state before submit.
-4) Tighten post-signup behavior:
-   - If session exists → navigate to onboarding.
-   - If session does not exist (fallback mode) → clear explanation + next-step CTA.
-5) Regression-check the full auth flow:
-   - Signup with valid password (new email)
-   - Immediate login
-   - Forgot password + reset page
-   - Repeat signup attempts to confirm no more rate-limit blocker in normal usage
+## Plan: Timezone Selector Redesign + Bulk Invite
 
-Technical details (files/settings to touch):
-- `src/pages/Auth.tsx` (schema split, error mapping, clearer success/error flow)
-- Optional helper: `src/lib/authErrors.ts` (centralized auth error-to-message mapping)
-- Lovable Cloud auth setting: temporary auto-confirm for testing (no DB migration required)
+### 1. Redesign Timezone Selector (Grouped by GMT offset with major cities)
 
-Done criteria:
-- New users can register in one attempt without verification-email dependency.
-- Login is no longer blocked by signup-only password constraints.
-- Errors are actionable and human-readable.
-- End-to-end signup/login/reset path works reliably in preview.
+**File: `src/lib/industryTemplates.ts`**
+
+Replace the flat `TIMEZONE_OPTIONS` array with a grouped structure. Each group represents a GMT offset and lists major cities within it.
+
+New format:
+```text
+GMT -10  — Honolulu
+GMT -9   — Anchorage
+GMT -8   — Los Angeles, Vancouver
+GMT -7   — Denver, Phoenix
+GMT -6   — Chicago, Mexico City
+GMT -5   — New York, Toronto, Bogotá
+GMT -3   — São Paulo, Buenos Aires
+GMT  0   — London, Reykjavik, Lisbon
+GMT +1   — Paris, Berlin, Rome, Madrid, Amsterdam
+GMT +2   — Helsinki, Athens, Cairo, Johannesburg
+GMT +3   — Moscow, Istanbul, Dubai (note: Dubai is +4, will be separate)
+GMT +4   — Dubai
+GMT +5   — Karachi
+GMT +5:30 — Mumbai, Delhi
+GMT +6   — Dhaka
+GMT +7   — Bangkok, Jakarta
+GMT +8   — Singapore, Shanghai, Hong Kong, Perth
+GMT +9   — Tokyo, Seoul
+GMT +10  — Sydney, Melbourne
+GMT +12  — Auckland
+```
+
+Each option's label will show: `(GMT +1) Paris, Berlin, Rome, Madrid`
+The `value` will remain a single canonical IANA timezone (e.g. `Europe/Paris`) since the DB stores one timezone string.
+
+**File: `src/components/onboarding/OnboardingStep1.tsx`**
+
+Update the Combobox to use `CommandGroup` elements for visual grouping by GMT offset. Search will match on city names and GMT values.
+
+### 2. Bulk Invite via CSV Template
+
+**File: `src/pages/Users.tsx`**
+
+Add a "Bulk Import" button next to the existing "Add Team Member" button.
+
+**New file: `src/components/BulkInviteDialog.tsx`**
+
+A dialog with two steps:
+1. **Download Template** — generates and downloads a CSV file with headers: `email, display_name, role, phone, employee_id, shift_type`. Role column includes a note that valid values are `crew`, `location_manager`, `org_admin`.
+2. **Upload & Preview** — user uploads the filled CSV. Parse it client-side, show a preview table with validation (highlight rows with errors like missing email, invalid role). Show count of valid/invalid rows.
+3. **Submit** — loop through valid rows calling the existing `invite-user` edge function for each. Show a progress indicator and summary of successes/failures.
+
+The template CSV will not include `location_id` or `department_id` (UUIDs are not user-friendly). Instead, the dialog will have a single Location and Department selector at the top that applies to all imported users — since bulk imports typically target one location/department.
+
+### Technical Details
+
+- **Timezone grouping**: The grouped array will use a structure like `{ group: string; options: { value: string; label: string }[] }[]` and render with multiple `CommandGroup` elements in the combobox.
+- **CSV generation**: Use `Blob` + `URL.createObjectURL` for client-side CSV download. No external library needed.
+- **CSV parsing**: Use a simple split-based parser (no library) since the template is controlled and simple. Handle quoted fields for names with commas.
+- **Bulk invite calls**: Sequential calls to `invite-user` edge function with a small delay to avoid rate limiting. Show progress as "3 of 12 invited..."
+- **No DB changes needed** — reuses existing `invite-user` edge function.
+
+### Files to create/edit
+- `src/lib/industryTemplates.ts` — replace `TIMEZONE_OPTIONS` with grouped version
+- `src/components/onboarding/OnboardingStep1.tsx` — update combobox to render groups
+- `src/components/BulkInviteDialog.tsx` — new component
+- `src/pages/Users.tsx` — add Bulk Import button and dialog
+
