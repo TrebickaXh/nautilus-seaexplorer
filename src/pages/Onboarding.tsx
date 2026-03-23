@@ -291,14 +291,11 @@ function buildRoutine(
     shift_id: shiftId,
     title: template.title,
     description: template.description,
+    steps: template.steps,
     est_minutes: template.estMinutes,
     criticality: template.criticality,
-    required_proof: "none" as const,
+    required_proof: template.requiredProof,
     active: true,
-    recurrence_v2: {
-      type: template.frequency === "daily" ? "daily" : "weekly",
-      time_slots: ["09:00"],
-      ...(template.frequency === "weekly" ? { days_of_week: [1, 2, 3, 4, 5] } : {}),
-    },
+    recurrence_v2: template.recurrence_v2,
   };
 }
