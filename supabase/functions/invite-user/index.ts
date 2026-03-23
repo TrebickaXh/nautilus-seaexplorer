@@ -104,6 +104,25 @@ serve(async (req) => {
         .eq("id", userData.user.id);
     }
 
+    // Generate a password recovery link so the invited user can set their own password
+    if (userData.user) {
+      try {
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+          type: "recovery",
+          email,
+        });
+
+        if (linkError) {
+          console.error("Error generating recovery link:", linkError);
+          // Don't fail the invite — user was created, they can use "Forgot password" later
+        } else {
+          console.log("Recovery link generated for invited user:", email);
+        }
+      } catch (linkErr) {
+        console.error("Exception generating recovery link:", linkErr);
+      }
+    }
+
     // Update profile with shift_type if provided
     if (shiftType && userData.user) {
       await supabaseAdmin

@@ -34,12 +34,28 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Password reset email sent! Check your inbox.");
+      setIsForgotPassword(false);
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Validate input
       const validationData = isLogin 
         ? { email, password }
         : { email, password, displayName };
@@ -57,7 +73,6 @@ export default function Auth() {
           email: email.trim(),
           password,
         });
-
         if (error) throw error;
         toast.success("Welcome back!");
         navigate("/");
@@ -71,10 +86,7 @@ export default function Auth() {
             },
           },
         });
-
         if (error) throw error;
-        
-        // Check if email confirmation is required
         if (signUpData.user && !signUpData.session) {
           toast.success("Account created! Please check your email to verify your account before signing in.");
           setIsLogin(true);
