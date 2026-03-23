@@ -26,26 +26,49 @@ export default function Reports() {
   const [groupBy, setGroupBy] = useState<GroupByType>('template');
   const [selectedShiftId, setSelectedShiftId] = useState<string>('all');
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('all');
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('all');
 
   // Fetch data with caching
   const { data: tasks = [], isLoading, error } = useReportData({
     dateRange,
+    locationId: selectedLocationId,
     shiftId: selectedShiftId,
     departmentId: selectedDepartmentId,
   });
 
   const { data: shifts = [] } = useShifts();
   const { data: departments = [] } = useDepartments();
+  const { data: locations = [] } = useLocations();
 
-  // Filter shifts based on selected department
+  // Filter departments based on selected location
+  const availableDepartments = useMemo(() => {
+    if (selectedLocationId === 'all') return departments;
+    return departments.filter((dept: any) => dept.location_id === selectedLocationId);
+  }, [departments, selectedLocationId]);
+
+  // Filter shifts based on selected location and department
   const availableShifts = useMemo(() => {
-    if (selectedDepartmentId === 'all') {
-      return shifts;
+    let filtered = shifts;
+    if (selectedLocationId !== 'all') {
+      filtered = filtered.filter((shift: any) => shift.location_id === selectedLocationId);
     }
-    return shifts.filter((shift: any) => 
-      shift.department_id === selectedDepartmentId || shift.department_id === null
-    );
-  }, [shifts, selectedDepartmentId]);
+    if (selectedDepartmentId !== 'all') {
+      filtered = filtered.filter((shift: any) =>
+        shift.department_id === selectedDepartmentId || shift.department_id === null
+      );
+    }
+    return filtered;
+  }, [shifts, selectedLocationId, selectedDepartmentId]);
+
+  // Reset department when location changes
+  useEffect(() => {
+    if (selectedDepartmentId !== 'all') {
+      const isDeptAvailable = availableDepartments.some((dept: any) => dept.id === selectedDepartmentId);
+      if (!isDeptAvailable) {
+        setSelectedDepartmentId('all');
+      }
+    }
+  }, [selectedLocationId, availableDepartments, selectedDepartmentId]);
 
   // Reset shift selection when department changes if current shift is not available
   useEffect(() => {
@@ -151,7 +174,7 @@ export default function Reports() {
             <CardTitle>Report Filters</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Date Range</label>
                 <Select value={dateRange} onValueChange={setDateRange}>
@@ -167,6 +190,23 @@ export default function Reports() {
               </div>
 
               <div>
+                <label className="text-sm font-medium mb-2 block">Location</label>
+                <Select value={selectedLocationId} onValueChange={setSelectedLocationId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Locations</SelectItem>
+                    {locations.map((loc: any) => (
+                      <SelectItem key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <label className="text-sm font-medium mb-2 block">Department</label>
                 <Select value={selectedDepartmentId} onValueChange={setSelectedDepartmentId}>
                   <SelectTrigger>
@@ -174,7 +214,7 @@ export default function Reports() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map((dept: any) => (
+                    {availableDepartments.map((dept: any) => (
                       <SelectItem key={dept.id} value={dept.id}>
                         {dept.name} {dept.locations?.name && `(${dept.locations.name})`}
                       </SelectItem>
