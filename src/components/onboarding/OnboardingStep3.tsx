@@ -155,7 +155,8 @@ function TemplateCard({
       <Checkbox checked={selected} className="mt-0.5 pointer-events-none" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium leading-tight">{template.title}</p>
-        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{template.description}</p>
+        <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
           <span className="flex items-center gap-0.5">
             <Clock className="w-3 h-3" />
             {template.estMinutes}m
@@ -165,6 +166,9 @@ function TemplateCard({
             <Star className="w-3 h-3" />
             {template.criticality}
           </span>
+          {template.requiredProof !== "none" && (
+            <span className="text-primary/70 capitalize">{template.requiredProof}</span>
+          )}
         </div>
       </div>
     </button>
