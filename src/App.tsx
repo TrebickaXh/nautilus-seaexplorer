@@ -16,6 +16,7 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Kiosk from "./pages/Kiosk";
 import Reports from "./pages/Reports";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
           <Route path="/kiosk" element={<Kiosk />} />
           <Route path="/task-routines" element={<AppLayout><TaskRoutines /></AppLayout>} />
