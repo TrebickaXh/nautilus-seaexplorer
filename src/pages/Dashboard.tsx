@@ -13,9 +13,11 @@ import {
   useChronicOverdue,
   useExceptions,
   useDashboardRealtime,
+  useUrgentTasks,
 } from "@/hooks/useDashboardData";
 import TodayHealthCard from "@/components/dashboard/TodayHealthCard";
 import ShiftInProgressCard from "@/components/dashboard/ShiftInProgressCard";
+import NeedsAttentionSection from "@/components/dashboard/NeedsAttentionSection";
 import {
   ListTodo,
   Calendar,
@@ -39,6 +41,7 @@ export default function Dashboard() {
   const { data: recentCompletions } = useRecentCompletions(orgId);
   const { data: chronicOverdue } = useChronicOverdue(orgId);
   const { data: exceptions } = useExceptions(orgId);
+  const { data: urgentTasks } = useUrgentTasks(orgId, timezone);
 
   useDashboardRealtime(orgId);
 
@@ -81,6 +84,9 @@ export default function Dashboard() {
               {orgId && <ShiftInProgressCard orgId={orgId} timezone={timezone} />}
             </div>
           </div>
+
+          {/* Needs Attention */}
+          {orgId && <NeedsAttentionSection tasks={urgentTasks ?? []} orgId={orgId} />}
 
           {/* Main Content Area */}
           <div className="grid md:grid-cols-3 gap-6">
