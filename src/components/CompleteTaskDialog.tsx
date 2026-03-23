@@ -260,10 +260,11 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
           </div>
           )}
 
-          {/* Notes */}
+          {/* Notes — only show when note proof is needed */}
+          {(requiresNote) && (
           <div className="space-y-2">
             <Label htmlFor="note">
-              Notes {requiresNote && <span className="text-destructive">*</span>}
+              Notes <span className="text-destructive">*</span>
             </Label>
             <Textarea
               id="note"
@@ -277,6 +278,7 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
               {note.length}/1000
             </p>
           </div>
+          )}
         </div>
 
         <DialogFooter className="gap-2">
