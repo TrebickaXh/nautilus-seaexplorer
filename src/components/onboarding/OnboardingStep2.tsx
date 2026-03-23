@@ -33,13 +33,13 @@ interface Props {
 }
 
 export default function OnboardingStep2({ data, industry, onChange, onNext, onBack }: Props) {
-  const appliedDefaults = useRef(false);
+  const hasUserEdited = useRef(false);
 
-  // Apply industry defaults once when entering step 2
+  // Apply industry defaults whenever industry changes, unless user has manually edited
   useEffect(() => {
-    if (appliedDefaults.current) return;
+    if (hasUserEdited.current) return;
     const defaults = INDUSTRY_DEFAULTS[industry];
-    if (defaults && !data.departmentName && !data.shiftName) {
+    if (defaults) {
       onChange({
         ...data,
         departmentName: defaults.department,
@@ -49,8 +49,14 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
         shiftDays: defaults.shiftDays,
       });
     }
-    appliedDefaults.current = true;
   }, [industry]);
+
+  const handleFieldChange = (field: keyof Step2Data, value: string) => {
+    if (field === "departmentName" || field === "shiftName") {
+      hasUserEdited.current = true;
+    }
+    onChange({ ...data, [field]: value });
+  };
 
   const toggleDay = (day: number) => {
     const next = data.shiftDays.includes(day)
