@@ -256,8 +256,173 @@ export function useUrgentTasks(orgId: string | undefined, timezone: string = 'UT
 }
 
 
+// ── Location filter for org_admin ───────────────────────────────
 
-export function useDashboardRealtime(orgId: string | undefined) {
+export function useDashboardStatsFiltered(orgId: string | undefined, timezone: string = 'UTC', locationId?: string) {
+  return useQuery({
+    queryKey: ['dashboard', orgId, 'stats-filtered', timezone, locationId || 'all'],
+    queryFn: async () => {
+      const now = new Date();
+      const todayStart = getStartOfDayInTimezone(now, timezone);
+      const todayEnd = getEndOfDayInTimezone(now, timezone);
+      const sevenDaysAgo = getStartOfDayInTimezone(new Date(now.getTime() - 7 * 86400000), timezone);
+
+      let recentQ = supabase.from('task_instances').select('status, completed_at, due_at')
+        .eq('org_id', orgId!).gte('due_at', sevenDaysAgo.toISOString()).lte('due_at', todayEnd.toISOString())
+        .in('status', ['done', 'skipped', 'pending']).limit(1000);
+      let todayQ = supabase.from('task_instances').select('status, completed_at, due_at')
+        .eq('org_id', orgId!).gte('due_at', todayStart.toISOString()).lte('due_at', todayEnd.toISOString()).limit(500);
+
+      if (locationId) { recentQ = recentQ.eq('location_id', locationId); todayQ = todayQ.eq('location_id', locationId); }
+
+      const [recentResult, todayResult] = await Promise.all([recentQ, todayQ]);
+      const recent = recentResult.data || [];
+      const todayTasks = todayResult.data || [];
+      const todayTotal = todayTasks.length;
+      const todayCompleted = todayTasks.filter(t => t.status === 'done');
+      const todayPending = todayTasks.filter(t => t.status === 'pending');
+      const overdue = todayPending.filter(t => new Date(t.due_at) < now);
+      const completionRate = todayTotal > 0 ? Math.round((todayCompleted.length / todayTotal) * 100) : 0;
+      const allCompleted = recent.filter(t => t.status === 'done');
+      const onTime = allCompleted.filter(t => t.completed_at && new Date(t.completed_at) <= new Date(t.due_at));
+      const onTimeRate = allCompleted.length > 0 ? Math.round((onTime.length / allCompleted.length) * 100) : 0;
+
+      const sparkline: { day: string; rate: number }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 86400000);
+        const ds = getStartOfDayInTimezone(d, timezone);
+        const de = getEndOfDayInTimezone(d, timezone);
+        const dayTasks = recent.filter(t => { const due = new Date(t.due_at); return due >= ds && due <= de; });
+        const dayDone = dayTasks.filter(t => t.status === 'done').length;
+        sparkline.push({ day: d.toLocaleDateString('en-US', { timeZone: timezone, weekday: 'short' }), rate: dayTasks.length > 0 ? Math.round((dayDone / dayTasks.length) * 100) : 0 });
+      }
+
+      return { completionRate, onTimeRate, overdueTasks: overdue.length, completedToday: todayCompleted.length, pendingTasks: todayPending.length, totalToday: todayTotal, sparkline };
+    },
+    enabled: !!orgId,
+    staleTime: DASHBOARD_STALE_TIME,
+    refetchOnWindowFocus: true,
+  });
+}
+
+// ── Crew-specific hooks ─────────────────────────────────────────
+
+export function useCrewTodayTasks(orgId: string | undefined, userId: string | undefined, timezone: string = 'UTC') {
+  return useQuery({
+    queryKey: ['dashboard', orgId, 'crew-tasks', userId, timezone],
+    queryFn: async () => {
+      const now = new Date();
+      const todayStart = getStartOfDayInTimezone(now, timezone);
+      const todayEnd = getEndOfDayInTimezone(now, timezone);
+
+      const [shiftsResult, deptsResult] = await Promise.all([
+        supabase.from('user_shifts').select('shift_id').eq('user_id', userId!),
+        supabase.from('user_departments').select('department_id').eq('user_id', userId!),
+      ]);
+      const shiftIds = (shiftsResult.data || []).map(s => s.shift_id);
+      const deptIds = (deptsResult.data || []).map(d => d.department_id);
+
+      if (shiftIds.length === 0 && deptIds.length === 0) return [];
+
+      let query = supabase.from('task_instances')
+        .select(`id, due_at, status, urgency_score, window_end, completed_at, denormalized_data, task_routines!routine_id(title, required_proof), departments(name), areas(name)`)
+        .eq('org_id', orgId!)
+        .gte('due_at', todayStart.toISOString())
+        .lte('due_at', todayEnd.toISOString())
+        .order('due_at', { ascending: true })
+        .limit(50);
+
+      if (shiftIds.length > 0) { query = query.in('shift_id', shiftIds); }
+      else { query = query.in('department_id', deptIds); }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orgId && !!userId,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useCrewStreak(orgId: string | undefined, userId: string | undefined, timezone: string = 'UTC') {
+  return useQuery({
+    queryKey: ['dashboard', orgId, 'crew-streak', userId],
+    queryFn: async () => {
+      let streak = 0;
+      const now = new Date();
+      const { data: userShifts } = await supabase.from('user_shifts').select('shift_id').eq('user_id', userId!);
+      const shiftIds = (userShifts || []).map(s => s.shift_id);
+      if (shiftIds.length === 0) return 0;
+
+      for (let i = 1; i <= 30; i++) {
+        const d = new Date(now.getTime() - i * 86400000);
+        const dayStart = getStartOfDayInTimezone(d, timezone);
+        const dayEnd = getEndOfDayInTimezone(d, timezone);
+        const { data: tasks } = await supabase.from('task_instances').select('status')
+          .eq('org_id', orgId!).in('shift_id', shiftIds)
+          .gte('due_at', dayStart.toISOString()).lte('due_at', dayEnd.toISOString()).limit(100);
+        if (!tasks || tasks.length === 0) continue;
+        if (tasks.every(t => t.status === 'done')) { streak++; } else { break; }
+      }
+      return streak;
+    },
+    enabled: !!orgId && !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useYesterdayHandoff(orgId: string | undefined, timezone: string = 'UTC', locationId?: string) {
+  return useQuery({
+    queryKey: ['dashboard', orgId, 'yesterday-handoff', locationId],
+    queryFn: async () => {
+      const yesterday = new Date(Date.now() - 86400000);
+      const dayStart = getStartOfDayInTimezone(yesterday, timezone);
+      const dayEnd = getEndOfDayInTimezone(yesterday, timezone);
+
+      let query = supabase.from('task_instances')
+        .select(`id, status, completed_at, due_at, shift_id, task_routines!routine_id(title), shifts(name), completions(user_id, note, profiles!user_id(display_name))`)
+        .eq('org_id', orgId!)
+        .gte('due_at', dayStart.toISOString()).lte('due_at', dayEnd.toISOString()).limit(200);
+
+      if (locationId) { query = query.eq('location_id', locationId); }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      const tasks = data || [];
+      const total = tasks.length;
+      const done = tasks.filter(t => t.status === 'done').length;
+      const skipped = tasks.filter(t => t.status === 'skipped');
+      const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
+
+      const userSet = new Set<string>();
+      const userNames: string[] = [];
+      tasks.forEach((t: any) => {
+        t.completions?.forEach((c: any) => {
+          if (c.profiles?.display_name && !userSet.has(c.user_id)) {
+            userSet.add(c.user_id);
+            userNames.push(c.profiles.display_name);
+          }
+        });
+      });
+
+      const lastShift = tasks.find(t => t.shifts)?.shifts as any;
+      return {
+        total, done,
+        skippedTasks: skipped.map((t: any) => ({ title: t.task_routines?.title || 'Untitled', note: t.completions?.[0]?.note || null })),
+        completionRate,
+        crewNames: userNames.slice(0, 5),
+        shiftName: lastShift?.name || null,
+      };
+    },
+    enabled: !!orgId,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ── Debounced Realtime Invalidation ─────────────────────────────
+
+
   const queryClient = useQueryClient();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
