@@ -91,7 +91,7 @@ export default function Reports() {
   );
 
   // Check authentication
-  useMemo(() => {
+  useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
