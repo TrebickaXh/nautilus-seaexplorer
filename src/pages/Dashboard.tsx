@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useOrgTimezone } from "@/hooks/useOrgTimezone";
 import {
   useCurrentProfile,
   useDashboardStats,
@@ -13,11 +14,12 @@ import {
   useExceptions,
   useDashboardRealtime,
 } from "@/hooks/useDashboardData";
+import TodayHealthCard from "@/components/dashboard/TodayHealthCard";
+import ShiftInProgressCard from "@/components/dashboard/ShiftInProgressCard";
 import {
   ListTodo,
   Calendar,
   Users,
-  TrendingUp,
   AlertCircle,
   CheckCircle2,
   Clock,
@@ -28,21 +30,18 @@ import {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { primaryRole, loading: roleLoading } = useUserRole();
+  const { timezone } = useOrgTimezone();
 
-  // Profile fetch via React Query — no waterfall
   const { data: auth, isLoading: authLoading, error: authError } = useCurrentProfile();
   const orgId = auth?.profile?.org_id;
 
-  // All dashboard queries fire in parallel as soon as orgId is available
-  const { data: stats } = useDashboardStats(orgId);
+  const { data: stats } = useDashboardStats(orgId, timezone);
   const { data: recentCompletions } = useRecentCompletions(orgId);
   const { data: chronicOverdue } = useChronicOverdue(orgId);
   const { data: exceptions } = useExceptions(orgId);
 
-  // Debounced, org-scoped realtime invalidation
   useDashboardRealtime(orgId);
 
-  // Redirect if not authenticated
   if (authError) {
     navigate("/auth");
     return null;
@@ -52,7 +51,11 @@ export default function Dashboard() {
     return <DashboardSkeleton />;
   }
 
-  const s = stats ?? { onTimeRate: 0, overdueTasks: 0, completedToday: 0, pendingTasks: 0 };
+  const s = stats ?? {
+    completionRate: 0, onTimeRate: 0, overdueTasks: 0,
+    completedToday: 0, pendingTasks: 0, totalToday: 0,
+    sparkline: [],
+  };
   const completions = recentCompletions ?? [];
   const chronic = chronicOverdue ?? [];
   const exc = exceptions ?? [];
@@ -63,51 +66,20 @@ export default function Dashboard() {
         <div className="grid gap-6">
           {orgId && <SetupChecklist orgId={orgId} />}
 
-          {/* Stats Overview */}
-          <div className="grid md:grid-cols-4 gap-4">
-            <Card className="shadow-md hover:shadow-ocean transition-smooth">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">On-Time Rate</CardTitle>
-                <TrendingUp className="w-4 h-4 text-success" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-success">{s.onTimeRate}%</div>
-                <p className="text-xs text-muted-foreground mt-1">Last 7 days</p>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-md hover:shadow-ocean transition-smooth">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Overdue Tasks</CardTitle>
-                <AlertCircle className="w-4 h-4 text-destructive" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-destructive">{s.overdueTasks}</div>
-                <p className="text-xs text-muted-foreground mt-1">Requires attention</p>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-md hover:shadow-ocean transition-smooth">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Completed Today</CardTitle>
-                <CheckCircle2 className="w-4 h-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{s.completedToday}</div>
-                <p className="text-xs text-muted-foreground mt-1">Great progress!</p>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-md hover:shadow-ocean transition-smooth">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Pending Tasks</CardTitle>
-                <Clock className="w-4 h-4 text-warning" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-warning">{s.pendingTasks}</div>
-                <p className="text-xs text-muted-foreground mt-1">Next 24 hours</p>
-              </CardContent>
-            </Card>
+          {/* Hero Section */}
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="md:col-span-2">
+              <TodayHealthCard
+                completionRate={s.completionRate}
+                completedToday={s.completedToday}
+                pendingTasks={s.pendingTasks}
+                overdueTasks={s.overdueTasks}
+                sparkline={s.sparkline}
+              />
+            </div>
+            <div>
+              {orgId && <ShiftInProgressCard orgId={orgId} timezone={timezone} />}
+            </div>
           </div>
 
           {/* Main Content Area */}
