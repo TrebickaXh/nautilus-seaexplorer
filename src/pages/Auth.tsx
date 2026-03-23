@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Anchor, Waves } from "lucide-react";
+import { Anchor, Waves, Check, X } from "lucide-react";
 import { z } from "zod";
 
 const authSchema = z.object({
@@ -24,6 +24,30 @@ const authSchema = z.object({
     .max(100, "Display name must be less than 100 characters")
     .optional(),
 });
+
+const passwordRules = [
+  { test: (p: string) => p.length >= 12, label: "At least 12 characters" },
+  { test: (p: string) => /[A-Z]/.test(p), label: "One uppercase letter" },
+  { test: (p: string) => /[a-z]/.test(p), label: "One lowercase letter" },
+  { test: (p: string) => /[0-9]/.test(p), label: "One number" },
+  { test: (p: string) => /[^A-Za-z0-9]/.test(p), label: "One special character" },
+];
+
+function PasswordRequirements({ password }: { password: string }) {
+  return (
+    <ul className="space-y-1 mt-2">
+      {passwordRules.map((rule) => {
+        const passed = rule.test(password);
+        return (
+          <li key={rule.label} className={`flex items-center gap-1.5 text-xs ${passed ? "text-success" : "text-muted-foreground"}`}>
+            {passed ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+            {rule.label}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -196,6 +220,9 @@ export default function Auth() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                {!isLogin && password.length > 0 && (
+                  <PasswordRequirements password={password} />
+                )}
               </div>
 
               {isLogin && (
