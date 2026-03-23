@@ -231,9 +231,9 @@ export default function Dashboard() {
   const { data: exceptions } = useExceptions(primaryRole !== "crew" ? orgId : undefined);
   const { data: urgentTasks } = useUrgentTasks(primaryRole !== "crew" ? orgId : undefined, timezone);
 
-  // Manager-specific
+  // Yesterday handoff — used by manager view AND morning briefing
   const { data: handoff } = useYesterdayHandoff(
-    primaryRole === "location_manager" ? orgId : undefined,
+    primaryRole !== "crew" ? orgId : undefined,
     timezone,
     effectiveLocationId
   );
