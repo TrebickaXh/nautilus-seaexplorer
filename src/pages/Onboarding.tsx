@@ -238,25 +238,3 @@ export default function Onboarding() {
   );
 }
 
-function buildRoutine(
-  template: TaskTemplate,
-  orgId: string,
-  locationId: string,
-  departmentId: string,
-  shiftId: string,
-) {
-  return {
-    org_id: orgId,
-    location_id: locationId,
-    department_id: departmentId,
-    shift_id: shiftId,
-    title: template.title,
-    description: template.description,
-    steps: template.steps,
-    est_minutes: template.estMinutes,
-    criticality: template.criticality,
-    required_proof: template.requiredProof,
-    active: true,
-    recurrence_v2: template.recurrence_v2,
-  };
-}
