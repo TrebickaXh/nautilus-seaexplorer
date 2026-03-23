@@ -75,80 +75,29 @@ export default function Onboarding() {
   const handleFinish = async () => {
     setIsSubmitting(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      // 1. Create organization
-      const { data: org, error: orgError } = await supabase
-        .from("organizations")
-        .insert({
-          name: step1.orgName.trim(),
-          timezone: step1.timezone,
-          settings: { industry: step1.industry },
-        })
-        .select()
-        .single();
-      if (orgError) throw orgError;
-
-      // 2. Update user profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({ org_id: org.id })
-        .eq("id", user.id);
-      if (profileError) throw profileError;
-
-      // 3. Assign org_admin role
-      await supabase.from("user_roles").insert({ user_id: user.id, role: "org_admin" });
-
-      // 4. Create location
-      const { data: location, error: locError } = await supabase
-        .from("locations")
-        .insert({ org_id: org.id, name: step2.locationName.trim() })
-        .select()
-        .single();
-      if (locError) throw locError;
-
-      // 5. Create department
-      const { data: department, error: deptError } = await supabase
-        .from("departments")
-        .insert({ location_id: location.id, name: step2.departmentName.trim() })
-        .select()
-        .single();
-      if (deptError) throw deptError;
-
-      // 6. Create shift
-      const { data: shift, error: shiftError } = await supabase
-        .from("shifts")
-        .insert({
-          location_id: location.id,
-          department_id: department.id,
-          name: step2.shiftName.trim(),
-          start_time: step2.shiftStart,
-          end_time: step2.shiftEnd,
-          days_of_week: step2.shiftDays,
-        })
-        .select()
-        .single();
-      if (shiftError) throw shiftError;
-
-      // 7. Create task routines
+      // Build task routine payloads
       const templates = INDUSTRY_TASKS[step1.industry] || [];
       const selectedTemplates = templates.filter((t) =>
         selectedTemplateIds.includes(t.id)
       );
 
-      const routineInserts = [
-        ...selectedTemplates.map((t) => buildRoutine(t, org.id, location.id, department.id, shift.id)),
-        ...customTasks.map((t) => ({
-          org_id: org.id,
-          location_id: location.id,
-          department_id: department.id,
-          shift_id: shift.id,
+      const taskRoutinePayloads = [
+        ...selectedTemplates.map((t) => ({
           title: t.title,
+          description: t.description,
+          steps: t.steps,
           est_minutes: t.estMinutes,
           criticality: t.criticality,
-          required_proof: "none" as const,
-          active: true,
+          required_proof: t.requiredProof,
+          recurrence_v2: t.recurrence_v2,
+        })),
+        ...customTasks.map((t) => ({
+          title: t.title,
+          description: null,
+          steps: [],
+          est_minutes: t.estMinutes,
+          criticality: t.criticality,
+          required_proof: "none",
           recurrence_v2: {
             type: t.frequency === "daily" ? "daily" : "weekly",
             time_slots: [step2.shiftStart],
@@ -157,14 +106,26 @@ export default function Onboarding() {
         })),
       ];
 
-      if (routineInserts.length > 0) {
-        const { error: routineError } = await supabase
-          .from("task_routines")
-          .insert(routineInserts);
-        if (routineError) throw routineError;
-      }
+      // Call the edge function (service role, idempotent, with rollback)
+      const { data, error } = await supabase.functions.invoke("create-organization", {
+        body: {
+          orgName: step1.orgName,
+          timezone: step1.timezone,
+          industry: step1.industry,
+          locationName: step2.locationName,
+          departmentName: step2.departmentName,
+          shiftName: step2.shiftName,
+          shiftStart: step2.shiftStart,
+          shiftEnd: step2.shiftEnd,
+          shiftDays: step2.shiftDays,
+          taskRoutines: taskRoutinePayloads,
+        },
+      });
 
-      // 8. Trigger materialization
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Setup failed");
+
+      // Trigger materialization (separate, non-blocking)
       try {
         await supabase.functions.invoke("materialize-tasks-v2");
       } catch (matError) {
