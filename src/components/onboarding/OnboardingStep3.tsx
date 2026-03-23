@@ -13,6 +13,7 @@ export interface CustomTask {
   frequency: "daily" | "weekly";
   estMinutes: number;
   criticality: number;
+  requiredProof: "none" | "photo" | "note" | "dual";
 }
 
 interface Props {
@@ -41,6 +42,13 @@ export default function OnboardingStep3({
   const templates = INDUSTRY_TASKS[industry] || [];
   const totalTasks = selectedTemplateIds.length + customTasks.length;
   const canFinish = totalTasks > 0;
+
+  const PROOF_LABELS: Record<string, string> = {
+    none: "None",
+    photo: "Photo",
+    note: "Note",
+    dual: "Both",
+  };
 
   return (
     <div className="space-y-8">
@@ -89,6 +97,7 @@ export default function OnboardingStep3({
                 <p className="text-sm font-medium truncate">{task.title}</p>
                 <p className="text-xs text-muted-foreground">
                   {task.frequency} · {task.estMinutes}min · {task.criticality}★
+                  {task.requiredProof !== "none" && ` · ${PROOF_LABELS[task.requiredProof]}`}
                 </p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => onRemoveCustomTask(idx)}>
@@ -180,13 +189,15 @@ function AddCustomTaskForm({ onAdd }: { onAdd: (task: CustomTask) => void }) {
   const [frequency, setFrequency] = useState<"daily" | "weekly">("daily");
   const [estMinutes, setEstMinutes] = useState(15);
   const [criticality, setCriticality] = useState(3);
+  const [requiredProof, setRequiredProof] = useState<"none" | "photo" | "note" | "dual">("none");
 
   const handleAdd = () => {
     if (!title.trim()) return;
-    onAdd({ title: title.trim(), frequency, estMinutes, criticality });
+    onAdd({ title: title.trim(), frequency, estMinutes, criticality, requiredProof });
     setTitle("");
     setEstMinutes(15);
     setCriticality(3);
+    setRequiredProof("none");
   };
 
   return (
@@ -208,7 +219,7 @@ function AddCustomTaskForm({ onAdd }: { onAdd: (task: CustomTask) => void }) {
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="space-y-1">
           <Label className="text-xs">Frequency</Label>
           <Select value={frequency} onValueChange={(v) => setFrequency(v as "daily" | "weekly")}>
@@ -231,6 +242,20 @@ function AddCustomTaskForm({ onAdd }: { onAdd: (task: CustomTask) => void }) {
             onChange={(e) => setEstMinutes(Number(e.target.value) || 15)}
             className="h-9 text-xs"
           />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Proof Type</Label>
+          <Select value={requiredProof} onValueChange={(v) => setRequiredProof(v as "none" | "photo" | "note" | "dual")}>
+            <SelectTrigger className="h-9 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="photo">Photo</SelectItem>
+              <SelectItem value="note">Note</SelectItem>
+              <SelectItem value="dual">Both</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Criticality</Label>
