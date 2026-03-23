@@ -141,7 +141,7 @@ export default function OnboardingStep2({ data, industry, onChange, onNext, onBa
                 id="shiftEnd"
                 type="time"
                 value={data.shiftEnd}
-                onChange={(e) => onChange({ ...data, shiftEnd: e.target.value })}
+                onChange={(e) => handleFieldChange("shiftEnd", e.target.value)}
               />
             </div>
           </div>
