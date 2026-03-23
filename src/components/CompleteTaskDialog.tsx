@@ -200,10 +200,11 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
             </div>
           </div>
 
-          {/* Photo Upload */}
+          {/* Photo Upload — only show when photo proof is needed */}
+          {(requiresPhoto) && (
           <div className="space-y-2">
             <Label htmlFor="photo">
-              Photo {requiresPhoto && <span className="text-destructive">*</span>}
+              Photo <span className="text-destructive">*</span>
             </Label>
             
             {photoPreview ? (
@@ -257,6 +258,7 @@ export function CompleteTaskDialog({ taskId, taskTemplate, open, onClose, onSucc
               </div>
             )}
           </div>
+          )}
 
           {/* Notes */}
           <div className="space-y-2">
