@@ -188,7 +188,7 @@ serve(async (req) => {
   }
 
   try {
-    const { sessionId, message, conversationHistory, restart } = await req.json();
+    const { sessionId, message, conversationHistory, restart, helpMode } = await req.json();
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
