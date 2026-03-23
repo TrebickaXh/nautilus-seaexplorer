@@ -25,7 +25,30 @@ const authSchema = z.object({
     .optional(),
 });
 
-export default function Auth() {
+const passwordRules = [
+  { test: (p: string) => p.length >= 12, label: "At least 12 characters" },
+  { test: (p: string) => /[A-Z]/.test(p), label: "One uppercase letter" },
+  { test: (p: string) => /[a-z]/.test(p), label: "One lowercase letter" },
+  { test: (p: string) => /[0-9]/.test(p), label: "One number" },
+  { test: (p: string) => /[^A-Za-z0-9]/.test(p), label: "One special character" },
+];
+
+function PasswordRequirements({ password }: { password: string }) {
+  return (
+    <ul className="space-y-1 mt-2">
+      {passwordRules.map((rule) => {
+        const passed = rule.test(password);
+        return (
+          <li key={rule.label} className={`flex items-center gap-1.5 text-xs ${passed ? "text-success" : "text-muted-foreground"}`}>
+            {passed ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+            {rule.label}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
