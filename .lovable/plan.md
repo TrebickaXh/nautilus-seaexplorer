@@ -1,28 +1,35 @@
 
 
-## Fix: CSV Template Download Not Working
+## Fix: Kiosk Not Showing Overnight/Cross-Midnight Shifts
 
-**Problem**: The `downloadTemplate()` function in `BulkInviteDialog.tsx` creates a temporary `<a>` element and clicks it, but never appends it to the DOM. Some browsers (especially within sandboxed iframes like the Lovable preview) require the element to be in the document for the click to trigger a download.
-
-**Solution**: Append the anchor element to `document.body` before clicking, then remove it afterward.
-
-**File: `src/components/BulkInviteDialog.tsx`** — Update the `downloadTemplate` function:
+### Root Cause
+In `src/pages/Kiosk.tsx` line 144-146, the active shift filter uses a naive time comparison that fails when `end_time <= start_time` (shift crosses midnight):
 
 ```typescript
-function downloadTemplate() {
-  const headerComment = "# Valid roles: crew, location_manager, org_admin. Phone and employee_id are optional.";
-  const csv = [headerComment, TEMPLATE_HEADERS.join(","), ...TEMPLATE_EXAMPLE].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "team_invite_template.csv";
-  document.body.appendChild(a);  // <-- Must be in DOM for sandboxed contexts
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+const isTimeInRange = currentTime >= shift.start_time.slice(0, 5) 
+                   && currentTime <= shift.end_time.slice(0, 5);
 ```
 
-This is a one-line fix (plus the cleanup line). No other files need to change.
+Your "Debugging" shift is 14:00-00:00. At 17:05, `"17:05" <= "00:00"` evaluates to false, so it's excluded.
+
+The dashboard's `ShiftInProgressCard` already handles this correctly with an overnight check.
+
+### Fix
+**File: `src/pages/Kiosk.tsx`** (lines 144-147)
+
+Replace the time range check with overnight-aware logic:
+
+```typescript
+const currentActiveShifts = shifts?.filter((shift: Shift) => {
+  const start = shift.start_time.slice(0, 5);
+  const end = shift.end_time.slice(0, 5);
+  if (end <= start) {
+    // Overnight shift: active if current time is after start OR before end
+    return currentTime >= start || currentTime < end;
+  }
+  return currentTime >= start && currentTime < end;
+}) || [];
+```
+
+This mirrors the exact logic already used in `ShiftInProgressCard.tsx`. One file changed, ~5 lines replaced.
 
