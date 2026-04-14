@@ -142,8 +142,13 @@ export default function Kiosk() {
 
       // Find ALL active shifts based on org timezone
       const currentActiveShifts = shifts?.filter((shift: Shift) => {
-        const isTimeInRange = currentTime >= shift.start_time.slice(0, 5) && currentTime <= shift.end_time.slice(0, 5);
-        return isTimeInRange;
+        const start = shift.start_time.slice(0, 5);
+        const end = shift.end_time.slice(0, 5);
+        if (end <= start) {
+          // Overnight shift: active if current time is after start OR before end
+          return currentTime >= start || currentTime < end;
+        }
+        return currentTime >= start && currentTime < end;
       }) || [];
 
       console.log(`Found ${currentActiveShifts.length} active shifts (TZ: ${orgTimezone}):`, currentActiveShifts.map(s => s.name));
