@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ShiftForm } from '@/components/ShiftForm';
@@ -215,6 +215,9 @@ export default function Shifts() {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>{editingId ? 'Edit Shift' : 'Create Shift'}</DialogTitle>
+              <DialogDescription>
+                {editingId ? 'Update shift details below.' : 'Configure the new shift details.'}
+              </DialogDescription>
             </DialogHeader>
             <ShiftForm
               shiftId={editingId}

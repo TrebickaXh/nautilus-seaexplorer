@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,6 +96,9 @@ export function LocationForm({ location, open, onClose, onSuccess }: LocationFor
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{location ? 'Edit Location' : 'Create Location'}</DialogTitle>
+          <DialogDescription>
+            {location ? 'Update the location details below.' : 'Fill in the details to create a new location.'}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
