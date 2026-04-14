@@ -32,7 +32,7 @@ export function useCurrentProfile() {
 
 // ── Dashboard Queries ───────────────────────────────────────────
 
-export function useDashboardStats(orgId: string | undefined, timezone: string = 'UTC') {
+
   return useQuery({
     queryKey: ['dashboard', orgId, 'stats', timezone],
     queryFn: async () => {
