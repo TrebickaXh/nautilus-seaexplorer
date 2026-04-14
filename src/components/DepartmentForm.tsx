@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -84,6 +85,9 @@ export function DepartmentForm({ locationId, department, open, onSuccess, onCanc
           <DialogTitle>
             {department ? 'Edit Department' : 'Create Department'}
           </DialogTitle>
+          <DialogDescription>
+            {department ? 'Update the department details below.' : 'Fill in the details to create a new department.'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

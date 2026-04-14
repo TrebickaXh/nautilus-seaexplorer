@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardSkeleton } from "@/components/PageSkeleton";
 import SetupChecklist from "@/components/SetupChecklist";
 import { useNavigate } from "react-router-dom";
@@ -10,7 +10,6 @@ import { useOrgTimezone } from "@/hooks/useOrgTimezone";
 import { useLocations } from "@/hooks/useReportData";
 import {
   useCurrentProfile,
-  useDashboardStats,
   useDashboardStatsFiltered,
   useRecentCompletions,
   useChronicOverdue,
@@ -244,12 +243,11 @@ export default function Dashboard() {
 
   useDashboardRealtime(orgId);
 
-  if (authError) {
-    navigate("/auth");
-    return null;
-  }
+  useEffect(() => {
+    if (authError) navigate("/auth");
+  }, [authError, navigate]);
 
-  if (roleLoading || authLoading) {
+  if (authError || roleLoading || authLoading) {
     return <DashboardSkeleton />;
   }
 

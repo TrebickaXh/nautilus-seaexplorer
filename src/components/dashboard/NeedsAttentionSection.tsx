@@ -182,17 +182,17 @@ export default function NeedsAttentionSection({ tasks, orgId }: NeedsAttentionPr
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-8 text-xs"
+                      className="h-11 text-sm min-w-[44px]"
                       onClick={() => navigate(`/kiosk?task=${task.id}`)}
                     >
-                      <ExternalLink className="w-3 h-3 mr-1" />
+                      <ExternalLink className="w-3.5 h-3.5 mr-1" />
                       Kiosk
                     </Button>
                     {!isSkipping && (
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-8 text-xs text-warning hover:text-warning"
+                        className="h-11 text-sm text-warning hover:text-warning min-w-[44px]"
                         onClick={() => setSkippingId(task.id)}
                       >
                         Skip
@@ -202,10 +202,10 @@ export default function NeedsAttentionSection({ tasks, orgId }: NeedsAttentionPr
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-8 text-xs"
+                        className="h-11 text-sm min-w-[44px]"
                         onClick={() => { setSkippingId(null); setSkipReason(""); }}
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-4 h-4" />
                       </Button>
                     )}
                   </div>
