@@ -61,7 +61,16 @@ export default function TaskInstances() {
   useEffect(() => {
     const fetchOrgId = async () => {
       const { data } = await supabase.rpc('get_user_org_id');
-      if (data) setOrgId(data);
+      if (data) {
+        setOrgId(data);
+        // Fetch departments and locations for filters
+        const [deptRes, locRes] = await Promise.all([
+          supabase.from('departments').select('id, name').is('archived_at', null).order('name'),
+          supabase.from('locations').select('id, name').is('archived_at', null).order('name'),
+        ]);
+        setDepartments(deptRes.data || []);
+        setLocations(locRes.data || []);
+      }
     };
     fetchOrgId();
   }, []);
@@ -85,7 +94,7 @@ export default function TaskInstances() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [statusFilter, timeRangeFilter, orgTimezone, orgId]);
+  }, [statusFilter, timeRangeFilter, orgTimezone, orgId, departmentFilter, locationFilter]);
 
   const loadTasks = async () => {
     setLoading(true);
