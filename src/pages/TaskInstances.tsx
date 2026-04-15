@@ -43,6 +43,13 @@ export default function TaskInstances() {
   const [refreshingUrgency, setRefreshingUrgency] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // New filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+
   useEffect(() => {
     if (!roleLoading && !isAdmin()) {
       navigate('/dashboard');
