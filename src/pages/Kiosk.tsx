@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Wifi, WifiOff, ArrowLeft, CheckCircle2, Clock, CalendarIcon, Filter, Building2 } from 'lucide-react';
+import { Wifi, WifiOff, ArrowLeft, CheckCircle2, Clock, CalendarIcon, Filter, Building2, Camera, Upload, X, Loader2, SkipForward, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useOrgTimezone, getStartOfDayInTimezone, getEndOfDayInTimezone, getCurrentTimeInTimezone, getDayOfWeekInTimezone } from '@/hooks/useOrgTimezone';
+import { KioskDebugPanel } from '@/components/KioskDebugPanel';
 
 interface Shift {
   id: string;
