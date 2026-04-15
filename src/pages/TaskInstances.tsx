@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { PageSkeleton } from '@/components/PageSkeleton';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,6 +6,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useOrgTimezone, getStartOfDayInTimezone, getEndOfDayInTimezone } from '@/hooks/useOrgTimezone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TaskInstanceCard } from '@/components/TaskInstanceCard';
 import { TaskInstanceListItem } from '@/components/TaskInstanceListItem';
@@ -13,7 +14,7 @@ import { TaskInstanceDetails } from '@/components/TaskInstanceDetails';
 import { SkipTaskDialog } from '@/components/SkipTaskDialog';
 import { CompleteTaskDialog } from '@/components/CompleteTaskDialog';
 import { OneOffTaskDialog } from '@/components/OneOffTaskDialog';
-import { ArrowLeft, Plus, RefreshCw, LayoutGrid, List } from 'lucide-react';
+import { ArrowLeft, Plus, RefreshCw, LayoutGrid, List, Search } from 'lucide-react';
 import { addDays } from 'date-fns';
 import { toast } from 'sonner';
 
