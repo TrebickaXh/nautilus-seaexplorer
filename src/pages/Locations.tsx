@@ -51,20 +51,44 @@ export default function Locations() {
     }
   }, [roleLoading, isAdmin, navigate]);
 
+  const [orgId, setOrgId] = useState<string | null>(null);
+
   useEffect(() => {
+    const fetchOrgId = async () => {
+      const { data } = await supabase.rpc('get_user_org_id');
+      if (data) setOrgId(data);
+    };
+    fetchOrgId();
+  }, []);
+
+  useEffect(() => {
+    if (!orgId) return;
     loadLocations();
 
     const channel = supabase
       .channel('locations-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' }, loadLocations)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'departments' }, loadLocations)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'areas' }, loadLocations)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'locations',
+        filter: `org_id=eq.${orgId}`,
+      }, loadLocations)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'departments',
+      }, loadLocations)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'areas',
+      }, loadLocations)
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [orgId]);
 
   const loadLocations = async () => {
     setLoading(true);

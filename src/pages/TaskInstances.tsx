@@ -48,12 +48,28 @@ export default function TaskInstances() {
     }
   }, [roleLoading, isAdmin, navigate]);
 
+  const [orgId, setOrgId] = useState<string | null>(null);
+
   useEffect(() => {
+    const fetchOrgId = async () => {
+      const { data } = await supabase.rpc('get_user_org_id');
+      if (data) setOrgId(data);
+    };
+    fetchOrgId();
+  }, []);
+
+  useEffect(() => {
+    if (!orgId) return;
     loadTasks();
 
     const channel = supabase
       .channel('task-instances-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_instances' }, () => {
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'task_instances',
+        filter: `org_id=eq.${orgId}`,
+      }, () => {
         loadTasks();
       })
       .subscribe();
@@ -61,7 +77,7 @@ export default function TaskInstances() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [statusFilter, timeRangeFilter, orgTimezone]);
+  }, [statusFilter, timeRangeFilter, orgTimezone, orgId]);
 
   const loadTasks = async () => {
     setLoading(true);
