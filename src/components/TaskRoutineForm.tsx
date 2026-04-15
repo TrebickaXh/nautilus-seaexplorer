@@ -21,7 +21,7 @@ const routineSchema = z.object({
   location_id: z.string().min(1, "Location is required"),
   department_id: z.string().min(1, "Department is required"),
   shift_id: z.string().min(1, "Shift is required"),
-  area_ids: z.array(z.string()).min(1, "At least one area is required"),
+  area_ids: z.array(z.string()).optional().default([]),
 });
 
 interface TaskRoutineFormProps {

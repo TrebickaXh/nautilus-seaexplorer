@@ -16,7 +16,7 @@ const formSchema = z.object({
   location_id: z.string().min(1, 'Location is required'),
   department_id: z.string().min(1, 'Department is required'),
   shift_id: z.string().min(1, 'Shift is required'),
-  area_id: z.string().min(1, 'Area is required'),
+  area_id: z.string().optional(),
   due_date: z.string().min(1, 'Due date is required'),
   due_time: z.string().min(1, 'Due time is required'),
   assigned_role: z.enum(['crew', 'location_manager', 'org_admin']).optional(),
