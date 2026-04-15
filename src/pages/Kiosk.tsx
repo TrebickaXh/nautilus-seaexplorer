@@ -35,6 +35,7 @@ interface TaskInstance {
   due_at: string;
   urgency_score: number;
   denormalized_data: any;
+  required_proof: 'none' | 'note' | 'photo' | 'dual' | null;
   areas?: { name: string; id: string };
   departments?: { name: string; id: string };
   task_routines?: { title: string; description: string };
