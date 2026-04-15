@@ -64,6 +64,7 @@ export default function Kiosk() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const showDebug = searchParams.get('debug') === 'true';
+  const { timezone: orgTimezone, loading: tzLoading } = useOrgTimezone();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [activeShifts, setActiveShifts] = useState<Shift[]>([]);
   const [allShifts, setAllShifts] = useState<Shift[]>([]);
@@ -77,6 +78,17 @@ export default function Kiosk() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
   const [pin, setPin] = useState('');
+  
+  // Skip flow state
+  const [dialogMode, setDialogMode] = useState<'complete' | 'skip'>('complete');
+  const [skipReason, setSkipReason] = useState('');
+  const [skipReasonCategory, setSkipReasonCategory] = useState('');
+  
+  // Proof collection state
+  const [completionNote, setCompletionNote] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
