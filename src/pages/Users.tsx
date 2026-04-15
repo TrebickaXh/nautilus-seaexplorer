@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -26,7 +27,7 @@ import { BulkInviteDialog } from '@/components/BulkInviteDialog';
 import { SetPinDialog } from '@/components/SetPinDialog';
 import { UserDepartmentAssignment } from '@/components/UserDepartmentAssignment';
 import { UserShiftAssignment } from '@/components/UserShiftAssignment';
-import { ArrowLeft, UserPlus, Shield, Users as UsersIcon, User, KeyRound, Building2, Clock, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, UserPlus, Shield, Users as UsersIcon, User, KeyRound, Building2, Clock, FileSpreadsheet, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface UserProfile {
@@ -58,6 +59,10 @@ export default function Users() {
   const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
   const [orgId, setOrgId] = useState<string>('');
 
+  // Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+
   useEffect(() => {
     if (!roleLoading) {
       if (!isAdmin()) {
@@ -69,13 +74,25 @@ export default function Users() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roleLoading]);
 
+  const filteredUsers = useMemo(() => {
+    return users.filter((user) => {
+      const matchesSearch = !searchQuery ||
+        user.display_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const userRole = user.user_roles?.[0]?.role || 'crew';
+      const matchesRole = roleFilter === 'all' || userRole === roleFilter;
+
+      return matchesSearch && matchesRole;
+    });
+  }, [users, searchQuery, roleFilter]);
+
   const loadUsers = async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get current user's org_id (use profiles table directly)
       const { data: profile } = await supabase
         .from('profiles')
         .select('org_id')
@@ -85,7 +102,6 @@ export default function Users() {
       if (!profile) return;
       setOrgId(profile.org_id);
 
-      // Get all users in the same org with their roles (use profiles table directly)
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -106,7 +122,6 @@ export default function Users() {
 
       if (error) throw error;
 
-      // Batch fetch all department and shift data in parallel
       const userIds = (data || []).map(u => u.id);
       
       const [deptAssignments, shiftAssignments] = await Promise.all([
@@ -120,11 +135,9 @@ export default function Users() {
           .in('user_id', userIds)
       ]);
 
-      // Build lookup maps for O(1) access
       const deptMap = new Map<string, { primary: string | null; count: number }>();
       const shiftCountMap = new Map<string, number>();
 
-      // Process departments
       if (deptAssignments.data) {
         deptAssignments.data.forEach((dept) => {
           const existing = deptMap.get(dept.user_id) || { primary: null, count: 0 };
@@ -136,14 +149,12 @@ export default function Users() {
         });
       }
 
-      // Process shifts
       if (shiftAssignments.data) {
         shiftAssignments.data.forEach((shift) => {
           shiftCountMap.set(shift.user_id, (shiftCountMap.get(shift.user_id) || 0) + 1);
         });
       }
 
-      // Combine data efficiently
       const usersWithDepartments = (data || []).map((user) => {
         const deptInfo = deptMap.get(user.id) || { primary: null, count: 0 };
         return {
@@ -169,10 +180,8 @@ export default function Users() {
 
   const updateUserRole = async (userId: string, newRole: 'org_admin' | 'location_manager' | 'crew') => {
     try {
-      // Delete existing role
       await supabase.from('user_roles').delete().eq('user_id', userId);
 
-      // Insert new role
       const { error } = await supabase
         .from('user_roles')
         .insert([{ user_id: userId, role: newRole }]);
@@ -197,7 +206,6 @@ export default function Users() {
 
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      // Note: UPDATE operations must use the profiles table directly, not the view
       const { error } = await supabase
         .from('profiles')
         .update({ active: !currentStatus })
@@ -300,6 +308,31 @@ export default function Users() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Filters */}
+            <div className="flex flex-wrap items-center gap-4 mb-4">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="org_admin">Admin</SelectItem>
+                  <SelectItem value="location_manager">Manager</SelectItem>
+                  <SelectItem value="crew">Crew</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Table>
               <TableHeader>
                 <TableRow>
@@ -315,7 +348,7 @@ export default function Users() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.display_name}</TableCell>
                     <TableCell className="text-muted-foreground">{user.email || 'N/A'}</TableCell>
@@ -408,6 +441,15 @@ export default function Users() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {filteredUsers.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      {searchQuery || roleFilter !== 'all'
+                        ? 'No users match your filters.'
+                        : 'No team members found.'}
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

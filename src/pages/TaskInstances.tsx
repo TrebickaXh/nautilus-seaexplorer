@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { PageSkeleton } from '@/components/PageSkeleton';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,6 +6,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useOrgTimezone, getStartOfDayInTimezone, getEndOfDayInTimezone } from '@/hooks/useOrgTimezone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TaskInstanceCard } from '@/components/TaskInstanceCard';
 import { TaskInstanceListItem } from '@/components/TaskInstanceListItem';
@@ -13,7 +14,7 @@ import { TaskInstanceDetails } from '@/components/TaskInstanceDetails';
 import { SkipTaskDialog } from '@/components/SkipTaskDialog';
 import { CompleteTaskDialog } from '@/components/CompleteTaskDialog';
 import { OneOffTaskDialog } from '@/components/OneOffTaskDialog';
-import { ArrowLeft, Plus, RefreshCw, LayoutGrid, List } from 'lucide-react';
+import { ArrowLeft, Plus, RefreshCw, LayoutGrid, List, Search } from 'lucide-react';
 import { addDays } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -42,6 +43,13 @@ export default function TaskInstances() {
   const [refreshingUrgency, setRefreshingUrgency] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // New filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [locationFilter, setLocationFilter] = useState('all');
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
+
   useEffect(() => {
     if (!roleLoading && !isAdmin()) {
       navigate('/dashboard');
@@ -53,7 +61,16 @@ export default function TaskInstances() {
   useEffect(() => {
     const fetchOrgId = async () => {
       const { data } = await supabase.rpc('get_user_org_id');
-      if (data) setOrgId(data);
+      if (data) {
+        setOrgId(data);
+        // Fetch departments and locations for filters
+        const [deptRes, locRes] = await Promise.all([
+          supabase.from('departments').select('id, name').is('archived_at', null).order('name'),
+          supabase.from('locations').select('id, name').is('archived_at', null).order('name'),
+        ]);
+        setDepartments(deptRes.data || []);
+        setLocations(locRes.data || []);
+      }
     };
     fetchOrgId();
   }, []);
@@ -77,7 +94,7 @@ export default function TaskInstances() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [statusFilter, timeRangeFilter, orgTimezone, orgId]);
+  }, [statusFilter, timeRangeFilter, orgTimezone, orgId, departmentFilter, locationFilter]);
 
   const loadTasks = async () => {
     setLoading(true);
@@ -92,7 +109,22 @@ export default function TaskInstances() {
         shifts(name),
         completions(id, created_at, note, profiles!user_id(display_name))
       `)
-      .limit(500); // Add limit to prevent loading too much data
+      .limit(500);
+
+    // Explicit org_id scoping
+    if (orgId) {
+      query = query.eq('org_id', orgId);
+    }
+
+    // Apply department filter
+    if (departmentFilter !== 'all') {
+      query = query.eq('department_id', departmentFilter);
+    }
+
+    // Apply location filter
+    if (locationFilter !== 'all') {
+      query = query.eq('location_id', locationFilter);
+    }
 
     // Apply time range filter using org timezone
     const now = new Date();
@@ -101,7 +133,6 @@ export default function TaskInstances() {
         query = query.lt('due_at', now.toISOString()).eq('status', 'pending');
         break;
       case 'today': {
-        // Use org timezone for "today" calculation
         const startOfToday = getStartOfDayInTimezone(now, orgTimezone);
         const endOfToday = getEndOfDayInTimezone(now, orgTimezone);
         query = query.gte('due_at', startOfToday.toISOString()).lte('due_at', endOfToday.toISOString());
@@ -114,11 +145,10 @@ export default function TaskInstances() {
         query = query.gte('due_at', now.toISOString()).lte('due_at', addDays(now, 30).toISOString());
         break;
       case 'all':
-        // No date filter, but still apply limit
         break;
     }
 
-    // Apply status filter (unless overdue is selected, which forces pending)
+    // Apply status filter
     if (statusFilter !== 'all' && timeRangeFilter !== 'overdue') {
       query = query.eq('status', statusFilter as 'pending' | 'done' | 'skipped');
     }
@@ -135,6 +165,16 @@ export default function TaskInstances() {
     
     setLoading(false);
   };
+
+  // Client-side search filter
+  const filteredTasks = useMemo(() => {
+    if (!searchQuery) return tasks;
+    const q = searchQuery.toLowerCase();
+    return tasks.filter((task) => {
+      const title = task.task_routines?.title || task.denormalized_data?.title || '';
+      return title.toLowerCase().includes(q);
+    });
+  }, [tasks, searchQuery]);
 
   const handleViewDetails = (task: any) => {
     setSelectedTask(task);
@@ -188,7 +228,7 @@ export default function TaskInstances() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -213,6 +253,44 @@ export default function TaskInstances() {
           </div>
         </div>
 
+        {/* Filters row 1: search + dropdowns */}
+        <div className="mb-4 flex flex-wrap gap-4 items-center">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by task title..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Locations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Locations</SelectItem>
+              {locations.map((loc) => (
+                <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Departments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Departments</SelectItem>
+              {departments.map((dept) => (
+                <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Filters row 2: time range + status + view mode */}
         <div className="mb-6 flex gap-4 items-center justify-between">
           <div className="flex gap-4">
             <Select value={timeRangeFilter} onValueChange={setTimeRangeFilter}>
@@ -270,13 +348,15 @@ export default function TaskInstances() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {tasks.length === 0 ? (
+            {filteredTasks.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
-                No task instances found. Create schedules to generate tasks automatically.
+                {searchQuery || departmentFilter !== 'all' || locationFilter !== 'all'
+                  ? 'No tasks match your filters.'
+                  : 'No task instances found. Create schedules to generate tasks automatically.'}
               </p>
             ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {tasks.map(task => (
+                {filteredTasks.map(task => (
                   <TaskInstanceCard
                     key={task.id}
                     task={task}
@@ -290,7 +370,7 @@ export default function TaskInstances() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {tasks.map(task => (
+                {filteredTasks.map(task => (
                   <TaskInstanceListItem
                     key={task.id}
                     task={task}
