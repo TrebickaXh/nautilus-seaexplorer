@@ -131,7 +131,7 @@ export default function Auth() {
         });
         if (error) throw error;
         toast.success("Welcome back!");
-        navigate("/");
+        navigate("/dashboard");
       } else {
         const { data: signUpData, error } = await supabase.auth.signUp({
           email: email.trim(),

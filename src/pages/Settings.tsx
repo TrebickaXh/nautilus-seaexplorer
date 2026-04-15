@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -78,10 +78,11 @@ export default function Settings() {
   });
 
   // Redirect if not admin
-  if (!roleLoading && primaryRole !== 'org_admin') {
-    navigate('/dashboard');
-    return null;
-  }
+  useEffect(() => {
+    if (!roleLoading && primaryRole !== 'org_admin') {
+      navigate('/dashboard');
+    }
+  }, [roleLoading, primaryRole, navigate]);
 
   if (isLoading || roleLoading) {
     return (
