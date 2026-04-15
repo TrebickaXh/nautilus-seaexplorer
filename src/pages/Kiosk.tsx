@@ -644,6 +644,15 @@ export default function Kiosk() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
+        {/* Debug Panel */}
+        {showDebug && (
+          <KioskDebugPanel
+            orgTimezone={orgTimezone}
+            allShifts={allShifts}
+            activeShiftIds={activeShifts.map(s => s.id)}
+          />
+        )}
+
         <div className="mb-6">
           <h2 className="text-2xl font-bold mb-2">Pending Tasks</h2>
           <p className="text-muted-foreground">
@@ -707,24 +716,45 @@ export default function Kiosk() {
         )}
       </main>
 
-      <Dialog open={!!selectedTask} onOpenChange={() => setSelectedTask(null)}>
-        <DialogContent className="max-w-md">
+      {/* Task Completion / Skip Dialog */}
+      <Dialog open={!!selectedTask} onOpenChange={() => resetDialogState()}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Complete Task</DialogTitle>
-            <DialogDescription>Select a team member and enter their PIN to verify completion.</DialogDescription>
+            <DialogTitle>
+              {dialogMode === 'skip' ? (
+                <span className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  Skip Task
+                </span>
+              ) : 'Complete Task'}
+            </DialogTitle>
+            <DialogDescription>
+              {dialogMode === 'skip' 
+                ? 'Provide a reason for skipping this task.'
+                : 'Select a team member and enter their PIN to verify completion.'}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div>
-              <h4 className="font-semibold mb-2">{selectedTask?.task_routines?.title}</h4>
-              <p className="text-sm text-muted-foreground">
-                {selectedTask?.task_routines?.description}
-              </p>
+            {/* Task info */}
+            <div className="bg-muted p-3 rounded-lg">
+              <h4 className="font-semibold">{selectedTask?.task_routines?.title}</h4>
+              {selectedTask?.task_routines?.description && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  {selectedTask.task_routines.description}
+                </p>
+              )}
+              {getRequiredProof() !== 'none' && dialogMode === 'complete' && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Required proof: {getRequiredProof()}
+                </p>
+              )}
             </div>
 
+            {/* Team member selection */}
             <div>
               <label className="text-sm font-medium mb-2 block">
-                Who completed this task?
+                Who is {dialogMode === 'skip' ? 'skipping' : 'completing'} this task?
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {teamMembers.map((member) => (
@@ -732,7 +762,8 @@ export default function Kiosk() {
                     key={member.id}
                     variant={selectedMember === member.id ? 'default' : 'outline'}
                     onClick={() => handleMemberSelect(member.id)}
-                    className="relative"
+                    className="relative min-h-[44px]"
+                    disabled={submitting}
                   >
                     {member.display_name}
                     {member.is_admin && (
@@ -745,11 +776,12 @@ export default function Kiosk() {
               </div>
             </div>
 
+            {/* PIN input */}
             {selectedMember && (
               <div>
-                <label className="text-sm font-medium mb-2 block">
+                <Label className="text-sm font-medium mb-2 block">
                   Enter PIN to verify
-                </label>
+                </Label>
                 <Input
                   type="password"
                   inputMode="numeric"
@@ -758,25 +790,182 @@ export default function Kiosk() {
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                   placeholder="Enter PIN"
                   className="text-center text-2xl tracking-widest"
+                  disabled={submitting}
                 />
               </div>
             )}
 
+            {/* === COMPLETE MODE: Proof collection === */}
+            {dialogMode === 'complete' && selectedMember && pin.length >= 4 && (() => {
+              const proof = getRequiredProof();
+              const showNote = proof === 'note' || proof === 'dual';
+              const showPhoto = proof === 'photo' || proof === 'dual';
+              
+              if (!showNote && !showPhoto) return null;
+              
+              return (
+                <div className="space-y-4 border-t pt-4">
+                  {showNote && (
+                    <div className="space-y-2">
+                      <Label>
+                        Completion note <span className="text-destructive">*</span>
+                      </Label>
+                      <Textarea
+                        value={completionNote}
+                        onChange={(e) => setCompletionNote(e.target.value)}
+                        placeholder="Describe what was done..."
+                        rows={3}
+                        maxLength={1000}
+                        disabled={submitting}
+                      />
+                      <p className="text-xs text-muted-foreground text-right">{completionNote.length}/1000</p>
+                    </div>
+                  )}
+                  {showPhoto && (
+                    <div className="space-y-2">
+                      <Label>
+                        Photo proof <span className="text-destructive">*</span>
+                      </Label>
+                      {photoPreview ? (
+                        <div className="relative">
+                          <img 
+                            src={photoPreview} 
+                            alt="Task proof" 
+                            className="w-full h-40 object-cover rounded-lg"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-2 right-2"
+                            onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                            disabled={submitting}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Label
+                            htmlFor="kiosk-photo-upload"
+                            className="flex-1 flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer hover:bg-muted transition-colors min-h-[44px]"
+                          >
+                            <Upload className="h-5 w-5 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">Upload</span>
+                          </Label>
+                          <Input
+                            id="kiosk-photo-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handlePhotoChange}
+                          />
+                          <Label
+                            htmlFor="kiosk-photo-camera"
+                            className="flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer hover:bg-muted transition-colors min-h-[44px]"
+                          >
+                            <Camera className="h-5 w-5 text-muted-foreground" />
+                          </Label>
+                          <Input
+                            id="kiosk-photo-camera"
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={handlePhotoChange}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* === SKIP MODE: Reason fields === */}
+            {dialogMode === 'skip' && selectedMember && pin.length >= 4 && (
+              <div className="space-y-4 border-t pt-4">
+                <div className="space-y-2">
+                  <Label>Reason for skipping <span className="text-destructive">*</span></Label>
+                  <Select value={skipReasonCategory} onValueChange={setSkipReasonCategory} disabled={submitting}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a reason..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(SKIP_REASONS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Additional details <span className="text-destructive">*</span></Label>
+                  <Textarea
+                    value={skipReason}
+                    onChange={(e) => setSkipReason(e.target.value)}
+                    placeholder="Provide context for why this task is being skipped..."
+                    rows={3}
+                    maxLength={500}
+                    disabled={submitting}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
             <div className="flex gap-2 pt-4">
               <Button 
                 variant="outline" 
-                onClick={() => setSelectedTask(null)}
-                className="flex-1"
+                onClick={resetDialogState}
+                className="flex-1 min-h-[44px]"
+                disabled={submitting}
               >
                 Cancel
               </Button>
-              <Button 
-                onClick={handleComplete}
-                disabled={!selectedMember || pin.length < 4}
-                className="flex-1"
-              >
-                Complete
-              </Button>
+              
+              {dialogMode === 'complete' ? (
+                <>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setDialogMode('skip')}
+                    className="min-h-[44px]"
+                    disabled={submitting || !selectedMember || pin.length < 4}
+                  >
+                    <SkipForward className="h-4 w-4 mr-1" />
+                    Skip
+                  </Button>
+                  <Button 
+                    onClick={handleComplete}
+                    disabled={submitting || !selectedMember || pin.length < 4}
+                    className="flex-1 min-h-[44px]"
+                  >
+                    {submitting ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Completing...</>
+                    ) : 'Complete'}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setDialogMode('complete')}
+                    className="min-h-[44px]"
+                    disabled={submitting}
+                  >
+                    Back
+                  </Button>
+                  <Button 
+                    variant="destructive"
+                    onClick={handleSkip}
+                    disabled={submitting || !selectedMember || pin.length < 4 || !skipReasonCategory || !skipReason.trim()}
+                    className="flex-1 min-h-[44px]"
+                  >
+                    {submitting ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Skipping...</>
+                    ) : 'Skip Task'}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </DialogContent>
