@@ -253,6 +253,44 @@ export default function TaskInstances() {
           </div>
         </div>
 
+        {/* Filters row 1: search + dropdowns */}
+        <div className="mb-4 flex flex-wrap gap-4 items-center">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by task title..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Locations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Locations</SelectItem>
+              {locations.map((loc) => (
+                <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Departments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Departments</SelectItem>
+              {departments.map((dept) => (
+                <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Filters row 2: time range + status + view mode */}
         <div className="mb-6 flex gap-4 items-center justify-between">
           <div className="flex gap-4">
             <Select value={timeRangeFilter} onValueChange={setTimeRangeFilter}>
@@ -310,13 +348,15 @@ export default function TaskInstances() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {tasks.length === 0 ? (
+            {filteredTasks.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
-                No task instances found. Create schedules to generate tasks automatically.
+                {searchQuery || departmentFilter !== 'all' || locationFilter !== 'all'
+                  ? 'No tasks match your filters.'
+                  : 'No task instances found. Create schedules to generate tasks automatically.'}
               </p>
             ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {tasks.map(task => (
+                {filteredTasks.map(task => (
                   <TaskInstanceCard
                     key={task.id}
                     task={task}
@@ -330,7 +370,7 @@ export default function TaskInstances() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {tasks.map(task => (
+                {filteredTasks.map(task => (
                   <TaskInstanceListItem
                     key={task.id}
                     task={task}
