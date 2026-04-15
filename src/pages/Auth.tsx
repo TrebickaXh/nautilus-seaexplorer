@@ -84,6 +84,14 @@ export default function Auth() {
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const deactivated = (location.state as any)?.deactivated;
+
+  useEffect(() => {
+    if (deactivated) {
+      toast.error("Your account has been deactivated. Please contact your manager.");
+    }
+  }, [deactivated]);
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
