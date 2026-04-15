@@ -118,7 +118,7 @@ const Index = () => {
               <span className="font-semibold">Project Nautilus</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2025 Project Nautilus. All rights reserved.
+              © 2026 Project Nautilus. All rights reserved.
             </p>
           </div>
         </div>

@@ -338,6 +338,9 @@ export default function TaskRoutines() {
             <DialogTitle>
               {editingRoutine ? 'Edit Routine' : 'Create Routine'}
             </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              {editingRoutine ? 'Modify the routine details below.' : 'Define a new reusable task routine for your team.'}
+            </DialogDescription>
           </DialogHeader>
           <TaskRoutineForm
             template={editingRoutine}

@@ -487,6 +487,9 @@ export default function Users() {
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Manage Department Assignments</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Assign or remove departments for {selectedUser.name}.
+                </DialogDescription>
               </DialogHeader>
               <UserDepartmentAssignment
                 userId={selectedUser.id}
@@ -508,6 +511,9 @@ export default function Users() {
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Manage Shift Assignments</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Assign or remove shifts for {selectedUser.name}.
+                </DialogDescription>
               </DialogHeader>
               <UserShiftAssignment
                 userId={selectedUser.id}

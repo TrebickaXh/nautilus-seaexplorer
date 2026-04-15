@@ -247,6 +247,15 @@ export default function Dashboard() {
     if (authError) navigate("/auth");
   }, [authError, navigate]);
 
+  // Check if the user's profile is deactivated
+  useEffect(() => {
+    if (auth?.profile && auth.profile.active === false) {
+      supabase.auth.signOut().then(() => {
+        navigate("/auth", { state: { deactivated: true } });
+      });
+    }
+  }, [auth?.profile, navigate]);
+
   if (authError || roleLoading || authLoading) {
     return <DashboardSkeleton />;
   }
