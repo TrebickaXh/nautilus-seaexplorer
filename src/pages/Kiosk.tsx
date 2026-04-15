@@ -62,7 +62,8 @@ interface TeamMember {
 
 export default function Kiosk() {
   const navigate = useNavigate();
-  const { timezone: orgTimezone, loading: tzLoading } = useOrgTimezone();
+  const [searchParams] = useSearchParams();
+  const showDebug = searchParams.get('debug') === 'true';
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [activeShifts, setActiveShifts] = useState<Shift[]>([]);
   const [allShifts, setAllShifts] = useState<Shift[]>([]);
