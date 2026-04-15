@@ -127,7 +127,7 @@ export default function Shifts() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">

@@ -28,7 +28,7 @@ import { SetPinDialog } from '@/components/SetPinDialog';
 import { UserDepartmentAssignment } from '@/components/UserDepartmentAssignment';
 import { UserShiftAssignment } from '@/components/UserShiftAssignment';
 import { ArrowLeft, UserPlus, Shield, Users as UsersIcon, User, KeyRound, Building2, Clock, FileSpreadsheet, Search } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface UserProfile {
   id: string;
@@ -487,6 +487,9 @@ export default function Users() {
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Manage Department Assignments</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Assign or remove departments for {selectedUser.name}.
+                </DialogDescription>
               </DialogHeader>
               <UserDepartmentAssignment
                 userId={selectedUser.id}
@@ -508,6 +511,9 @@ export default function Users() {
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Manage Shift Assignments</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground">
+                  Assign or remove shifts for {selectedUser.name}.
+                </DialogDescription>
               </DialogHeader>
               <UserShiftAssignment
                 userId={selectedUser.id}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { DashboardSkeleton } from "@/components/PageSkeleton";
 import SetupChecklist from "@/components/SetupChecklist";
 import { useNavigate } from "react-router-dom";
@@ -246,6 +247,15 @@ export default function Dashboard() {
   useEffect(() => {
     if (authError) navigate("/auth");
   }, [authError, navigate]);
+
+  // Check if the user's profile is deactivated
+  useEffect(() => {
+    if (auth?.profile && auth.profile.active === false) {
+      supabase.auth.signOut().then(() => {
+        navigate("/auth", { state: { deactivated: true } });
+      });
+    }
+  }, [auth?.profile, navigate]);
 
   if (authError || roleLoading || authLoading) {
     return <DashboardSkeleton />;

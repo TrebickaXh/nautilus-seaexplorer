@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -235,7 +236,7 @@ export default function Locations() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -455,6 +456,9 @@ export default function Locations() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>{editingZone ? 'Edit Area' : 'Add Area'}</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                {editingZone ? 'Update the name of this area.' : 'Create a new area within this location.'}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">

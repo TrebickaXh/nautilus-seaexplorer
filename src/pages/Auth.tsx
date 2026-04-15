@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,6 +84,14 @@ export default function Auth() {
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const deactivated = (location.state as any)?.deactivated;
+
+  useEffect(() => {
+    if (deactivated) {
+      toast.error("Your account has been deactivated. Please contact your manager.");
+    }
+  }, [deactivated]);
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();

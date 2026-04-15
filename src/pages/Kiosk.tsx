@@ -566,7 +566,7 @@ export default function Kiosk() {
             
             <div className="flex items-center gap-2">
               {isOnline ? (
-                <Wifi className="h-5 w-5 text-green-500" />
+                <Wifi className="h-5 w-5 text-success" />
               ) : (
                 <WifiOff className="h-5 w-5 text-destructive" />
               )}
@@ -707,7 +707,7 @@ export default function Kiosk() {
 
         {tasks.length === 0 && (
           <Card className="p-12 text-center">
-            <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-500" />
+            <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-success" />
             <h3 className="text-xl font-bold mb-2">All Caught Up!</h3>
             <p className="text-muted-foreground">
               No pending tasks for this shift.
