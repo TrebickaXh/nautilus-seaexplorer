@@ -256,10 +256,11 @@ serve(async (req) => {
     }
 
     // Update task instance status
+    const newStatus = outcome === 'skipped' ? 'skipped' : 'done';
     const { error: updateError } = await supabaseAdmin
       .from('task_instances')
       .update({ 
-        status: 'done',
+        status: newStatus,
         completed_at: new Date().toISOString()
       })
       .eq('id', taskInstanceId);
