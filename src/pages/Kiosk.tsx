@@ -324,14 +324,54 @@ export default function Kiosk() {
     }
   };
 
-  const handleTaskClick = (task: TaskInstance) => {
-    setSelectedTask(task);
+  const SKIP_REASONS: Record<string, string> = {
+    no_supplies: 'No Supplies Available',
+    equipment_broken: 'Equipment Broken/Unavailable',
+    area_locked: 'Area Locked/Inaccessible',
+    safety_concern: 'Safety Concern',
+    other: 'Other',
+  };
+
+  const resetDialogState = () => {
+    setSelectedTask(null);
     setSelectedMember(null);
     setPin('');
+    setDialogMode('complete');
+    setSkipReason('');
+    setSkipReasonCategory('');
+    setCompletionNote('');
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setSubmitting(false);
+  };
+
+  const handleTaskClick = (task: TaskInstance) => {
+    resetDialogState();
+    setSelectedTask(task);
   };
 
   const handleMemberSelect = (memberId: string) => {
     setSelectedMember(memberId);
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('Photo must be smaller than 10MB');
+        return;
+      }
+      setPhotoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPhotoPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const getRequiredProof = (): string => {
+    return selectedTask?.required_proof || 
+           (selectedTask?.denormalized_data as any)?.required_proof || 
+           'none';
   };
 
   const handleComplete = async () => {
@@ -340,36 +380,126 @@ export default function Kiosk() {
       return;
     }
 
+    const proof = getRequiredProof();
+    const requiresNote = proof === 'note' || proof === 'dual';
+    const requiresPhoto = proof === 'photo' || proof === 'dual';
+
+    if (requiresNote && !completionNote.trim()) {
+      toast.error('A completion note is required for this task');
+      return;
+    }
+    if (requiresPhoto && !photoFile) {
+      toast.error('A photo is required for this task');
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      // Use the secure complete-task edge function
+      let photoUrl: string | null = null;
+
+      // Upload photo if provided
+      if (photoFile) {
+        const fileExt = photoFile.name.split('.').pop();
+        const fileName = `kiosk/${selectedTask.id}_${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('task-photos')
+          .upload(fileName, photoFile, { cacheControl: '3600', upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage
+          .from('task-photos')
+          .getPublicUrl(fileName);
+        photoUrl = publicUrl;
+      }
+
       const { data, error } = await supabase.functions.invoke('complete-task', {
         body: {
           taskInstanceId: selectedTask.id,
           userId: selectedMember,
           pin: pin,
-          outcome: 'completed'
+          outcome: 'completed',
+          note: completionNote.trim() || null,
+          photoUrl: photoUrl,
         }
       });
 
       if (error) {
-        console.error('Task completion error:', error);
-        toast.error(error.message || 'Invalid PIN or failed to complete task');
+        // Try to extract error message from response
+        let errorMsg = error.message || 'Invalid PIN or failed to complete task';
+        try {
+          const errorBody = (error as any)?.context ? await (error as any).context.json() : null;
+          if (errorBody?.error) errorMsg = errorBody.error;
+        } catch {}
+        toast.error(errorMsg);
         return;
       }
 
       if (!data?.success) {
-        toast.error('Failed to complete task');
+        toast.error(data?.error || 'Failed to complete task');
         return;
       }
 
       toast.success('Task completed!');
-      setSelectedTask(null);
-      setSelectedMember(null);
-      setPin('');
+      resetDialogState();
       loadTasks();
     } catch (error: any) {
       toast.error(error.message || 'Failed to complete task');
       console.error('Task completion error:', error);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    if (!selectedTask || !selectedMember || !pin) {
+      toast.error('Please select a team member and enter PIN');
+      return;
+    }
+    if (!skipReasonCategory) {
+      toast.error('Please select a reason for skipping');
+      return;
+    }
+    if (!skipReason.trim()) {
+      toast.error('Please provide details for why this task is being skipped');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const noteText = `[${SKIP_REASONS[skipReasonCategory] || skipReasonCategory}] ${skipReason.trim()}`;
+
+      const { data, error } = await supabase.functions.invoke('complete-task', {
+        body: {
+          taskInstanceId: selectedTask.id,
+          userId: selectedMember,
+          pin: pin,
+          outcome: 'skipped',
+          note: noteText,
+        }
+      });
+
+      if (error) {
+        let errorMsg = error.message || 'Failed to skip task';
+        try {
+          const errorBody = (error as any)?.context ? await (error as any).context.json() : null;
+          if (errorBody?.error) errorMsg = errorBody.error;
+        } catch {}
+        toast.error(errorMsg);
+        return;
+      }
+
+      if (!data?.success) {
+        toast.error(data?.error || 'Failed to skip task');
+        return;
+      }
+
+      toast.success('Task skipped');
+      resetDialogState();
+      loadTasks();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to skip task');
+      console.error('Task skip error:', error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
