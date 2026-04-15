@@ -109,7 +109,22 @@ export default function TaskInstances() {
         shifts(name),
         completions(id, created_at, note, profiles!user_id(display_name))
       `)
-      .limit(500); // Add limit to prevent loading too much data
+      .limit(500);
+
+    // Explicit org_id scoping
+    if (orgId) {
+      query = query.eq('org_id', orgId);
+    }
+
+    // Apply department filter
+    if (departmentFilter !== 'all') {
+      query = query.eq('department_id', departmentFilter);
+    }
+
+    // Apply location filter
+    if (locationFilter !== 'all') {
+      query = query.eq('location_id', locationFilter);
+    }
 
     // Apply time range filter using org timezone
     const now = new Date();
@@ -118,7 +133,6 @@ export default function TaskInstances() {
         query = query.lt('due_at', now.toISOString()).eq('status', 'pending');
         break;
       case 'today': {
-        // Use org timezone for "today" calculation
         const startOfToday = getStartOfDayInTimezone(now, orgTimezone);
         const endOfToday = getEndOfDayInTimezone(now, orgTimezone);
         query = query.gte('due_at', startOfToday.toISOString()).lte('due_at', endOfToday.toISOString());
@@ -131,11 +145,10 @@ export default function TaskInstances() {
         query = query.gte('due_at', now.toISOString()).lte('due_at', addDays(now, 30).toISOString());
         break;
       case 'all':
-        // No date filter, but still apply limit
         break;
     }
 
-    // Apply status filter (unless overdue is selected, which forces pending)
+    // Apply status filter
     if (statusFilter !== 'all' && timeRangeFilter !== 'overdue') {
       query = query.eq('status', statusFilter as 'pending' | 'done' | 'skipped');
     }
@@ -152,6 +165,16 @@ export default function TaskInstances() {
     
     setLoading(false);
   };
+
+  // Client-side search filter
+  const filteredTasks = useMemo(() => {
+    if (!searchQuery) return tasks;
+    const q = searchQuery.toLowerCase();
+    return tasks.filter((task) => {
+      const title = task.task_routines?.title || task.denormalized_data?.title || '';
+      return title.toLowerCase().includes(q);
+    });
+  }, [tasks, searchQuery]);
 
   const handleViewDetails = (task: any) => {
     setSelectedTask(task);
