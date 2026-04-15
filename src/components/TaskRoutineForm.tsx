@@ -21,7 +21,7 @@ const routineSchema = z.object({
   location_id: z.string().min(1, "Location is required"),
   department_id: z.string().min(1, "Department is required"),
   shift_id: z.string().min(1, "Shift is required"),
-  area_ids: z.array(z.string()).min(1, "At least one area is required"),
+  area_ids: z.array(z.string()).optional().default([]),
 });
 
 interface TaskRoutineFormProps {
@@ -379,11 +379,11 @@ export const TaskRoutineForm = ({ template, onSuccess, onCancel }: TaskRoutineFo
       </div>
 
       <div>
-        <Label>Areas * (Select at least one)</Label>
+        <Label>Areas (optional)</Label>
         <div className="border rounded-md p-4 space-y-2 max-h-40 overflow-y-auto">
           {areas.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              {formData.location_id ? 'No areas available' : 'Select a location first'}
+              {formData.location_id ? 'No areas available for this location' : 'Select a location first'}
             </p>
           )}
           {areas.map((area) => (
@@ -406,7 +406,9 @@ export const TaskRoutineForm = ({ template, onSuccess, onCancel }: TaskRoutineFo
           ))}
         </div>
         <p className="text-sm text-muted-foreground mt-1">
-          Selected: {formData.area_ids.length} area(s) - One task instance will be created per area
+          {formData.area_ids.length === 0
+            ? 'No areas selected — task applies to entire location'
+            : `Selected: ${formData.area_ids.length} area(s) — one task instance per area`}
         </p>
       </div>
 
