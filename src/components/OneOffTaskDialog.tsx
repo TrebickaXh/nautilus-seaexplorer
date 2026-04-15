@@ -137,7 +137,7 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
         location_id: values.location_id,
         department_id: values.department_id,
         shift_id: values.shift_id,
-        area_id: values.area_id,
+        ...(values.area_id ? { area_id: values.area_id } : {}),
         due_at: dueAt,
         status: 'pending',
         created_from_v2: 'oneoff',
@@ -281,18 +281,19 @@ export function OneOffTaskDialog({ open, onClose, onSuccess }: OneOffTaskDialogP
               name="area_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Area *</FormLabel>
+                  <FormLabel>Area (optional)</FormLabel>
                   <Select 
-                    onValueChange={field.onChange} 
-                    value={field.value}
+                    onValueChange={(val) => field.onChange(val === '__none__' ? '' : val)} 
+                    value={field.value || '__none__'}
                     disabled={!selectedLocationId}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={selectedLocationId ? "Select area" : "Select location first"} />
+                        <SelectValue placeholder={selectedLocationId ? "No area (optional)" : "Select location first"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="__none__">No area (optional)</SelectItem>
                       {areas.map(a => (
                         <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
                       ))}
